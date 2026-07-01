@@ -8,6 +8,7 @@ Prompt -> Code -> Validation.
 ## Current Lane
 
 Guarded checkout revenue validation: authenticated Catalog product reads,
+Warehouse-derived `warehouseId` propagation into order validation payloads,
 no-mutation order-create validation, no-mutation payment-create validation, and
 no-send notification payload validation.
 
@@ -55,7 +56,7 @@ no-send notification payload validation.
 | --- | --- | --- | --- | --- |
 | Catalog product read lane | ready now | main orchestrator | Cliplot integration and ExternalSecret files | build, docs gates, deploy, public product smoke |
 | Payment API key/scope lane | done | payments/platform lane | Payments Vault/K8s identity maps | invalid-body smoke returned 400 VALIDATION_ERROR |
-| Order validation lane | done | main orchestrator | Orders validate endpoint and Cliplot checkout order validation | checkout returned `orderValidation.status=validated_no_mutation` |
+| Order validation lane | done | main orchestrator | Orders validate endpoint and Cliplot checkout order validation | checkout returned `orderValidation.status=validated_no_mutation` with Warehouse `warehouseId` in `orderPreview.items[0]` |
 | Payment validation lane | done | main orchestrator | Cliplot checkout/payment code and payments validate endpoint | checkout returned `paymentValidation.status=validated_no_mutation` |
 | Notification validation lane | done | main orchestrator | Cliplot checkout notification code and notifications validate endpoint | checkout returned `notificationValidation.status=validated_no_send` |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |

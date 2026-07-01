@@ -2,14 +2,16 @@
 
 ## Current Status
 
-**Date:** 2026-07-01  
+**Date:** 2026-07-02
 **Mode:** Goal-driven orchestration enabled  
 **Active goal:** GOAL-05-checkout-revenue-readiness
 **Goal status:** GOAL-05 active
 **Current checkpoint:** GOAL-05 guarded checkout revenue path deployed;
-no-mutation order-create and payment-create validation plus no-send
-notification validation pass, while live order creation, live payment creation,
-and live notification sends remain approval-gated.
+Warehouse-derived `warehouseId` is carried from product availability into
+checkout order validation payloads, and no-mutation order-create/payment-create
+validation plus no-send notification validation pass while live order creation,
+live payment creation, Warehouse reservation, and live notification sends remain
+approval-gated.
 
 ## Current Intent Summary
 
@@ -82,6 +84,13 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `orderValidation.status=validated_no_mutation`, `mutation=false`,
   `orderCreated=false`, `warehouseMutation=false`, and
   `eventPublished=false`.
+- GOAL-05 Warehouse routing propagation deployed as
+  `localhost:5000/cliplot-service:da5d9cf`. In-cluster product smoke returned
+  `warehouseId=c0de0000-0000-4000-8000-000000000013`,
+  `warehouseType=own`, `availableStock=63`, and `stockQuantity=63`. Guarded
+  checkout returned HTTP `202`, carried the same `warehouseId` into
+  `orderPreview.items[0]`, and kept `orderValidation.status=validated_no_mutation`,
+  `orderCreated=false`, `warehouseMutation=false`, and `eventPublished=false`.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -114,6 +123,12 @@ smoke evidence.
   notification payload validation now has a no-send Notifications endpoint.
   Live order creation, live payment creation, and live notification sends still
   require explicit approved runtime evidence.
+- Cliplot now selects a Warehouse availability origin for each displayed
+  product and carries the Warehouse-owned `warehouseId` through checkout
+  normalization into `orders.create.v1` validation. This is payload enrichment
+  only; the stability smoke showed Warehouse `totalAvailable=63`,
+  `totalReserved=0`, warehouse `available=63`, and `reserved=0` unchanged before
+  and after guarded checkout.
 
 ## Closed Goal: GOAL-04-kubernetes-vault-rag-deployment
 
@@ -213,7 +228,7 @@ behavior until those approvals are present.
 - `[MISSING: approved Cliplot product SKU list/filtering rule; current Catalog read lane uses active Catalog products until owner-specific SKU scope exists]`
 - `[MISSING: Cliplot brand/legal/payment identity approval]`
 - `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
-- `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
+- `[MISSING: approved live Warehouse reservation execution evidence for Cliplot]`
 - `[UNKNOWN: whether Catalog needs new marketplace key cliplot or reuse flipflop connector for long-term owner-specific filtering]`
 - `[UNKNOWN: whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop]`
 
@@ -356,3 +371,18 @@ behavior until those approvals are present.
   and idempotency key. No valid payment-create request was executed because it
   would write a live payment record; live payment creation remains gated by
   approved valid-body payment evidence.
+- GOAL-05 Warehouse routing propagation validation passed for commit
+  `da5d9cf`: `npm run build`, `python3 scripts/pre_coding_gate.py`,
+  `python3 scripts/strict_doc_audit.py`, `python3 scripts/deployment_readiness_gate.py`,
+  and `git diff --check` passed before deploy. `./scripts/deploy.sh` rolled out
+  `localhost:5000/cliplot-service:da5d9cf`. In-cluster `/api/products` returned
+  product `19c69d06-e3d3-471d-b417-b2fccbd63ab0` with Warehouse
+  `warehouseId=c0de0000-0000-4000-8000-000000000013`, `warehouseType=own`,
+  `availableStock=63`, and `stockQuantity=63`. Guarded `/api/checkout/submit`
+  returned HTTP `202`, `orderPreview.items[0].warehouseId` equal to the same
+  Warehouse id, `orderValidation.status=validated_no_mutation`,
+  `paymentValidation.status=validated_no_mutation`,
+  `notificationValidation.status=validated_no_send`, and no order, Warehouse,
+  payment provider, or notification mutation. Warehouse availability before and
+  after checkout remained `totalAvailable=63`, `totalReserved=0`,
+  `warehouseAvailable=63`, and `warehouseReserved=0`.

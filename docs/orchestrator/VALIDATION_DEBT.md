@@ -25,13 +25,14 @@ deployment readiness.
 ### VD-002: Shared service identity contract incomplete
 
 Status: partially resolved by GOAL-03, GOAL-04, and GOAL-05 guarded
-validation lanes; still blocks live order creation, live stock reservation,
-live notification send, owner-specific product scope, and live provider payment
+validation lanes. Warehouse-derived `warehouseId` propagation is validated, but
+this debt still blocks live order creation, live stock reservation, live
+notification send, owner-specific product scope, and live provider payment
 evidence.
 
 Missing facts:
 
-- Catalog marketplace key.
+- Owner-specific Catalog product scope or marketplace key.
 - Approved live order-create and Warehouse reservation evidence for Cliplot.
 - Provider-backed payment evidence.
 - Auth client/callback policy.
@@ -50,6 +51,20 @@ checkout.notificationValidation.status=validated_no_send
 checkout.notificationValidation.mutation=false
 checkout.notificationValidation.providerCall=false
 checkout.notificationValidation.notificationSent=false
+```
+
+Warehouse routing propagation evidence:
+
+```text
+cliplot-service commit=da5d9cf
+image=localhost:5000/cliplot-service:da5d9cf
+/api/products firstWarehouseId=c0de0000-0000-4000-8000-000000000013
+/api/products firstWarehouseType=own
+/api/products firstAvailableStock=63
+checkout.orderPreview.items[0].warehouseId=c0de0000-0000-4000-8000-000000000013
+checkout.orderValidation.status=validated_no_mutation
+checkout.orderValidation.warehouseMutation=false
+warehouseAvailabilityBeforeAfterUnchanged=true
 ```
 
 No-mutation order validation evidence:

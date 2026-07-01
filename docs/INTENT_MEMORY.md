@@ -50,6 +50,6 @@ architecture decision remains:
 - `[MISSING: Cliplot product/catalog scope and approved SKU list]`
 - `[MISSING: Cliplot brand/legal/payment identity approval]`
 - `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
-- `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
+- `[MISSING: approved live order-create and Warehouse reservation evidence for Cliplot]`
 - `[MISSING: docs-rag publication command and token evidence for cliplot-service]`
 - `[UNKNOWN: whether Catalog needs new marketplace key cliplot or reuse flipflop connector]`

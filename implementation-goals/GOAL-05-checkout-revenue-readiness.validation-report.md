@@ -2,11 +2,12 @@
 
 ## Status
 
-Catalog, guarded order-create validation, guarded payment-create validation,
-and guarded notification payload validation are deployed and validated. Full
-GOAL-05 checkout revenue readiness is still in progress because live payment
-creation, live order mutation, stock mutation, and live customer notification
-sends remain guarded.
+Catalog, Warehouse-derived order routing, guarded order-create validation,
+guarded payment-create validation, and guarded notification payload validation
+are deployed and validated. Full GOAL-05 checkout revenue readiness is still in
+progress because live payment creation, live order mutation, Warehouse
+reservation or stock mutation, and live customer notification sends remain
+guarded.
 
 ## Catalog Product Read Lane
 
@@ -30,11 +31,12 @@ Runtime validation:
 
 ## Deferred Revenue Readiness
 
-Orders identity auth/scope readiness, no-mutation order payload validation,
-payment identity auth/scope readiness, no-mutation payment payload validation,
-and no-send notification payload validation are validated. Live payment
-creation, order creation, warehouse stock mutation, and customer notification
-sends remain guarded until approved provider-backed runtime evidence exists.
+Orders identity auth/scope readiness, Warehouse-derived `warehouseId` payload
+propagation, no-mutation order payload validation, payment identity auth/scope
+readiness, no-mutation payment payload validation, and no-send notification
+payload validation are validated. Live payment creation, order creation,
+Warehouse reservation or stock mutation, and customer notification sends remain
+guarded until approved provider-backed runtime evidence exists.
 
 ## Validation Evidence
 
@@ -351,4 +353,52 @@ checkout.paymentValidation.status=validated_no_mutation
 checkout.notificationValidation.status=validated_no_send
 checkout.hasLiveOrder=false
 remainingMissing=approved_live_order_create_and_warehouse_reservation_evidence|approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
+
+Warehouse routing propagation
+cliplotCommit=da5d9cf
+image=localhost:5000/cliplot-service:da5d9cf
+preDeploy.npmRunBuild=pass
+preDeploy.preCodingGate=pass
+preDeploy.strictDocAudit=pass
+preDeploy.deploymentReadiness=pass
+preDeploy.gitDiffCheck=pass
+deploymentReady=1/1
+
+In-cluster GET /api/products after Warehouse routing deploy
+http=200
+productCount=8
+firstProductId=19c69d06-e3d3-471d-b417-b2fccbd63ab0
+firstWarehouseId=c0de0000-0000-4000-8000-000000000013
+firstWarehouseType=own
+firstAvailableStock=63
+firstStockQuantity=63
+
+In-cluster POST /api/checkout/submit after Warehouse routing deploy
+http=202
+checkout.status=service_identity_required
+checkout.mode=guarded_checkout_submit
+checkout.orderPreview.items[0].warehouseId=c0de0000-0000-4000-8000-000000000013
+checkout.orderValidation.status=validated_no_mutation
+checkout.orderValidation.mutation=false
+checkout.orderValidation.orderCreated=false
+checkout.orderValidation.warehouseMutation=false
+checkout.orderValidation.eventPublished=false
+checkout.paymentValidation.status=validated_no_mutation
+checkout.paymentValidation.mutation=false
+checkout.paymentValidation.providerCall=false
+checkout.notificationValidation.status=validated_no_send
+checkout.notificationValidation.mutation=false
+checkout.notificationValidation.notificationSent=false
+remainingMissing=approved_live_order_create_and_warehouse_reservation_evidence|approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
+
+Warehouse availability stability around guarded checkout
+before.totalAvailable=63
+before.totalReserved=0
+before.warehouseAvailable=63
+before.warehouseReserved=0
+after.totalAvailable=63
+after.totalReserved=0
+after.warehouseAvailable=63
+after.warehouseReserved=0
+availabilityUnchanged=true
 ```

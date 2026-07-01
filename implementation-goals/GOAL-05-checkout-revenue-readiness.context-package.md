@@ -22,6 +22,9 @@ Remote source of truth:
 - Orders `POST /api/orders/validate-create` validates the Cliplot
   `orders.create.v1` payload without order creation, Warehouse reservation, or
   event publication.
+- Cliplot product reads now include Warehouse availability origin fields and
+  guarded checkout carries the Warehouse-owned `warehouseId` into
+  `orders.create.v1` validation payloads.
 - Cliplot guarded checkout returns `orderValidation.status=validated_no_mutation`,
   `paymentValidation.status=validated_no_mutation`, and
   `notificationValidation.status=validated_no_send` while still returning
@@ -46,6 +49,7 @@ Product fields may include `title`, `categories`, `pricing`, `media`,
 
 `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, and
 `ENABLE_LIVE_NOTIFICATIONS` remain false. Catalog reads and no-mutation/no-send
-validation can run, but order creation, Warehouse reservation, payment
-initiation, stock mutation, and customer notification sends remain guarded until
-explicit provider-backed validation and approval exist.
+validation can run, including Warehouse-derived payload enrichment, but order
+creation, Warehouse reservation, payment initiation, stock mutation, and customer
+notification sends remain guarded until explicit provider-backed validation and
+approval exist.

@@ -81,6 +81,9 @@ Known current blocker: docs-rag ingestion may fail while
 - Cliplot guarded checkout currently validates order, payment, and
   notification payloads without creating orders, reserving stock, calling a
   payment provider, or sending customer notifications.
+- Product reads include Warehouse availability origin fields; guarded checkout
+  copies the Warehouse-owned `warehouseId` into `orderPreview.items[]` for
+  `orders.create.v1` validation only.
 - Live submit remains disabled until approved live order-create plus Warehouse
   reservation evidence, approved live payment-create evidence, approved live
   notification-send evidence, owner-specific Catalog product scope, and

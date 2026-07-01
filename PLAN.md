@@ -77,7 +77,7 @@ Blocked until:
 
 - `[MISSING: Cliplot payment provider identity and callback keys]`
 - `[MISSING: approved SKU list and product pricing source]`
-- `[MISSING: Warehouse service token and default warehouse id]`
+- `[MISSING: approved live Warehouse reservation evidence]`
 - `[MISSING: owner approval for any live mutating smoke]`
 
 ## Parallel Execution Section
@@ -99,6 +99,6 @@ files. Workers must not edit them unless explicitly assigned.
 - `[MISSING: Cliplot product/catalog scope and approved SKU list]`
 - `[MISSING: Cliplot brand/legal/payment identity approval]`
 - `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
-- `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
+- `[MISSING: approved live order-create and Warehouse reservation evidence for Cliplot]`
 - `[UNKNOWN: whether Catalog needs new marketplace key cliplot or reuse flipflop connector]`
 - `[UNKNOWN: exact app stack and image name until GOAL-02 execution plan]`
