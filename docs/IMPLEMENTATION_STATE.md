@@ -228,3 +228,10 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   `/api/products` returned 8 real Catalog products with UUID IDs and
   `fallback=false`; readiness returned `catalog=read_enabled_authenticated`;
   guarded checkout remained `202 service_identity_required`.
+- GOAL-05 Payment identity lane deployed in `payments-microservice` as
+  `localhost:5000/payments-microservice:85a904b`; runtime identity maps now
+  come from Vault-backed `payments-microservice-secret`. Safe invalid-body
+  smoke from the Cliplot pod to `POST /payments/create` returned HTTP `400`
+  with `VALIDATION_ERROR`, proving Cliplot API-key auth and `payments:create`
+  scope without creating a payment. Provider-backed payment creation remains
+  disabled until an approved valid-body/payment-provider validation exists.

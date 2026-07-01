@@ -28,8 +28,9 @@ Runtime validation:
 
 ## Deferred Revenue Readiness
 
-Payment, order creation, warehouse stock mutation, and notifications remain
-guarded until provider-backed runtime evidence exists.
+Payment identity auth/scope readiness is validated, but valid payment creation,
+order creation, warehouse stock mutation, and notifications remain guarded until
+provider-backed runtime evidence exists.
 
 ## Validation Evidence
 
@@ -84,4 +85,16 @@ http=202
 status=service_identity_required
 mode=guarded_checkout_submit
 liveOrderCreated=false
+
+Payments identity onboarding
+payments-microservice image=localhost:5000/payments-microservice:85a904b
+apiKeyCount=7
+scopeMapPresent=true
+cliplotCallbackPresent=true
+legacySecretEnvRemoved=true
+
+Cliplot pod safe invalid-body smoke to POST /payments/create
+http=400
+code=VALIDATION_ERROR
+paymentCreated=false
 ```

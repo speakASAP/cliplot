@@ -52,14 +52,13 @@ Authenticated Catalog product reads.
 | Workstream | Status | Owner | Files | Validation |
 | --- | --- | --- | --- | --- |
 | Catalog product read lane | ready now | main orchestrator | Cliplot integration and ExternalSecret files | build, docs gates, deploy, public product smoke |
-| Payment API key/scope lane | running/read-only | subagent | no edits | exact payment blocker and next task |
+| Payment API key/scope lane | done | payments/platform lane | Payments Vault/K8s identity maps | invalid-body smoke returned 400 VALIDATION_ERROR |
 | Warehouse/notification lane | dependency-gated | future worker | no edits until Catalog lane lands | service-token and template evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment smoke |
 
 ## Blockers
 
 - `[MISSING: approved Cliplot product SKU list/filtering rule]`
-- `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
+- `[MISSING: approved valid-body provider-backed payment evidence for Cliplot]`
 - `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
 - `[MISSING: Notification sender/template rules for Cliplot order confirmations]`
-
