@@ -22,18 +22,17 @@ MISSING k8s/external-secret.yaml
 Resolution target: resolved; remaining work is revenue readiness, not base
 deployment readiness.
 
-### VD-002: Shared service identity contract missing
+### VD-002: Shared service identity contract incomplete
 
-Status: partially resolved by GOAL-03 service identity scaffolding; still
-blocks live order/payment/stock/notification mutation.
+Status: partially resolved by GOAL-03 and GOAL-04; still blocks live
+stock/notification/product/payment evidence.
 
 Missing facts:
 
 - Catalog marketplace key.
-- Orders channel/account.
-- Payment applicationId and callback keys.
+- Provider-backed payment evidence.
 - Auth client/callback policy.
-- Warehouse service token/default warehouse.
+- Warehouse default warehouse/role validation.
 - Notification sender/template contract.
 
 Resolution target: GOAL-05 for provider-backed payment/order evidence, with
@@ -41,7 +40,7 @@ Vault values prepared through GOAL-04.
 
 ### VD-003: Cliplot Vault path missing
 
-Status: blocks secret sync and live shared-service mutation.
+Status: resolved by GOAL-04.
 
 Evidence:
 
@@ -69,7 +68,7 @@ an available in-cluster embedding service.
 
 ### VD-005: Cliplot unsupported by Orders and Payments live contracts
 
-Status: blocks live order/payment mutation.
+Status: resolved by Orders `971a446` and Payments `eab6ae7` deployments.
 
 Evidence:
 

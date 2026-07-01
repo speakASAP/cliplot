@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress.
+Done.
 
 ## Evidence
 
@@ -28,6 +28,18 @@ In progress.
   `a969cb5`.
 - ExternalSecret `cliplot-service-secret` remains `SecretSyncedError` because
   the Vault path is missing.
+- Vault path `secret/prod/cliplot-service` was created with required key names;
+  no secret values were printed.
+- `python3 scripts/vault_secret_presence_gate.py --allow-missing` returned
+  `VAULT_SECRET_PRESENCE=pass`.
+- `cliplot-service-secret` and `orders-microservice-secret` returned
+  `SecretSynced=True`.
+- Cliplot pod env presence check confirmed expected secret keys are present and
+  `ENABLE_LIVE_ORDER_SUBMIT=false`.
+- Orders deployed `localhost:5000/orders-microservice:971a446` with in-pod
+  health green and `CLIPLOT_ORDERS_SERVICE_TOKEN` present.
+- Payments deployed `localhost:5000/payments-microservice:eab6ae7`; runtime
+  allowlists include `cliplot-service` and `https://cliplot.alfares.cz`.
 
 ## Expected Outcomes
 
@@ -39,10 +51,7 @@ In progress.
 
 ## Known Blockers
 
-- `[MISSING: Vault values at secret/prod/cliplot-service]`
 - `[BLOCKED: docs-rag embedding backend at 192.168.88.53:11434 refused connection]`
-- `[MISSING: Orders support for cliplot-service internal caller and channel cliplot]`
-- `[MISSING: Payments allowlist for cliplot-service and https://cliplot.alfares.cz]`
 - `[MISSING: Catalog product scope/service-auth path for Cliplot product reads]`
 - `[MISSING: Warehouse Auth role token for Cliplot stock reads/mutations]`
 - `[MISSING: Notification channel/template contract for Cliplot order confirmations]`

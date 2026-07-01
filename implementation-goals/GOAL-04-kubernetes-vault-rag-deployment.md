@@ -7,7 +7,7 @@ documentation publication.
 
 ## Status
 
-Active.
+Done.
 
 ## Planned Scope
 
@@ -26,19 +26,13 @@ Active.
 
 | Lane | Status | Owner | Scope | Validation |
 | --- | --- | --- | --- | --- |
-| GOAL-04 platform docs/scripts | active | Orchestrator | Cliplot repo docs/scripts | Gates and dry-run. |
-| Orders Cliplot support | running | Orders worker | `orders-microservice` only | Worker build/test/commit evidence. |
-| Payments Cliplot allowlist | running | Payments worker | `payments-microservice` only | Worker build/test/commit evidence. |
+| GOAL-04 platform docs/scripts | done | Orchestrator | Cliplot repo docs/scripts | Gates and dry-run. |
+| Orders Cliplot support | done | Orders worker | `orders-microservice` only | Build/test/deploy evidence. |
+| Payments Cliplot allowlist | done | Payments worker | `payments-microservice` only | Build/test/deploy evidence. |
 | Warehouse/Notifications contract | done/read-only | Explorer | Read-only report | Blockers recorded. |
 | Auth/Catalog/RAG contract | done/read-only | Explorer | Read-only report | Blockers recorded. |
 
 ## Blockers
 
-- GOAL-02 app source.
-- GOAL-03 runtime contracts.
-- `[MISSING: Vault values at secret/prod/cliplot-service]`
-- `[MISSING: docs-rag publication path/token]`
 - `[BLOCKED: docs-rag embedding backend at 192.168.88.53:11434 refused connection]`
-- `[MISSING: Orders support for cliplot-service internal caller and channel cliplot]`
-- `[MISSING: Payments allowlist for cliplot-service and https://cliplot.alfares.cz]`
 - `[MISSING: Catalog product scope/service-auth path for Cliplot product reads]`
