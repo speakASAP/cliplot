@@ -260,3 +260,11 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   product images, and Kč prices. Warehouse runtime evidence is no longer a
   checkout guard blocker for read/display; reservation/stock mutation remains
   disabled until live checkout is approved.
+- GOAL-05 notification identity lane deployed in `notifications-microservice`
+  commits `485ef45` and `8ed8225`. `CLIPLOT_NOTIFICATIONS_SERVICE_TOKEN` is
+  projected from the Cliplot Vault path into Notifications. Safe invalid-body
+  smoke from the Cliplot pod moved from HTTP `401 Invalid token` to HTTP `500
+  SEND_FAILED`, proving Cliplot notification auth reached the send path without
+  a valid notification payload or customer send. Cliplot now returns a guarded
+  Czech order-confirmation notification preview from checkout submit; live
+  notification send remains disabled pending approved live-send validation.

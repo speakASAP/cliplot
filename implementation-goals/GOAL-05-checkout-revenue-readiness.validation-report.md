@@ -135,4 +135,12 @@ allDisplayedStockStatus=Skladem
 allDisplayedImagesExternal=true
 firstStockedProductId=19c69d06-e3d3-471d-b417-b2fccbd63ab0
 firstStockedProductPriceCzk=1590
+
+Notifications identity onboarding
+notifications-microservice commits=485ef45,8ed8225
+safe invalid-body Cliplot pod smoke to POST /notifications/send
+before=http 401 Invalid token
+after=http 500 SEND_FAILED
+validNotificationSent=false
+cliplotCheckoutNotificationPreview=implemented_guarded
 ```

@@ -57,6 +57,7 @@ export const serviceConfig = {
   channelAccountId: process.env.CLIPLOT_CHANNEL_ACCOUNT_ID || 'cliplot-storefront',
   frontendMode: process.env.CLIPLOT_FRONTEND_MODE || 'shared-service-integration',
   liveOrderSubmit: process.env.ENABLE_LIVE_ORDER_SUBMIT === 'true',
+  liveNotifications: process.env.ENABLE_LIVE_NOTIFICATIONS === 'true',
   catalogUrl: process.env.CATALOG_SERVICE_URL || 'http://catalog-microservice:3200',
   warehouseUrl: process.env.WAREHOUSE_SERVICE_URL || 'http://warehouse-microservice:3201',
   ordersUrl: process.env.ORDERS_SERVICE_URL || 'http://orders-microservice:3203',
@@ -256,7 +257,7 @@ export function authLinks() {
 function checkoutMissingFacts() {
   const missing = [
     '[MISSING: approved valid-body provider-backed payment evidence for Cliplot]',
-    '[MISSING: Notification sender/template rules for Cliplot order confirmations]',
+    '[MISSING: approved live notification send validation for Cliplot order confirmations]',
   ];
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
@@ -323,6 +324,40 @@ async function createOrder(checkout) {
   });
 }
 
+function buildOrderConfirmationNotification(checkout) {
+  const itemLines = checkout.items
+    .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kc`)
+    .join('\n');
+  return {
+    channel: 'email',
+    type: 'order_confirmation',
+    recipient: checkout.customer.email,
+    subject: `Potvrzeni objednavky ${checkout.externalOrderId} - Cliplot`,
+    message: [
+      `Dobry den, ${checkout.customer.name},`,
+      '',
+      'dekujeme za objednavku v obchode Cliplot.',
+      '',
+      itemLines,
+      '',
+      `Celkem: ${checkout.total} Kc`,
+      'Doruceni: 1-2 dny podle dostupnosti dopravce.',
+      '',
+      'Cliplot',
+    ].join('\n'),
+    templateData: {
+      orderId: checkout.externalOrderId,
+      customerName: checkout.customer.name,
+      itemCount: checkout.items.reduce((sum, item) => sum + item.quantity, 0),
+      total: checkout.total,
+      currency: 'CZK',
+      source: 'cliplot-service',
+    },
+    service: serviceConfig.serviceName,
+    purpose: 'transactional',
+  };
+}
+
 export async function submitCheckout(input) {
   const checkout = normalizeCheckout(input);
   const validationErrors = validateCheckout(checkout);
@@ -356,17 +391,23 @@ export async function submitCheckout(input) {
           total: checkout.total,
           currency: 'CZK',
         },
+        notificationPreview: buildOrderConfirmationNotification(checkout),
       },
     };
   }
 
   const order = await createOrder(checkout);
+  const notificationPreview = buildOrderConfirmationNotification(checkout);
   return {
     httpStatus: 201,
     body: {
       success: true,
       status: 'order_created_payment_pending',
       order,
+      notification: serviceConfig.liveNotifications
+        ? 'pending_live_send_in_payment_lane'
+        : 'guarded_notification_send',
+      notificationPreview,
       next: 'Payment initiation remains gated by GOAL-05 provider-backed validation.',
     },
   };
@@ -382,7 +423,7 @@ export function serviceReadiness() {
       catalog: serviceConfig.catalogServiceToken ? 'read_enabled_authenticated' : 'read_enabled_with_fallback',
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
-      notifications: serviceConfig.notificationServiceToken ? 'token_present_non_blocking' : 'token_missing',
+      notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
       payments: serviceConfig.paymentApiKey ? 'identity_ready_provider_guarded' : 'token_missing',
       auth: 'public_links_contract_unverified',
     },
