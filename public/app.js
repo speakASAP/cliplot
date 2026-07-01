@@ -80,15 +80,34 @@ function saveCart() {
   localStorage.setItem('cliplot-cart', JSON.stringify(state.cart));
 }
 
+function findProduct(productId) {
+  return state.products.find((item) => item.id === productId) || fallbackProducts.find((item) => item.id === productId);
+}
+
+function hasWarehouseOrigin(product) {
+  return Boolean(product?.warehouseId);
+}
+
 function cartEntries() {
   return Object.entries(state.cart)
     .map(([id, quantity]) => {
-      const product = state.products.find((item) => item.id === id) || fallbackProducts.find((item) => item.id === id);
-      return product ? { product, quantity } : null;
+      const product = findProduct(id);
+      return product && hasWarehouseOrigin(product) ? { product, quantity } : null;
     })
     .filter(Boolean);
 }
 
+function removeUnreservableCartItems() {
+  let changed = false;
+  Object.keys(state.cart).forEach((productId) => {
+    const product = findProduct(productId);
+    if (!product || !hasWarehouseOrigin(product)) {
+      delete state.cart[productId];
+      changed = true;
+    }
+  });
+  if (changed) saveCart();
+}
 function cartTotal() {
   return cartEntries().reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 }
@@ -96,19 +115,23 @@ function cartTotal() {
 function renderProducts() {
   const search = state.search.trim().toLowerCase();
   const filtered = state.products.filter((product) => {
-    const matchesCategory = state.category === 'all' || product.category === state.category;
+    const matchesCategory = state.category === "all" || product.category === state.category;
     const matchesSearch = !search || `${product.name} ${product.description} ${product.category}`.toLowerCase().includes(search);
     return matchesCategory && matchesSearch;
   });
 
   selectors.products.innerHTML = filtered
-    .map(
-      (product) => `
+    .map((product) => {
+      const canReserve = hasWarehouseOrigin(product);
+      const stockLabel = canReserve ? product.stockStatus : "Nedostupné";
+      const buttonLabel = canReserve ? "Do košíku" : "Nelze objednat";
+      const disabledAttributes = canReserve ? "" : "disabled aria-disabled=true";
+      return `
         <article class="product-card">
           <img src="${product.image}" alt="${product.name}" loading="lazy" />
           <div class="product-meta">
             <span>${product.category}</span>
-            <span>${product.stockStatus}</span>
+            <span>${stockLabel}</span>
           </div>
           <h3>${product.name}</h3>
           <p class="product-description">${product.description}</p>
@@ -117,15 +140,14 @@ function renderProducts() {
           </div>
           <div class="product-price">
             <strong>${formatPrice(product.price)}</strong>
-            ${product.originalPrice ? `<del>${formatPrice(product.originalPrice)}</del>` : ''}
+            ${product.originalPrice ? `<del>${formatPrice(product.originalPrice)}</del>` : ""}
           </div>
-          <button class="primary-button" type="button" data-add-to-cart="${product.id}">Do košíku</button>
+          <button class="primary-button" type="button" data-add-to-cart="${canReserve ? product.id : ""}" data-warehouse-id="${product.warehouseId || ""}" ${disabledAttributes}>${buttonLabel}</button>
         </article>
-      `,
-    )
-    .join('');
+      `;
+    })
+    .join("");
 }
-
 function renderCart() {
   const entries = cartEntries();
   const count = entries.reduce((sum, item) => sum + item.quantity, 0);
@@ -160,11 +182,18 @@ function renderCart() {
 }
 
 function addToCart(productId) {
+  const product = findProduct(productId);
+  if (!hasWarehouseOrigin(product)) {
+    selectors.result.hidden = false;
+    selectors.result.textContent = "Produkt teď nejde objednat. Zkuste prosím jinou položku.";
+    return;
+  }
   state.cart[productId] = (state.cart[productId] || 0) + 1;
   renderCart();
 }
-
 function changeQuantity(productId, delta) {
+  const product = findProduct(productId);
+  if (delta > 0 && !hasWarehouseOrigin(product)) return;
   const next = (state.cart[productId] || 0) + delta;
   if (next <= 0) {
     delete state.cart[productId];
@@ -173,7 +202,6 @@ function changeQuantity(productId, delta) {
   }
   renderCart();
 }
-
 function setDrawer(open) {
   selectors.drawer.classList.toggle('is-open', open);
   selectors.backdrop.classList.toggle('is-open', open);
@@ -190,6 +218,7 @@ async function loadProducts() {
   } catch {
     state.products = fallbackProducts;
   }
+  removeUnreservableCartItems();
   renderProducts();
   renderCart();
 }
