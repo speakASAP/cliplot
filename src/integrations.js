@@ -70,9 +70,11 @@ export const serviceConfig = {
   authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
+  notificationValidatePath: process.env.NOTIFICATION_VALIDATE_PATH || '/notifications/validate',
   paymentCreatePath: process.env.PAYMENT_CREATE_PATH || '/payments/create',
   paymentValidateCreatePath: process.env.PAYMENT_VALIDATE_CREATE_PATH || '/payments/validate-create',
   paymentMethod: process.env.CLIPLOT_PAYMENT_METHOD || 'invoice',
+  notificationValidation: process.env.ENABLE_NOTIFICATION_VALIDATION === 'true',
   paymentCreateValidation: process.env.ENABLE_PAYMENT_CREATE_VALIDATION === 'true',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
   catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
@@ -263,11 +265,14 @@ export function authLinks() {
 }
 
 function checkoutMissingFacts() {
+  const notificationBlocker = serviceConfig.notificationValidation
+    ? '[MISSING: approved live notification send validation for Cliplot order confirmations]'
+    : '[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]';
   const missing = [
     serviceConfig.paymentCreateValidation
       ? '[MISSING: approved live payment-create execution evidence for Cliplot]'
       : '[MISSING: approved valid-body payment-create validation evidence for Cliplot]',
-    '[MISSING: approved live notification send validation for Cliplot order confirmations]',
+    notificationBlocker,
   ];
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
@@ -421,6 +426,58 @@ async function guardedPaymentValidation(checkout, paymentPayload) {
   }
 }
 
+async function validateNotification(checkout, notificationPayload) {
+  const url = new URL(serviceConfig.notificationValidatePath, serviceConfig.notificationsUrl);
+  return fetchJson(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${serviceConfig.notificationServiceToken}`,
+      'idempotency-key': `cliplot-notification-validate-${checkout.externalOrderId}`,
+    },
+    body: JSON.stringify(notificationPayload),
+  });
+}
+
+async function guardedNotificationValidation(checkout, notificationPayload) {
+  if (!serviceConfig.notificationValidation) {
+    return {
+      status: 'disabled',
+      mutation: false,
+      notificationSent: false,
+      providerCall: false,
+    };
+  }
+  if (!serviceConfig.notificationServiceToken) {
+    return {
+      status: 'missing_notification_service_token',
+      mutation: false,
+      notificationSent: false,
+      providerCall: false,
+    };
+  }
+
+  try {
+    const payload = await validateNotification(checkout, notificationPayload);
+    return {
+      status: 'validated_no_send',
+      ...(payload?.data || {}),
+      mutation: false,
+      notificationSent: false,
+      providerCall: false,
+    };
+  } catch (error) {
+    return {
+      status: 'validation_failed_guarded',
+      httpStatus: error?.status || 0,
+      code: error?.payload?.error?.code || error?.payload?.message || 'unknown',
+      mutation: false,
+      notificationSent: false,
+      providerCall: false,
+    };
+  }
+}
+
 function headerValue(headers, name) {
   const value = headers?.[name] || headers?.[name.toLowerCase()];
   return Array.isArray(value) ? value[0] : value || '';
@@ -545,6 +602,8 @@ export async function submitCheckout(input) {
   if (!serviceConfig.liveOrderSubmit || missing.length) {
     const paymentPreview = buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId });
     const paymentValidation = await guardedPaymentValidation(checkout, paymentPreview);
+    const notificationPreview = buildOrderConfirmationNotification(checkout);
+    const notificationValidation = await guardedNotificationValidation(checkout, notificationPreview);
     return {
       httpStatus: 202,
       body: {
@@ -562,7 +621,8 @@ export async function submitCheckout(input) {
           total: checkout.total,
           currency: 'CZK',
         },
-        notificationPreview: buildOrderConfirmationNotification(checkout),
+        notificationPreview,
+        notificationValidation,
         paymentPreview,
         paymentValidation,
       },
@@ -605,6 +665,9 @@ export function serviceReadiness() {
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
       notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
+      notificationValidation: serviceConfig.notificationValidation
+        ? (serviceConfig.notificationServiceToken ? 'enabled_no_send' : 'missing_notification_service_token')
+        : 'disabled',
       payments: serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing',
       paymentValidation: serviceConfig.paymentCreateValidation
         ? (serviceConfig.paymentApiKey ? 'enabled_no_mutation' : 'missing_payment_api_key')
