@@ -2,7 +2,7 @@
 
 ## Status
 
-Validating.
+Done.
 
 ## Evidence
 
@@ -22,6 +22,31 @@ Validating.
 - `/api/checkout/submit` returned HTTP 202 with
   `status=service_identity_required`; no order/payment/stock/notification live
   mutation occurred.
+
+2026-07-01 deploy validation:
+
+- `./scripts/deploy.sh` passed.
+- Image `localhost:5000/cliplot-service:0556cec` deployed.
+- Kubernetes deployment `cliplot-service` reached `1/1` ready/available.
+- In-pod `/health` smoke returned HTTP 200.
+- Remote public smoke from `alfares` passed for
+  `https://cliplot.alfares.cz/health`.
+- Remote public smoke passed for
+  `https://cliplot.alfares.cz/api/integrations/readiness`.
+- Remote public smoke passed for
+  `https://cliplot.alfares.cz/api/auth/links`.
+- Remote public smoke passed for
+  `https://cliplot.alfares.cz/api/products`.
+- Remote public checkout submit returned HTTP 202 with
+  `status=service_identity_required`.
+
+## Remaining Blockers
+
+- ExternalSecret `cliplot-service-secret` exists, but status is
+  `SecretSyncedError` because Vault path `secret/prod/cliplot-service` does not
+  exist yet.
+- One old pod was still `Terminating` after rollout; the new pod was ready and
+  available. No force deletion was performed.
 
 ## Expected Non-Mutating Runtime Results
 

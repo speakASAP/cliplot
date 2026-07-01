@@ -7,7 +7,7 @@ stock, order, payment, notification, auth, logging, or AI truth.
 
 ## Status
 
-Active.
+Done.
 
 ## Implementation Boundary
 
@@ -31,10 +31,10 @@ contracts are present and the live feature flag is explicitly enabled.
 
 | Lane | Status | Owner | Scope | Validation |
 | --- | --- | --- | --- | --- |
-| GOAL-03 docs/IPS chain | active | Orchestrator | `implementation-goals/**`, `docs/**`, `GOALS.md` | Doc audit and explicit blockers. |
-| Server integration layer | active | Orchestrator | `src/server.js`, `src/integrations.js` | Node syntax, guarded checkout smoke. |
-| Frontend guarded checkout | active | Orchestrator | `public/**` | Static asset check and manual curl smoke. |
-| Kubernetes/Vault projection | active | Orchestrator | `k8s/**`, `scripts/deploy.sh` | Deployment readiness gate and kubectl dry-run. |
+| GOAL-03 docs/IPS chain | done | Orchestrator | `implementation-goals/**`, `docs/**`, `GOALS.md` | Doc audit and explicit blockers. |
+| Server integration layer | done | Orchestrator | `src/server.js`, `src/integrations.js` | Node syntax, guarded checkout smoke. |
+| Frontend guarded checkout | done | Orchestrator | `public/**` | Static asset check and manual curl smoke. |
+| Kubernetes/Vault projection | done | Orchestrator | `k8s/**`, `scripts/deploy.sh` | Deployment readiness gate and kubectl dry-run. |
 | Live payment/order enablement | blocked | Future payment agent | Payment/Orders contracts and secrets | Provider-backed evidence in GOAL-05. |
 
 ## Blockers

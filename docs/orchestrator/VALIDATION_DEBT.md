@@ -38,3 +38,17 @@ Missing facts:
 
 Resolution target: GOAL-05 for provider-backed payment/order evidence, with
 Vault values prepared through GOAL-04.
+
+### VD-003: Cliplot Vault path missing
+
+Status: blocks secret sync and live shared-service mutation.
+
+Evidence:
+
+```text
+ExternalSecret cliplot-service-secret: SecretSyncedError
+Vault key: secret/prod/cliplot-service
+Message: Secret does not exist
+```
+
+Resolution target: GOAL-04.

@@ -4,9 +4,9 @@
 
 **Date:** 2026-07-01  
 **Mode:** Goal-driven orchestration enabled  
-**Active goal:** GOAL-03-shared-service-integration
-**Goal status:** GOAL-03 active
-**Current checkpoint:** GOAL-03 shared-service integration foundation in progress.
+**Active goal:** none
+**Goal status:** GOAL-03 done
+**Current checkpoint:** GOAL-03 guarded shared-service integration deployed and public smoke passed.
 
 ## Current Intent Summary
 
@@ -30,8 +30,14 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - Public `https://cliplot.alfares.cz/health` smoke returned HTTP 200.
 - Public `https://cliplot.alfares.cz/api/products` returned live product data.
 - Non-mutating checkout preview returned `frontend_preview_only`.
+- GOAL-03 integration source committed: `0556cec feat: add guarded shared service integration`.
+- Cliplot guarded shared-service integration deployed to Kubernetes.
+- Public `https://cliplot.alfares.cz/api/integrations/readiness` returned shared-service status.
+- Public `https://cliplot.alfares.cz/api/auth/links` returned hosted Auth URLs with contract-unverified status.
+- Public `https://cliplot.alfares.cz/api/checkout/submit` returned `service_identity_required` without live order/payment mutation.
+- ExternalSecret `cliplot-service-secret` was created, but Vault path `secret/prod/cliplot-service` is missing.
 
-## Active Goal: GOAL-03-shared-service-integration
+## Closed Goal: GOAL-03-shared-service-integration
 
 ### Objective
 
@@ -96,8 +102,9 @@ Serve the first production-visible Cliplot storefront frontend at
 
 ## Next Action
 
-Validate and deploy GOAL-03 guarded integration foundation. Keep GOAL-05
-blocked until provider-backed payment/order evidence and Vault values exist.
+Start GOAL-04 Kubernetes/Vault/RAG deployment hardening by creating
+`secret/prod/cliplot-service` in Vault and publishing the documentation package.
+Keep GOAL-05 blocked until provider-backed payment/order evidence exists.
 
 ## Blockers For Product Code
 
@@ -117,7 +124,8 @@ blocked until provider-backed payment/order evidence and Vault values exist.
 | Kubernetes/Vault/RAG pattern inspection | running/read-only | Subagent lane; no file edits. |
 | Foundation integration | done | Main orchestrator wrote and committed repo baseline. |
 | Storefront foundation | done | Frontend source, Dockerfile, K8s manifests, deploy, and public smoke completed. |
-| Shared-service guarded integration | active | Server integration layer, frontend checkout submit, ExternalSecret scaffold, and gates. |
+| Shared-service guarded integration | done | Server integration layer, frontend checkout submit, ExternalSecret scaffold, deploy, and public smoke completed. |
+| Vault secret population | blocked | `secret/prod/cliplot-service` does not exist; ExternalSecret status is `SecretSyncedError`. |
 | Payment integration | blocked | Planned for GOAL-05 after shared-service contracts and provider evidence. |
 
 ## Validation Log
@@ -136,3 +144,11 @@ blocked until provider-backed payment/order evidence and Vault values exist.
 - `./scripts/deploy.sh` built and pushed image `localhost:5000/cliplot-service:aad9cc8`; initial rollout wait timed out while the local registry pull took about 2m40s, then `kubectl rollout status deployment/cliplot-service -n statex-apps --timeout=180s` completed successfully.
 - Deployment `cliplot-service` reached `1/1` ready/available.
 - Public smoke passed for `https://cliplot.alfares.cz/`, `https://cliplot.alfares.cz/health`, `https://cliplot.alfares.cz/api/products`, and non-mutating checkout preview.
+- GOAL-03 `npm run build` passed.
+- GOAL-03 `python3 scripts/pre_coding_gate.py --root .` passed.
+- GOAL-03 `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues` passed.
+- GOAL-03 `python3 scripts/deployment_readiness_gate.py --root .` passed.
+- GOAL-03 Kubernetes dry-run passed for configmap, external-secret, deployment, service, and ingress.
+- GOAL-03 temporary runtime smoke passed for `/health`, `/api/integrations/readiness`, `/api/auth/links`, `/api/products`, and `/api/checkout/submit`.
+- GOAL-03 `./scripts/deploy.sh` passed and deployed image `localhost:5000/cliplot-service:0556cec`.
+- GOAL-03 public smoke from `alfares` passed for `/health`, `/api/integrations/readiness`, `/api/auth/links`, `/api/products`, and `/api/checkout/submit`.
