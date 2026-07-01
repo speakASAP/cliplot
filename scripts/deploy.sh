@@ -24,12 +24,15 @@ docker build -t "$IMAGE" -t "$IMAGE_LATEST" "$PROJECT_ROOT"
 docker push "$IMAGE"
 docker push "$IMAGE_LATEST"
 
+TMP_DEPLOYMENT="$(mktemp)"
+trap 'rm -f "$TMP_DEPLOYMENT"' EXIT
+sed "s#localhost:5000/cliplot-service:latest#$IMAGE#g" "$K8S_DIR/deployment.yaml" > "$TMP_DEPLOYMENT"
+
 kubectl apply -f "$K8S_DIR/configmap.yaml" -n "$NAMESPACE"
-kubectl apply -f "$K8S_DIR/deployment.yaml" -n "$NAMESPACE"
+kubectl apply -f "$TMP_DEPLOYMENT" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/service.yaml" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/ingress.yaml" -n "$NAMESPACE"
-kubectl set image "deployment/$SERVICE_NAME" app="$IMAGE" -n "$NAMESPACE"
-kubectl rollout status "deployment/$SERVICE_NAME" -n "$NAMESPACE" --timeout=180s
+kubectl rollout status "deployment/$SERVICE_NAME" -n "$NAMESPACE" --timeout=360s
 
 POD="$(kubectl get pod -n "$NAMESPACE" -l app="$SERVICE_NAME" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"
 test -n "$POD"

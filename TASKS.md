@@ -22,9 +22,21 @@ Commit: `0f360ce docs: initialize cliplot service foundation`.
 
 ### TASK-002: Storefront application baseline
 
-Blocked until GOAL-02 execution plan is expanded and pre-coding gate passes.
+Status: done.
+
+Implemented:
+
+- Node frontend service on port `8080`.
+- Static storefront UI.
+- Product grid with Catalog proxy and safe fallback.
+- localStorage cart.
+- Non-mutating checkout preview.
+- Dockerfile and Kubernetes manifests.
+- Public deployment at `https://cliplot.alfares.cz/`.
 
 ### TASK-003: Shared service identity contract
+
+Status: next.
 
 Define:
 
