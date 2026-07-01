@@ -56,6 +56,10 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   endpoint at `/api/payments/callback`; it validates the Payments callback
   API key and payload shape, but does not persist payment/order state until live
   checkout storage is approved.
+- GOAL-05 no-mutation payment create validation is enabled through
+  payments-microservice `POST /payments/validate-create`; guarded checkout can
+  validate the full Cliplot payment payload and still returns
+  `service_identity_required` until live order/payment mutation is approved.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -83,7 +87,8 @@ smoke evidence.
   payment-create payload generation have runtime smoke evidence.
 - Payment callback URL implementation has synthetic no-mutation validation as a
   guarded ACK path for downstream callbacks from payments-microservice.
-- Valid payment creation and live notification sends still require explicit
+- Valid payment payload validation now has a no-mutation Payments endpoint.
+  Live payment creation and live notification sends still require explicit
   approved runtime evidence.
 
 ## Closed Goal: GOAL-04-kubernetes-vault-rag-deployment

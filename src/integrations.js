@@ -71,7 +71,9 @@ export const serviceConfig = {
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
   paymentCreatePath: process.env.PAYMENT_CREATE_PATH || '/payments/create',
+  paymentValidateCreatePath: process.env.PAYMENT_VALIDATE_CREATE_PATH || '/payments/validate-create',
   paymentMethod: process.env.CLIPLOT_PAYMENT_METHOD || 'invoice',
+  paymentCreateValidation: process.env.ENABLE_PAYMENT_CREATE_VALIDATION === 'true',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
   catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
@@ -262,7 +264,9 @@ export function authLinks() {
 
 function checkoutMissingFacts() {
   const missing = [
-    '[MISSING: approved valid-body payment-create evidence for Cliplot]',
+    serviceConfig.paymentCreateValidation
+      ? '[MISSING: approved live payment-create execution evidence for Cliplot]'
+      : '[MISSING: approved valid-body payment-create validation evidence for Cliplot]',
     '[MISSING: approved live notification send validation for Cliplot order confirmations]',
   ];
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
@@ -367,6 +371,54 @@ async function createPayment(checkout, order) {
     },
     body: JSON.stringify(buildPaymentCreatePayload(checkout, order)),
   });
+}
+
+async function validatePaymentCreate(checkout, paymentPayload) {
+  const url = new URL(serviceConfig.paymentValidateCreatePath, serviceConfig.paymentUrl);
+  return fetchJson(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': serviceConfig.paymentApiKey,
+      'idempotency-key': `cliplot-payment-validate-${checkout.externalOrderId}`,
+    },
+    body: JSON.stringify(paymentPayload),
+  });
+}
+
+async function guardedPaymentValidation(checkout, paymentPayload) {
+  if (!serviceConfig.paymentCreateValidation) {
+    return {
+      status: 'disabled',
+      mutation: false,
+      providerCall: false,
+    };
+  }
+  if (!serviceConfig.paymentApiKey) {
+    return {
+      status: 'missing_payment_api_key',
+      mutation: false,
+      providerCall: false,
+    };
+  }
+
+  try {
+    const payload = await validatePaymentCreate(checkout, paymentPayload);
+    return {
+      status: 'validated_no_mutation',
+      ...(payload?.data || {}),
+      mutation: false,
+      providerCall: false,
+    };
+  } catch (error) {
+    return {
+      status: 'validation_failed_guarded',
+      httpStatus: error?.status || 0,
+      code: error?.payload?.error?.code || 'unknown',
+      mutation: false,
+      providerCall: false,
+    };
+  }
 }
 
 function headerValue(headers, name) {
@@ -491,6 +543,8 @@ export async function submitCheckout(input) {
 
   const missing = checkoutMissingFacts();
   if (!serviceConfig.liveOrderSubmit || missing.length) {
+    const paymentPreview = buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId });
+    const paymentValidation = await guardedPaymentValidation(checkout, paymentPreview);
     return {
       httpStatus: 202,
       body: {
@@ -509,7 +563,8 @@ export async function submitCheckout(input) {
           currency: 'CZK',
         },
         notificationPreview: buildOrderConfirmationNotification(checkout),
-        paymentPreview: buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId }),
+        paymentPreview,
+        paymentValidation,
       },
     };
   }
@@ -551,6 +606,9 @@ export function serviceReadiness() {
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
       notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
       payments: serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing',
+      paymentValidation: serviceConfig.paymentCreateValidation
+        ? (serviceConfig.paymentApiKey ? 'enabled_no_mutation' : 'missing_payment_api_key')
+        : 'disabled',
       paymentCallback: serviceConfig.paymentWebhookApiKey ? 'identity_ready_guarded_ack' : 'token_missing',
       auth: 'public_links_contract_unverified',
     },

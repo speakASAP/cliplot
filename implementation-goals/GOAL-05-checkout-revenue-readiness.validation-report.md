@@ -205,4 +205,20 @@ syntheticCallbackFunctionSmoke=pass
 unauthorized=401:payment_callback_unauthorized
 invalidPayload=400:payment_callback_validation_failed:missing_order_id|invalid_status
 validSyntheticPayload=202:payment_callback_received_guarded:mutation=false
+
+Payments no-mutation create validation
+paymentsCommit=292164f
+paymentsEndpoint=POST /payments/validate-create
+paymentsScope=payments:create
+publicNoKeySmoke=401:API key is required
+cliplotPodValidBodySmoke=201
+cliplotPodValidBodySmoke.success=true
+cliplotPodValidBodySmoke.mutation=false
+cliplotPodValidBodySmoke.providerCall=false
+cliplotPodValidBodySmoke.paymentMethod=invoice
+
+Cliplot guarded checkout payment validation
+config.ENABLE_PAYMENT_CREATE_VALIDATION=true
+config.PAYMENT_VALIDATE_CREATE_PATH=/payments/validate-create
+expectedCheckoutPaymentValidation=validated_no_mutation
 ```
