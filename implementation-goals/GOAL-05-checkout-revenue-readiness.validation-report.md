@@ -115,4 +115,16 @@ POST https://cliplot.alfares.cz/api/checkout/submit after guard refinement
 http=202
 status=service_identity_required
 mode=guarded_checkout_submit
+
+Warehouse receiver support
+warehouse-microservice commit=9e692ff
+read-only Cliplot pod smoke to POST /api/stock/availability/batch
+http=201
+success=true
+firstProductId=e0034f63-53be-4287-954e-5d519eb57a79
+firstTotalAvailable=0
+
+Warehouse stocked product scan
+visibleCatalogProductsWithPositiveWarehouseAvailability=0
+configuredStockedProductIds=8
 ```

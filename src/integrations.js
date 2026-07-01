@@ -66,6 +66,7 @@ export const serviceConfig = {
   authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
+  productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
   catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
@@ -104,14 +105,16 @@ async function fetchJson(url, options = {}) {
   }
 }
 
-function normalizeCatalogItem(item, index) {
+function normalizeCatalogItem(item, index, availabilityByProductId = new Map()) {
   const fallback = fallbackProducts[index % fallbackProducts.length];
   const price = normalizeCatalogPrice(item);
-  const stockQuantity = Number(item.stockQuantity ?? item.stock?.quantity ?? NaN);
+  const id = String(item.id ?? item.productId ?? item.catalogProductId ?? `catalog-${index}`);
+  const warehouseAvailability = availabilityByProductId.get(id);
+  const stockQuantity = Number(warehouseAvailability?.totalAvailable ?? item.stockQuantity ?? item.stock?.quantity ?? NaN);
   const outOfStock = stockQuantity === 0 || item.available === false;
 
   return {
-    id: String(item.id ?? item.productId ?? item.catalogProductId ?? `catalog-${index}`),
+    id,
     name: String(item.title ?? item.name ?? 'Produkt Cliplot'),
     category: normalizeCatalogCategory(item),
     price: Number.isFinite(price) && price > 0 ? price : fallback.price,
@@ -174,22 +177,61 @@ function normalizeCatalogDescription(item) {
 
 export async function fetchCatalogProducts() {
   try {
-    const url = new URL('/api/products', serviceConfig.catalogUrl);
-    url.searchParams.set('limit', '8');
-    url.searchParams.set('isActive', 'true');
-    url.searchParams.set('lifecycle', 'active');
     const headers = serviceConfig.catalogServiceToken
       ? {
           'x-internal-service-token': serviceConfig.catalogServiceToken,
           'x-service-name': serviceConfig.serviceName,
         }
       : {};
-    const payload = await fetchJson(url, { headers });
-    const items = payload?.data?.items || payload?.items || payload?.data || [];
+    const items = serviceConfig.productIds.length > 0
+      ? await fetchConfiguredCatalogProducts(headers)
+      : await fetchActiveCatalogProducts(headers);
     if (!Array.isArray(items) || items.length === 0) return fallbackProducts;
-    return items.slice(0, 8).map(normalizeCatalogItem);
+    const availabilityByProductId = await fetchWarehouseAvailability(items.map((item) => item.id).filter(Boolean));
+    return items.slice(0, 8).map((item, index) => normalizeCatalogItem(item, index, availabilityByProductId));
   } catch {
     return fallbackProducts;
+  }
+}
+
+async function fetchActiveCatalogProducts(headers) {
+  const url = new URL('/api/products', serviceConfig.catalogUrl);
+  url.searchParams.set('limit', '8');
+  url.searchParams.set('isActive', 'true');
+  url.searchParams.set('lifecycle', 'active');
+  const payload = await fetchJson(url, { headers });
+  return payload?.data?.items || payload?.items || payload?.data || [];
+}
+
+async function fetchConfiguredCatalogProducts(headers) {
+  const results = await Promise.allSettled(
+    serviceConfig.productIds.slice(0, 8).map(async (productId) => {
+      const payload = await fetchJson(new URL(`/api/products/${productId}`, serviceConfig.catalogUrl), { headers });
+      return payload?.data || payload?.product || payload;
+    }),
+  );
+  return results
+    .filter((result) => result.status === 'fulfilled' && result.value?.id)
+    .map((result) => result.value);
+}
+
+async function fetchWarehouseAvailability(productIds) {
+  if (!serviceConfig.warehouseServiceToken || productIds.length === 0) {
+    return new Map();
+  }
+  try {
+    const payload = await fetchJson(new URL('/api/stock/availability/batch', serviceConfig.warehouseUrl), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${serviceConfig.warehouseServiceToken}`,
+      },
+      body: JSON.stringify({ productIds }),
+    });
+    const rows = Array.isArray(payload?.data) ? payload.data : [];
+    return new Map(rows.map((row) => [String(row.productId), row]));
+  } catch {
+    return new Map();
   }
 }
 

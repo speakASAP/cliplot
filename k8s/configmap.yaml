@@ -23,6 +23,7 @@ data:
   CLIPLOT_APPLICATION_ID: "cliplot-service"
   CLIPLOT_ORDER_CHANNEL: "cliplot"
   CLIPLOT_CHANNEL_ACCOUNT_ID: "cliplot-storefront"
+  CLIPLOT_PRODUCT_IDS: "19c69d06-e3d3-471d-b417-b2fccbd63ab0,1db1cac0-db7f-4b29-bcb3-1055f8955b81,2909dcaa-34ce-492e-892f-efda7e39ae64,30a08ed3-562f-49e4-9847-7e81b16a9df2,3e0a7c04-22c2-4d28-b6b6-c7db14361d2c,4090f93b-e8a7-4a08-a21f-3ae645620910,53fb68c9-c8e8-4490-a145-1f3d0094c86d,6c552a47-dba2-4a5a-8b71-70c42f230555"
   ENABLE_LIVE_ORDER_SUBMIT: "false"
   AUTH_PUBLIC_URL: "https://auth.alfares.cz"
   AUTH_CLIENT_ID: "cliplot-service"

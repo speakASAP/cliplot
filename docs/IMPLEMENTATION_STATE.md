@@ -248,3 +248,9 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   returns HTTP `202 service_identity_required`; remaining blockers are
   provider-backed valid-body payment evidence, Warehouse runtime evidence, and
   notification sender/template rules.
+- GOAL-05 Warehouse receiver support deployed in `warehouse-microservice` commit
+  `9e692ff`. Cliplot read-only Warehouse availability smoke returned HTTP `201`
+  and `success=true` with no stock mutation. The first active Catalog list had
+  zero Warehouse availability, so Cliplot storefront product selection now uses
+  explicit stocked `CLIPLOT_PRODUCT_IDS` and enriches product cards with
+  Warehouse batch availability.
