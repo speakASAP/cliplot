@@ -254,3 +254,9 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   zero Warehouse availability, so Cliplot storefront product selection now uses
   explicit stocked `CLIPLOT_PRODUCT_IDS` and enriches product cards with
   Warehouse batch availability.
+- GOAL-05 stocked storefront selection deployed as
+  `localhost:5000/cliplot-service:ea7dd54`. Public `/api/products` returned 8
+  configured Catalog products with Warehouse-backed `Skladem` status, external
+  product images, and Kč prices. Warehouse runtime evidence is no longer a
+  checkout guard blocker for read/display; reservation/stock mutation remains
+  disabled until live checkout is approved.

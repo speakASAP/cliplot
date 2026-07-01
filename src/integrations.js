@@ -256,7 +256,6 @@ export function authLinks() {
 function checkoutMissingFacts() {
   const missing = [
     '[MISSING: approved valid-body provider-backed payment evidence for Cliplot]',
-    '[MISSING: Warehouse service token acceptance and default warehouseId runtime evidence]',
     '[MISSING: Notification sender/template rules for Cliplot order confirmations]',
   ];
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');

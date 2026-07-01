@@ -127,4 +127,12 @@ firstTotalAvailable=0
 Warehouse stocked product scan
 visibleCatalogProductsWithPositiveWarehouseAvailability=0
 configuredStockedProductIds=8
+
+GET https://cliplot.alfares.cz/api/products after stocked selection
+http=200
+count=8
+allDisplayedStockStatus=Skladem
+allDisplayedImagesExternal=true
+firstStockedProductId=19c69d06-e3d3-471d-b417-b2fccbd63ab0
+firstStockedProductPriceCzk=1590
 ```
