@@ -2,7 +2,9 @@
 
 ## Status
 
-Pre-deploy validation passed; deployment and public smoke pending.
+Catalog lane deployed and validated. Full GOAL-05 checkout revenue readiness is
+still in progress because payment identity/provider evidence, Warehouse, and
+Notifications remain guarded.
 
 ## Catalog Product Read Lane
 
@@ -15,12 +17,14 @@ Pre-deploy validation:
 - `git diff --check` passed.
 - `kubectl apply --dry-run=server -f k8s/external-secret.yaml` passed.
 
-Runtime validation still pending:
+Runtime validation:
 
-- deployment succeeds;
+- deployment succeeded after the initial rollout wait exceeded the deploy
+  script timeout while image pull was still pending;
 - deployed pod has `CATALOG_INTERNAL_SERVICE_TOKEN` present without printing it;
 - public `/api/products` returns real Catalog products;
-- public readiness reports authenticated Catalog reads.
+- public readiness reports authenticated Catalog reads;
+- public guarded checkout still returns `202 service_identity_required`.
 
 ## Deferred Revenue Readiness
 
@@ -47,5 +51,37 @@ pass
 
 kubectl apply --dry-run=server -f k8s/external-secret.yaml
 externalsecret.external-secrets.io/cliplot-service-secret configured (server dry run)
-```
 
+./scripts/deploy.sh
+image localhost:5000/cliplot-service:2678d29 built and pushed
+initial rollout wait timed out while new pod was still pulling image
+
+kubectl -n statex-apps rollout status deployment/cliplot-service --timeout=180s
+deployment "cliplot-service" successfully rolled out
+
+kubectl -n statex-apps exec deploy/cliplot-service -- node -e "..."
+catalogTokenPresent=true
+liveOrderSubmit=false
+
+GET https://cliplot.alfares.cz/api/integrations/readiness
+http=200
+catalog=read_enabled_authenticated
+orders=guarded
+payments=blocked_until_GOAL-05
+liveOrderSubmit=false
+
+GET https://cliplot.alfares.cz/api/products
+http=200
+success=true
+count=8
+firstId=e0034f63-53be-4287-954e-5d519eb57a79
+firstName=Paměťová karta Lenovo 2Tb SD + Adaptér
+fallback=false
+firstImageExternal=true
+
+POST https://cliplot.alfares.cz/api/checkout/submit
+http=202
+status=service_identity_required
+mode=guarded_checkout_submit
+liveOrderCreated=false
+```

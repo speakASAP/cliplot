@@ -221,3 +221,10 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues`,
   `python3 scripts/deployment_readiness_gate.py --root .`, `git diff --check`,
   and `kubectl apply --dry-run=server -f k8s/external-secret.yaml`.
+- GOAL-05 Catalog lane deployed as `localhost:5000/cliplot-service:2678d29`.
+  Initial deploy script rollout wait timed out while the new pod was still
+  pulling the image; follow-up `kubectl -n statex-apps rollout status
+  deployment/cliplot-service --timeout=180s` succeeded. Public
+  `/api/products` returned 8 real Catalog products with UUID IDs and
+  `fallback=false`; readiness returned `catalog=read_enabled_authenticated`;
+  guarded checkout remained `202 service_identity_required`.
