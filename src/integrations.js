@@ -1,4 +1,5 @@
 const requestTimeoutMs = Number(process.env.SERVICE_REQUEST_TIMEOUT_MS || 2200);
+const orderIdPrefix = process.env.CLIPLOT_ORDER_ID_PREFIX || 'cliplot';
 
 export const fallbackProducts = [
   {
@@ -64,7 +65,7 @@ export const serviceConfig = {
   authPublicUrl: process.env.AUTH_PUBLIC_URL || 'https://auth.alfares.cz',
   authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
-  ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders/guest',
+  ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
@@ -168,7 +169,9 @@ function normalizeCheckout(input) {
   const items = Array.isArray(input?.items) ? input.items : [];
   const customer = input?.customer && typeof input.customer === 'object' ? input.customer : {};
   const total = Number(input?.total || 0);
+  const externalOrderId = String(input?.externalOrderId || `${orderIdPrefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`);
   return {
+    externalOrderId,
     customer: {
       name: String(customer.name || '').trim(),
       email: String(customer.email || '').trim(),
@@ -177,7 +180,7 @@ function normalizeCheckout(input) {
     },
     items: items.map((entry) => ({
       productId: String(entry?.product?.id || entry?.productId || ''),
-      name: String(entry?.product?.name || entry?.name || ''),
+      title: String(entry?.product?.name || entry?.name || ''),
       quantity: Number(entry?.quantity || 0),
       unitPrice: Number(entry?.product?.price || entry?.unitPrice || 0),
     })),
@@ -207,18 +210,15 @@ async function createOrder(checkout) {
       'x-service-name': serviceConfig.serviceName,
     },
     body: JSON.stringify({
+      contractVersion: 'orders.create.v1',
       channel: serviceConfig.orderChannel,
+      externalOrderId: checkout.externalOrderId,
       channelAccountId: serviceConfig.channelAccountId,
-      applicationId: serviceConfig.applicationId,
       customer: checkout.customer,
       items: checkout.items,
       totals: {
         currency: 'CZK',
-        grandTotal: checkout.total,
-      },
-      metadata: {
-        storefront: 'cliplot.alfares.cz',
-        paymentStatus: 'payment_not_started',
+        total: checkout.total,
       },
     }),
   });
@@ -252,6 +252,7 @@ export async function submitCheckout(input) {
           channel: serviceConfig.orderChannel,
           channelAccountId: serviceConfig.channelAccountId,
           applicationId: serviceConfig.applicationId,
+          externalOrderId: checkout.externalOrderId,
           itemCount: checkout.items.reduce((sum, item) => sum + item.quantity, 0),
           total: checkout.total,
           currency: 'CZK',

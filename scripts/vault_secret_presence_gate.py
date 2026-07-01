@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+
+REQUIRED_KEYS = [
+    "ORDERS_SERVICE_TOKEN",
+    "WAREHOUSE_SERVICE_TOKEN",
+    "NOTIFICATIONS_SERVICE_TOKEN",
+    "PAYMENT_API_KEY",
+    "PAYMENT_WEBHOOK_API_KEY",
+    "CLIPLOT_SERVICE_TOKEN",
+    "DOCS_RAG_SERVICE_TOKEN",
+]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", default="secret/prod/cliplot-service")
+    parser.add_argument("--allow-missing", action="store_true")
+    args = parser.parse_args()
+
+    env = os.environ.copy()
+    env.setdefault("VAULT_ADDR", "http://127.0.0.1:8200")
+    result = subprocess.run(
+        ["vault", "kv", "get", "-format=json", args.path],
+        env=env,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        print("VAULT_SECRET_PRESENCE=blocked")
+        print(f"path={args.path}")
+        print("reason=vault_path_missing_or_unreadable")
+        if args.allow_missing:
+            return 0
+        return 2
+
+    payload = json.loads(result.stdout)
+    data = payload.get("data", {}).get("data", {})
+    missing = [key for key in REQUIRED_KEYS if not str(data.get(key, "")).strip()]
+    if missing:
+        print("VAULT_SECRET_PRESENCE=blocked")
+        print(f"path={args.path}")
+        for key in missing:
+            print(f"MISSING {key}")
+        if args.allow_missing:
+            return 0
+        return 2
+
+    print("VAULT_SECRET_PRESENCE=pass")
+    print(f"path={args.path}")
+    print("checked_keys=" + ",".join(REQUIRED_KEYS))
+    print("note=secret values intentionally not printed")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

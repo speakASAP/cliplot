@@ -27,5 +27,6 @@ data:
   AUTH_PUBLIC_URL: "https://auth.alfares.cz"
   AUTH_CLIENT_ID: "cliplot-service"
   AUTH_RETURN_URL: "https://cliplot.alfares.cz/auth/callback"
-  ORDERS_CREATE_PATH: "/api/orders/guest"
+  ORDERS_CREATE_PATH: "/api/orders"
+  CLIPLOT_ORDER_ID_PREFIX: "cliplot"
   SERVICE_REQUEST_TIMEOUT_MS: "2200"

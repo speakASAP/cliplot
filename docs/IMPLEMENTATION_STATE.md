@@ -4,9 +4,9 @@
 
 **Date:** 2026-07-01  
 **Mode:** Goal-driven orchestration enabled  
-**Active goal:** none
-**Goal status:** GOAL-03 done
-**Current checkpoint:** GOAL-03 guarded shared-service integration deployed and public smoke passed.
+**Active goal:** GOAL-04-kubernetes-vault-rag-deployment
+**Goal status:** GOAL-04 active
+**Current checkpoint:** GOAL-04 platform hardening in progress.
 
 ## Current Intent Summary
 
@@ -36,6 +36,30 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - Public `https://cliplot.alfares.cz/api/auth/links` returned hosted Auth URLs with contract-unverified status.
 - Public `https://cliplot.alfares.cz/api/checkout/submit` returned `service_identity_required` without live order/payment mutation.
 - ExternalSecret `cliplot-service-secret` was created, but Vault path `secret/prod/cliplot-service` is missing.
+
+## Active Goal: GOAL-04-kubernetes-vault-rag-deployment
+
+### Objective
+
+Make Cliplot platform operations repeatable with Vault presence checks,
+docs-rag publication tooling, deployment readiness gates, and contract-ready
+order payload shape while keeping live commerce disabled.
+
+### Current Findings
+
+- Vault is reachable with `VAULT_ADDR=http://127.0.0.1:8200`.
+- `secret/prod/cliplot-service` does not exist yet.
+- Docs/RAG can trigger `cliplot-service` ingestion from the pod, but ingestion
+  is blocked by `ECONNREFUSED 192.168.88.53:11434`.
+- Auth validates `https://cliplot.alfares.cz/auth/callback`, but
+  `cliplot-service` is not documented in the hosted-auth client registry.
+- Catalog is Auth-guarded, has no `cliplot` marketplace key, and Cliplot is
+  currently serving fallback products.
+- Orders implemented create path is `/api/orders`; Cliplot payload is being
+  aligned to `orders.create.v1`, but Orders does not yet accept
+  `cliplot-service` or channel `cliplot`.
+- Payments allowlists do not yet include `cliplot-service` or
+  `https://cliplot.alfares.cz`.
 
 ## Closed Goal: GOAL-03-shared-service-integration
 
@@ -102,9 +126,10 @@ Serve the first production-visible Cliplot storefront frontend at
 
 ## Next Action
 
-Start GOAL-04 Kubernetes/Vault/RAG deployment hardening by creating
-`secret/prod/cliplot-service` in Vault and publishing the documentation package.
-Keep GOAL-05 blocked until provider-backed payment/order evidence exists.
+Continue GOAL-04 validation. If docs-rag embedding remains unavailable, commit
+the reproducible publication script and carry the RAG blocker forward. Keep
+GOAL-05 blocked until Orders, Payments, Catalog, Warehouse, Notifications, Auth,
+and Vault contracts are patched and validated.
 
 ## Blockers For Product Code
 
@@ -126,6 +151,9 @@ Keep GOAL-05 blocked until provider-backed payment/order evidence exists.
 | Storefront foundation | done | Frontend source, Dockerfile, K8s manifests, deploy, and public smoke completed. |
 | Shared-service guarded integration | done | Server integration layer, frontend checkout submit, ExternalSecret scaffold, deploy, and public smoke completed. |
 | Vault secret population | blocked | `secret/prod/cliplot-service` does not exist; ExternalSecret status is `SecretSyncedError`. |
+| Docs/RAG publication | blocked | Embedding backend `192.168.88.53:11434` refused connection. |
+| Orders Cliplot support | running | Separate worker owns `orders-microservice`. |
+| Payments Cliplot allowlist | running | Separate worker owns `payments-microservice`. |
 | Payment integration | blocked | Planned for GOAL-05 after shared-service contracts and provider evidence. |
 
 ## Validation Log

@@ -17,6 +17,8 @@ REQUIRED_FOR_FRONTEND_DEPLOY = [
     "k8s/ingress.yaml",
     "k8s/configmap.yaml",
     "k8s/external-secret.yaml",
+    "scripts/vault_secret_presence_gate.py",
+    "scripts/publish_docs_rag.sh",
 ]
 
 

@@ -53,6 +53,25 @@ Presence-only:
 ```bash
 kubectl get externalsecret -n statex-apps cliplot-service-secret
 kubectl get secret -n statex-apps cliplot-service-secret
+python3 scripts/vault_secret_presence_gate.py --allow-missing
 ```
 
 Do not print secret values.
+
+## Docs/RAG Publication
+
+```bash
+./scripts/publish_docs_rag.sh cliplot-service
+```
+
+Known current blocker: docs-rag ingestion may fail while
+`OLLAMA_URL=http://192.168.88.53:11434` refuses connections.
+
+## Checkout Contract Status
+
+- Orders create endpoint: `POST /api/orders`.
+- Required order contract: `orders.create.v1`.
+- Cliplot live submit remains disabled until Orders accepts
+  `cliplot-service` and channel `cliplot`, Payments allowlists
+  `cliplot-service`, Catalog product scope is approved, and Vault values are
+  populated.

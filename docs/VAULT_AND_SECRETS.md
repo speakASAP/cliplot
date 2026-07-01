@@ -13,7 +13,8 @@ secret/prod/cliplot-service
 
 ## Planned Secret Properties
 
-Final names may change after integration contracts are verified.
+These are the current projected keys for Cliplot. Values must be populated in
+Vault only; do not commit or print them.
 
 ```text
 JWT_SECRET
@@ -29,6 +30,17 @@ LOGGING_SERVICE_TOKEN
 AI_SERVICE_TOKEN
 DOCS_RAG_SERVICE_TOKEN
 ```
+
+## Presence Gate
+
+Run from `alfares`:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && python3 scripts/vault_secret_presence_gate.py --allow-missing'
+```
+
+The gate prints key presence only and intentionally does not print secret
+values.
 
 ## Kubernetes Projection
 
@@ -53,4 +65,6 @@ Do not print secret values. Validation may check presence by key name only.
 - `[MISSING: approved service principal tokens for Cliplot]`
 - `[MISSING: payment callback API key entry for cliplot-service]`
 - `[MISSING: Vault values at secret/prod/cliplot-service]`
-- `[MISSING: docs-rag token or ingestion path for cliplot-service]`
+- `[MISSING: Auth role contract for Cliplot token accepted by warehouse-microservice]`
+- `[MISSING: Orders support for cliplot-service token alias]`
+- `[MISSING: Payments API key/scope for cliplot-service]`

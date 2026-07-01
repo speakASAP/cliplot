@@ -30,6 +30,11 @@ REQUIRED = [
     "implementation-goals/GOAL-03-shared-service-integration.context-package.md",
     "implementation-goals/GOAL-03-shared-service-integration.coding-prompt.md",
     "implementation-goals/GOAL-03-shared-service-integration.validation-report.md",
+    "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.md",
+    "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.execution-plan.md",
+    "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.context-package.md",
+    "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.coding-prompt.md",
+    "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.validation-report.md",
 ]
 
 

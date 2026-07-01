@@ -22,6 +22,17 @@ Vault ExternalSecrets secret/prod cliplot-service Kubernetes statex-apps deploy.
 catalog-microservice marketplace connector flipflop structured_blocks cliplot
 ```
 
+## Publication Command
+
+Run from `alfares`:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && ./scripts/publish_docs_rag.sh cliplot-service'
+```
+
+The script executes inside the docs-rag pod, uses the pod's existing
+`JWT_TOKEN`, and does not print token values.
+
 ## Publication Plan
 
 Publish or synchronize these docs when the docs-rag ingestion path is confirmed:
@@ -40,8 +51,8 @@ Publish or synchronize these docs when the docs-rag ingestion path is confirmed:
 
 ## Blockers
 
-- `[MISSING: docs-rag publication command and token evidence for cliplot-service]`
-- `[UNKNOWN: whether docs-rag has a service-owned ingestion endpoint for new repos or requires manual indexing]`
+- `[BLOCKED: docs-rag embedding backend at 192.168.88.53:11434 refused connection]`
+- `[MISSING: docs-rag registry entry for cliplot-service]`
 
 Until resolved, keep canonical docs in this repository and query existing RAG
 only when available.
