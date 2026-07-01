@@ -419,3 +419,15 @@ postDeployCheckout.warehouseMutation=false
 postDeployCheckout.paymentValidationStatus=validated_no_mutation
 postDeployCheckout.notificationValidationStatus=validated_no_send
 ```
+Warehouse reservation-readiness deploy blocker
+cliplotCommit=008bacf
+imageBuiltAndPushed=localhost:5000/cliplot-service:008bacf
+static.npmRunBuild=pass
+static.gitDiffCheck=pass
+static.preCodingGate=pass
+static.strictDocAudit=pass
+static.deploymentReadiness=pass
+rolloutStatus=blocked_by_node_container_creating
+rollbackImage=localhost:5000/cliplot-service:b72a025
+runtimeSmoke.warehouseReservationReadiness=pending
+runtimeSmoke.reason=multiple pods on node alfares stuck in ContainerCreating with no pull/create events

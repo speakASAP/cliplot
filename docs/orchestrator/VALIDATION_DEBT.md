@@ -157,3 +157,22 @@ error=fetch failed
 ```
 
 Resolution target: rerun docs-rag publication after the RAG backend is reachable.
+### VD-004: Cliplot 008bacf rollout blocked by node ContainerCreating
+
+Status: active runtime deployment blocker.
+
+Evidence:
+
+```text
+cliplot-service commit=008bacf
+imageBuiltAndPushed=localhost:5000/cliplot-service:008bacf
+staticValidation=pass
+kubectl pods showed cliplot-service-78cf5d95db stuck ContainerCreating
+other unrelated pods were also stuck ContainerCreating
+rollout status timed out waiting for new pod readiness
+operational rollback restored image localhost:5000/cliplot-service:b72a025
+```
+
+Resolution target: after node/container runtime recovers, redeploy Git HEAD and
+capture guarded checkout `warehouseReservationReadiness.status=validated_no_mutation`
+with no order, reservation, payment, or notification mutation.

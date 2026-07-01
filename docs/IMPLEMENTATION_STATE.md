@@ -403,3 +403,17 @@ behavior until those approvals are present.
   `jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183`, and `error=fetch failed`;
   runtime checkout evidence is committed locally in the repo, but RAG ingestion
   remains an external service blocker.
+- GOAL-05 Warehouse reservation-readiness code commit `008bacf` adds a
+  no-mutation checkout preflight that calls Warehouse batch availability for the
+  product and `warehouseId` selected in checkout, returns
+  `warehouseReservationReadiness`, and blocks any future live order path with
+  `warehouse_reservation_not_ready` if availability is not reservable. Static
+  validation passed: `npm run build`, `git diff --check`,
+  `python3 scripts/pre_coding_gate.py`, `python3 scripts/strict_doc_audit.py`,
+  and `python3 scripts/deployment_readiness_gate.py`. The image
+  `localhost:5000/cliplot-service:008bacf` was built and pushed, but Kubernetes
+  rollout could not produce a running new pod because multiple unrelated pods on
+  node `alfares` were stuck in `ContainerCreating` with no pull/create events.
+  The Cliplot deployment was rolled back operationally to the last serving image
+  `localhost:5000/cliplot-service:b72a025`; runtime smoke for
+  `warehouseReservationReadiness` is still pending.
