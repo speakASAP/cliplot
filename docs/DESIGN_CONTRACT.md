@@ -9,6 +9,11 @@ before implementation. The preview image is stored at:
 docs/design/cliplot-homepage-mockup.png
 ```
 
+This PNG is a required repository asset and must stay versioned as the visual
+reference for homepage layout, spacing, hierarchy, and overall art direction.
+Frontend implementation must compare major layout decisions against this image
+before changing the first viewport or product grid.
+
 The image is a visual direction, not a pixel-perfect implementation contract.
 This markdown file is the controlling design contract.
 
