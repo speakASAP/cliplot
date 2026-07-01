@@ -48,7 +48,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   machine-auth header contract with Auth-owned
   `CATALOG_INTERNAL_SERVICE_TOKEN` and will stop relying on fallback products
   when Catalog responds.
-- GOAL-05 guarded payment-create path deployed as `c03fc7e`: checkout submit
+- GOAL-05 guarded payment-create path deployed as `2eb170e`: checkout submit
   now builds order, payment, and notification previews while
   `ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
   `ENABLE_LIVE_NOTIFICATIONS=false`.

@@ -175,4 +175,21 @@ notificationPreview.type=order_confirmation
 orderCreated=false
 paymentCreated=false
 notificationSent=false
+
+Post-deploy guarded checkout smoke
+commit=2eb170e
+image=localhost:5000/cliplot-service:2eb170e
+deploymentReady=1/1
+GET /api/integrations/readiness http=200
+readiness.payments=identity_ready_create_guarded
+readiness.notifications=identity_ready_send_guarded
+readiness.livePaymentCreate=false
+readiness.liveNotifications=false
+POST /api/checkout/submit http=202
+checkout.status=service_identity_required
+checkout.message=Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.
+checkout.paymentPreview.paymentMethod=invoice
+checkout.paymentPreview.description=Cliplot objednávka <generated-order-id>
+checkout.notificationPreview.subject=Potvrzení objednávky <generated-order-id> - Cliplot
+checkout.notificationPreview.firstLine=Dobrý den, Smoke Test,
 ```
