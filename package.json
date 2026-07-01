@@ -1,0 +1,15 @@
+{
+  "name": "cliplot-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Czech-first Cliplot e-commerce storefront.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "build": "node --check src/server.js && node scripts/verify-static-assets.js",
+    "check": "node --check src/server.js && node --check scripts/verify-static-assets.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

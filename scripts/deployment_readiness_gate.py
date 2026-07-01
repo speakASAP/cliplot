@@ -4,13 +4,17 @@ from pathlib import Path
 import sys
 
 
-REQUIRED_FOR_DEPLOY = [
+REQUIRED_FOR_FRONTEND_DEPLOY = [
+    "package.json",
     "Dockerfile",
+    "src/server.js",
+    "public/index.html",
+    "public/styles.css",
+    "public/app.js",
     "k8s/deployment.yaml",
     "k8s/service.yaml",
     "k8s/ingress.yaml",
     "k8s/configmap.yaml",
-    "k8s/external-secret.yaml",
 ]
 
 
@@ -19,14 +23,21 @@ def main() -> int:
     parser.add_argument("--root", default=".")
     args = parser.parse_args()
     root = Path(args.root)
-    missing = [p for p in REQUIRED_FOR_DEPLOY if not (root / p).exists()]
+    missing = [p for p in REQUIRED_FOR_FRONTEND_DEPLOY if not (root / p).exists()]
     if missing:
         print("DEPLOYMENT_READINESS=blocked")
-        print("reason=No deployable app baseline yet; this is expected during GOAL-01.")
         for item in missing:
             print(f"MISSING {item}")
         return 2
+    deploy = (root / "k8s/deployment.yaml").read_text()
+    ingress = (root / "k8s/ingress.yaml").read_text()
+    if "cliplot-service" not in deploy or "cliplot.alfares.cz" not in ingress:
+        print("DEPLOYMENT_READINESS=fail")
+        print("Kubernetes manifests do not target cliplot-service/cliplot.alfares.cz")
+        return 1
     print("DEPLOYMENT_READINESS=pass")
+    print("scope=frontend-foundation")
+    print("note=Vault/payment/order readiness remains blocked for later goals.")
     return 0
 
 

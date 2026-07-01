@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" role="img" aria-label="Rodinny set Cliplot">
+  <rect width="640" height="460" fill="#F1EFE8"/>
+  <rect x="94" y="94" width="452" height="284" rx="24" fill="#fff" stroke="#E3E0D8" stroke-width="4"/>
+  <rect x="138" y="142" width="110" height="184" rx="18" fill="#2F6B4F"/>
+  <rect x="266" y="142" width="110" height="184" rx="18" fill="#8A3A36"/>
+  <rect x="394" y="142" width="110" height="184" rx="18" fill="#6F766D"/>
+  <circle cx="193" cy="234" r="32" fill="#FAFAF7"/>
+  <circle cx="321" cy="234" r="32" fill="#FAFAF7"/>
+  <circle cx="449" cy="234" r="32" fill="#FAFAF7"/>
+  <text x="138" y="358" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#1F2421">Rodinny set Cliplot</text>
+</svg>

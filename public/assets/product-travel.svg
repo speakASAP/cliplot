@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" role="img" aria-label="Cestovni baleni klipu">
+  <rect width="640" height="460" fill="#F1EFE8"/>
+  <rect x="118" y="94" width="404" height="284" rx="34" fill="#fff" stroke="#E3E0D8" stroke-width="4"/>
+  <path d="M222 136h196c18 0 32 14 32 32v150H190V168c0-18 14-32 32-32Z" fill="#2F6B4F"/>
+  <path d="M254 136v-20c0-20 16-36 36-36h60c20 0 36 16 36 36v20" fill="none" stroke="#1F2421" stroke-width="16" stroke-linecap="round"/>
+  <rect x="234" y="202" width="172" height="62" rx="12" fill="#FAFAF7"/>
+  <text x="198" y="354" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#1F2421">Cestovni baleni</text>
+</svg>

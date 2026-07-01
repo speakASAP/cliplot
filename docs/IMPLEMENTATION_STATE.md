@@ -4,9 +4,9 @@
 
 **Date:** 2026-07-01  
 **Mode:** Goal-driven orchestration enabled  
-**Active goal:** none
-**Goal status:** GOAL-01 done
-**Current checkpoint:** GOAL-01 foundation committed at `0f360ce`.
+**Active goal:** `GOAL-02-storefront-foundation`
+**Goal status:** validating
+**Current checkpoint:** GOAL-02 frontend source implemented; source checks and temporary local smoke passed.
 
 ## Current Intent Summary
 
@@ -25,32 +25,38 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - IPS anchor docs created under `00_constitution` through `24_onboarding`.
 - Initial foundation commit created: `0f360ce docs: initialize cliplot service foundation`.
 
-## Active Goal: GOAL-01-orchestration-foundation
+## Active Goal: GOAL-02-storefront-foundation
 
 ### Objective
 
-Create the remote repository foundation, documentation, gates, and guarded
-deployment scaffold before any product code.
+Serve the first production-visible Cliplot storefront frontend at
+`https://cliplot.alfares.cz/` without live payment or order mutation.
 
 ### Allowed Changes
 
-- root documentation;
-- `docs/**`;
-- `implementation-goals/**`;
-- `scripts/**`;
-- `k8s/**` placeholders only;
-- design mockup asset.
+- `package.json`;
+- `Dockerfile`;
+- `.dockerignore`;
+- `src/**`;
+- `public/**`;
+- `k8s/configmap.yaml`;
+- `k8s/deployment.yaml`;
+- `k8s/service.yaml`;
+- `k8s/ingress.yaml`;
+- GOAL-02 docs and validation report;
+- guarded deploy script.
 
 ### Forbidden Changes
 
-- Product source code until GOAL-02 pre-coding gate passes.
 - Production secrets.
-- Live payment/order/stock mutation.
-- Deploying a non-existent or unvalidated app.
+- Live payment initiation.
+- Live order creation.
+- Stock reservation or decrement.
+- App-local canonical product, price, or stock truth.
 
 ## Next Action
 
-Expand GOAL-02 execution plan before any storefront source edits.
+Deploy GOAL-02 frontend and record production smoke evidence.
 
 ## Blockers For Product Code
 
@@ -69,7 +75,8 @@ Expand GOAL-02 execution plan before any storefront source edits.
 | FlipFlop integration inspection | running/read-only | Subagent lane; no file edits. |
 | Kubernetes/Vault/RAG pattern inspection | running/read-only | Subagent lane; no file edits. |
 | Foundation integration | done | Main orchestrator wrote and committed repo baseline. |
-| Storefront foundation | planned | Requires expanded GOAL-02 execution plan and gates. |
+| Storefront foundation | validating | Frontend source, Dockerfile, K8s manifests, and local smoke are ready for deploy. |
+| Payment integration | blocked | Planned for GOAL-05 after shared-service contracts and provider evidence. |
 
 ## Validation Log
 
