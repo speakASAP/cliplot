@@ -24,8 +24,9 @@ deployment readiness.
 
 ### VD-002: Shared service identity contract incomplete
 
-Status: partially resolved by GOAL-03 and GOAL-04; still blocks live
-stock/notification/product/payment evidence.
+Status: partially resolved by GOAL-03, GOAL-04, and GOAL-05 guarded
+validation lanes; still blocks live stock, live notification send,
+owner-specific product scope, and live provider payment evidence.
 
 Missing facts:
 
@@ -33,10 +34,22 @@ Missing facts:
 - Provider-backed payment evidence.
 - Auth client/callback policy.
 - Warehouse default warehouse/role validation.
-- Notification sender/template contract.
+- Approved live notification send validation for Cliplot order confirmations.
 
 Resolution target: GOAL-05 for provider-backed payment/order evidence, with
 Vault values prepared through GOAL-04.
+
+No-send notification validation evidence:
+
+```text
+notifications-microservice POST /notifications/validate deployed
+cliplot-service commit=fef5fd8
+readiness.notificationValidation=enabled_no_send
+checkout.notificationValidation.status=validated_no_send
+checkout.notificationValidation.mutation=false
+checkout.notificationValidation.providerCall=false
+checkout.notificationValidation.notificationSent=false
+```
 
 ### VD-003: Cliplot Vault path missing
 

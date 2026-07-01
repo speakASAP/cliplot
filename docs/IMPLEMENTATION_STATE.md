@@ -6,8 +6,9 @@
 **Mode:** Goal-driven orchestration enabled  
 **Active goal:** GOAL-05-checkout-revenue-readiness
 **Goal status:** GOAL-05 active
-**Current checkpoint:** GOAL-05 guarded checkout revenue path deployed; valid
-payment-create and live notification sends remain approval-gated.
+**Current checkpoint:** GOAL-05 guarded checkout revenue path deployed; no-send
+payment-create and notification validation pass, while live payment creation
+and live notification sends remain approval-gated.
 
 ## Current Intent Summary
 
@@ -63,6 +64,14 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   Deployed Cliplot image `localhost:5000/cliplot-service:52596f5` returned
   `paymentValidation.status=validated_no_mutation`, `mutation=false`, and
   `providerCall=false`.
+- GOAL-05 no-send notification validation is enabled through
+  notifications-microservice `POST /notifications/validate`; guarded checkout
+  validates the Cliplot order confirmation payload and still returns
+  `service_identity_required` until live customer notification send is
+  approved. Deployed Cliplot image
+  `localhost:5000/cliplot-service:fef5fd8` returned
+  `notificationValidation.status=validated_no_send`, `mutation=false`,
+  `providerCall=false`, and `notificationSent=false`.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -91,8 +100,9 @@ smoke evidence.
 - Payment callback URL implementation has synthetic no-mutation validation as a
   guarded ACK path for downstream callbacks from payments-microservice.
 - Valid payment payload validation now has a no-mutation Payments endpoint.
-  Live payment creation and live notification sends still require explicit
-  approved runtime evidence.
+  Valid notification payload validation now has a no-send Notifications
+  endpoint. Live payment creation and live notification sends still require
+  explicit approved runtime evidence.
 
 ## Closed Goal: GOAL-04-kubernetes-vault-rag-deployment
 
@@ -182,9 +192,9 @@ Serve the first production-visible Cliplot storefront frontend at
 ## Next Action
 
 Continue GOAL-05 checkout readiness: keep live payment/order/notification
-mutation disabled, harden the remaining approved-evidence path for payment
-creation and notification send validation, and preserve guarded frontend
-checkout behavior until those approvals are present.
+mutation disabled, collect approved live payment-create and live notification
+send evidence when allowed, and preserve guarded frontend checkout behavior
+until those approvals are present.
 
 ## Blockers For Product Code
 
@@ -210,7 +220,9 @@ checkout behavior until those approvals are present.
 | Orders Cliplot support | done | `orders-microservice:971a446` deployed. |
 | Payments Cliplot allowlist | done | `payments-microservice:eab6ae7` deployed. |
 | Catalog real product reads | active | Wiring Auth-owned Catalog machine-auth token and real Catalog response normalization. |
-| Payment integration | planned | GOAL-05 after Catalog/Warehouse/Notifications/Auth/provider evidence. |
+| Payment validation | done | Guarded no-mutation payment payload validation is deployed. |
+| Notification validation | done | Guarded no-send order confirmation payload validation is deployed. |
+| Live revenue mutation | dependency-gated | Requires approved live payment-create and live notification-send evidence. |
 
 ## Validation Log
 
@@ -258,6 +270,23 @@ checkout behavior until those approvals are present.
 - GOAL-05 Orders identity smoke from the Cliplot pod to `POST /api/orders`
   returned HTTP `400 Bad Request` for an invalid body, proving the Cliplot
   Orders service token is accepted before validation and no order was created.
+- GOAL-05 notification validation code validation passed: `npm run build`,
+  `python3 scripts/pre_coding_gate.py`, `python3 scripts/strict_doc_audit.py`,
+  `python3 scripts/deployment_readiness_gate.py`, `git diff --check`, and
+  `node --check src/integrations.js src/server.js`.
+- GOAL-05 notification validation deployed as
+  `localhost:5000/cliplot-service:fef5fd8`. Initial rollout stalled while
+  container runtime sandbox creation lagged; deleting only the stuck new
+  Cliplot pod allowed the deployment controller to recreate it, and rollout
+  completed.
+- In-cluster Cliplot pod smoke returned
+  `readiness.notificationValidation=enabled_no_send`,
+  `readiness.liveNotifications=false`, guarded checkout HTTP `202`,
+  `checkout.notificationValidation.status=validated_no_send`,
+  `checkout.notificationValidation.valid=true`,
+  `checkout.notificationValidation.mutation=false`,
+  `checkout.notificationValidation.providerCall=false`, and
+  `checkout.notificationValidation.notificationSent=false`.
   Checkout guard text now blocks on provider-backed payment evidence,
   Warehouse runtime evidence, and notification template rules rather than the
   already-deployed Orders channel support.

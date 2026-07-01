@@ -7,7 +7,9 @@ Prompt -> Code -> Validation.
 
 ## Current Lane
 
-Authenticated Catalog product reads.
+Guarded checkout revenue validation: authenticated Catalog product reads,
+no-mutation payment-create validation, and no-send notification payload
+validation.
 
 ## Allowed Changes
 
@@ -53,12 +55,14 @@ Authenticated Catalog product reads.
 | --- | --- | --- | --- | --- |
 | Catalog product read lane | ready now | main orchestrator | Cliplot integration and ExternalSecret files | build, docs gates, deploy, public product smoke |
 | Payment API key/scope lane | done | payments/platform lane | Payments Vault/K8s identity maps | invalid-body smoke returned 400 VALIDATION_ERROR |
-| Warehouse/notification lane | dependency-gated | future worker | no edits until Catalog lane lands | service-token and template evidence |
-| Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment smoke |
+| Payment validation lane | done | main orchestrator | Cliplot checkout/payment code and payments validate endpoint | checkout returned `paymentValidation.status=validated_no_mutation` |
+| Notification validation lane | done | main orchestrator | Cliplot checkout notification code and notifications validate endpoint | checkout returned `notificationValidation.status=validated_no_send` |
+| Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/payment/notification mutation paths | approved live payment-create and live notification-send evidence |
+| Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
 ## Blockers
 
 - `[MISSING: approved Cliplot product SKU list/filtering rule]`
-- `[MISSING: approved valid-body provider-backed payment evidence for Cliplot]`
+- `[MISSING: approved live payment-create execution evidence for Cliplot]`
 - `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
-- `[MISSING: Notification sender/template rules for Cliplot order confirmations]`
+- `[MISSING: approved live notification send validation for Cliplot order confirmations]`

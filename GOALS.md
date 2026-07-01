@@ -13,7 +13,7 @@ Cliplot implementation is goal-driven. Work proceeds through
 | `GOAL-02-storefront-foundation` | done | First deployed storefront slice matching the design contract. |
 | `GOAL-03-shared-service-integration` | done | Catalog, guarded checkout submit, service identity, Vault projection, notifications/auth boundaries wired safely. |
 | `GOAL-04-kubernetes-vault-rag-deployment` | done | Kubernetes manifests, Vault/ESO integration, deploy script, RAG publication tooling, runtime smoke. |
-| `GOAL-05-checkout-revenue-readiness` | active | Provider-backed checkout evidence without fake payment success; current lane is authenticated Catalog product reads. |
+| `GOAL-05-checkout-revenue-readiness` | active | Provider-backed checkout evidence without fake payment success; current lane has authenticated Catalog reads plus no-mutation payment and no-send notification validation. |
 | `GOAL-06-operational-closure` | blocked | Monitoring, runbook, validation, final handoff, and clean state. |
 
 ## Goal Closure Rule

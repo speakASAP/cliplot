@@ -2,9 +2,10 @@
 
 ## Status
 
-Catalog lane deployed and validated. Full GOAL-05 checkout revenue readiness is
-still in progress because payment identity/provider evidence, Warehouse, and
-Notifications remain guarded.
+Catalog, guarded payment-create validation, and guarded notification payload
+validation are deployed and validated. Full GOAL-05 checkout revenue readiness
+is still in progress because live payment creation, live order mutation, stock
+mutation, and live customer notification sends remain guarded.
 
 ## Catalog Product Read Lane
 
@@ -28,9 +29,10 @@ Runtime validation:
 
 ## Deferred Revenue Readiness
 
-Payment identity auth/scope readiness is validated, but valid payment creation,
-order creation, warehouse stock mutation, and notifications remain guarded until
-provider-backed runtime evidence exists.
+Payment identity auth/scope readiness, no-mutation payment payload validation,
+and no-send notification payload validation are validated. Live payment
+creation, order creation, warehouse stock mutation, and customer notification
+sends remain guarded until approved provider-backed runtime evidence exists.
 
 ## Validation Evidence
 
@@ -236,5 +238,51 @@ checkout.paymentValidation.status=validated_no_mutation
 checkout.paymentValidation.mutation=false
 checkout.paymentValidation.providerCall=false
 checkout.paymentValidation.paymentMethod=invoice
+remainingMissing=approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
+
+Cliplot guarded checkout notification validation
+cliplotCommit=fef5fd8
+image=localhost:5000/cliplot-service:fef5fd8
+config.ENABLE_NOTIFICATION_VALIDATION=true
+config.NOTIFICATION_VALIDATE_PATH=/notifications/validate
+config.ENABLE_LIVE_NOTIFICATIONS=false
+
+Pre-deploy validation for notification validation
+npm run build=pass
+python3 scripts/pre_coding_gate.py=pass
+python3 scripts/strict_doc_audit.py=pass
+python3 scripts/deployment_readiness_gate.py=pass
+git diff --check=pass
+node --check src/integrations.js=pass
+node --check src/server.js=pass
+
+./scripts/deploy.sh
+image localhost:5000/cliplot-service:fef5fd8 built and pushed
+deployment image=localhost:5000/cliplot-service:fef5fd8
+initial rollout stalled on ContainerCreating while sandbox creation lagged
+recovery=deleted only stuck new cliplot-service pod
+deploymentReady=1/1
+
+In-cluster GET /api/integrations/readiness after notification validation deploy
+readiness.liveOrderSubmit=false
+readiness.livePaymentCreate=false
+readiness.liveNotifications=false
+readiness.notificationValidation=enabled_no_send
+readiness.paymentValidation=enabled_no_mutation
+remainingMissing=approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
+
+In-cluster POST /api/checkout/submit after notification validation deploy
+http=202
+checkout.status=service_identity_required
+checkout.mode=guarded_checkout_submit
+checkout.notificationValidation.status=validated_no_send
+checkout.notificationValidation.valid=true
+checkout.notificationValidation.mutation=false
+checkout.notificationValidation.providerCall=false
+checkout.notificationValidation.notificationSent=false
+checkout.notificationValidation.channel=email
+checkout.notificationValidation.type=order_confirmation
+checkout.notificationValidation.decisionReason=legacy_fallback_no_channel_key
+checkout.paymentValidation.status=validated_no_mutation
 remainingMissing=approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
 ```
