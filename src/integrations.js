@@ -118,6 +118,21 @@ async function fetchJson(url, options = {}) {
   }
 }
 
+function selectReservationWarehouse(warehouseAvailability, quantity = 1) {
+  const warehouses = Array.isArray(warehouseAvailability?.warehouses) ? warehouseAvailability.warehouses : [];
+  const requiredQuantity = Math.max(1, Number(quantity || 1));
+  const candidates = warehouses.filter((warehouse) => {
+    const warehouseId = String(warehouse?.warehouseId || "").trim();
+    const available = Number(warehouse?.available || 0);
+    const warehouseType = String(warehouse?.warehouseType || "").toLowerCase();
+    return warehouseId && available >= requiredQuantity && (warehouseType === "own" || warehouse?.supplierId);
+  });
+
+  return candidates.find((warehouse) => String(warehouse?.warehouseType || "").toLowerCase() === "own")
+    || candidates[0]
+    || null;
+}
+
 function normalizeCatalogItem(item, index, availabilityByProductId = new Map()) {
   const fallback = fallbackProducts[index % fallbackProducts.length];
   const price = normalizeCatalogPrice(item);
@@ -125,6 +140,7 @@ function normalizeCatalogItem(item, index, availabilityByProductId = new Map()) 
   const warehouseAvailability = availabilityByProductId.get(id);
   const stockQuantity = Number(warehouseAvailability?.totalAvailable ?? item.stockQuantity ?? item.stock?.quantity ?? NaN);
   const outOfStock = stockQuantity === 0 || item.available === false;
+  const reservationWarehouse = selectReservationWarehouse(warehouseAvailability, 1);
 
   return {
     id,
@@ -137,6 +153,13 @@ function normalizeCatalogItem(item, index, availabilityByProductId = new Map()) 
     delivery: outOfStock ? 'Hlídáme dostupnost' : 'Doručení 1-2 dny',
     image: normalizeCatalogImage(item) || fallback.image,
     description: normalizeCatalogDescription(item) || fallback.description,
+    stockQuantity: Number.isFinite(stockQuantity) ? stockQuantity : undefined,
+    warehouseId: reservationWarehouse?.warehouseId || undefined,
+    warehouseCode: reservationWarehouse?.warehouseCode || undefined,
+    warehouseName: reservationWarehouse?.warehouseName || undefined,
+    warehouseType: reservationWarehouse?.warehouseType || undefined,
+    supplierId: reservationWarehouse?.supplierId || undefined,
+    availableStock: reservationWarehouse ? Number(reservationWarehouse.available || 0) : undefined,
   };
 }
 
@@ -305,6 +328,7 @@ function normalizeCheckout(input) {
       title: String(entry?.product?.name || entry?.name || ''),
       quantity: Number(entry?.quantity || 0),
       unitPrice: Number(entry?.product?.price || entry?.unitPrice || 0),
+      warehouseId: String(entry?.product?.warehouseId || entry?.warehouseId || "").trim(),
     })),
     total: Number.isFinite(total) ? total : 0,
     shipping: String(customer.shipping || input?.shipping || ''),
@@ -314,8 +338,9 @@ function normalizeCheckout(input) {
 
 function validateCheckout(checkout) {
   const errors = [];
-  if (!checkout.items.length) errors.push('empty_cart');
-  if (checkout.items.some((item) => !item.productId || item.quantity < 1)) errors.push('invalid_items');
+  if (!checkout.items.length) errors.push("empty_cart");
+  if (checkout.items.some((item) => !item.productId || item.quantity < 1)) errors.push("invalid_items");
+  if (checkout.items.some((item) => !item.warehouseId)) errors.push("missing_warehouse_id");
   if (!checkout.customer.name) errors.push('missing_name');
   if (!checkout.customer.email.includes('@')) errors.push('invalid_email');
   if (!checkout.customer.address) errors.push('missing_address');
@@ -347,6 +372,7 @@ function buildOrderCreatePayload(checkout) {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.unitPrice * item.quantity,
+      warehouseId: item.warehouseId,
     })),
     totals: {
       subtotal,
