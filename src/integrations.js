@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 const requestTimeoutMs = Number(process.env.SERVICE_REQUEST_TIMEOUT_MS || 2200);
 const orderIdPrefix = process.env.CLIPLOT_ORDER_ID_PREFIX || 'cliplot';
 
@@ -76,6 +78,7 @@ export const serviceConfig = {
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
   paymentApiKey: process.env.PAYMENT_API_KEY || '',
+  paymentWebhookApiKey: process.env.PAYMENT_WEBHOOK_API_KEY || '',
 };
 
 function timeoutSignal() {
@@ -265,6 +268,7 @@ function checkoutMissingFacts() {
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.paymentApiKey) missing.push('[MISSING: PAYMENT_API_KEY in Vault]');
+  if (!serviceConfig.paymentWebhookApiKey) missing.push('[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]');
   return missing;
 }
 
@@ -363,6 +367,78 @@ async function createPayment(checkout, order) {
     },
     body: JSON.stringify(buildPaymentCreatePayload(checkout, order)),
   });
+}
+
+function headerValue(headers, name) {
+  const value = headers?.[name] || headers?.[name.toLowerCase()];
+  return Array.isArray(value) ? value[0] : value || '';
+}
+
+function safeTokenEquals(actual, expected) {
+  if (!actual || !expected) return false;
+  const actualBuffer = Buffer.from(String(actual));
+  const expectedBuffer = Buffer.from(String(expected));
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+export function handlePaymentCallback(input, headers = {}) {
+  if (!serviceConfig.paymentWebhookApiKey) {
+    return {
+      httpStatus: 503,
+      body: {
+        success: false,
+        status: 'payment_callback_key_missing',
+        missing: ['[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]'],
+      },
+    };
+  }
+
+  const apiKey = headerValue(headers, 'x-api-key');
+  if (!safeTokenEquals(apiKey, serviceConfig.paymentWebhookApiKey)) {
+    return {
+      httpStatus: 401,
+      body: {
+        success: false,
+        status: 'payment_callback_unauthorized',
+      },
+    };
+  }
+
+  const paymentId = String(input?.paymentId || '').trim();
+  const orderId = String(input?.orderId || '').trim();
+  const status = String(input?.status || '').trim().toLowerCase();
+  const event = String(input?.event || '').trim().toLowerCase();
+  const allowedStatuses = new Set(['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded']);
+  const errors = [];
+  if (!paymentId) errors.push('missing_payment_id');
+  if (!orderId) errors.push('missing_order_id');
+  if (!allowedStatuses.has(status)) errors.push('invalid_status');
+
+  if (errors.length) {
+    return {
+      httpStatus: 400,
+      body: {
+        success: false,
+        status: 'payment_callback_validation_failed',
+        errors,
+      },
+    };
+  }
+
+  return {
+    httpStatus: 202,
+    body: {
+      success: true,
+      status: 'payment_callback_received_guarded',
+      mode: 'guarded_payment_callback_ack',
+      paymentId,
+      orderId,
+      paymentStatus: status,
+      event: event || 'unknown',
+      mutation: false,
+      next: 'Persist order/payment status only after GOAL-05 live checkout storage is approved.',
+    },
+  };
 }
 
 function buildOrderConfirmationNotification(checkout) {
@@ -475,6 +551,7 @@ export function serviceReadiness() {
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
       notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
       payments: serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing',
+      paymentCallback: serviceConfig.paymentWebhookApiKey ? 'identity_ready_guarded_ack' : 'token_missing',
       auth: 'public_links_contract_unverified',
     },
     missing: checkoutMissingFacts(),

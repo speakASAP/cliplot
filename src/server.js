@@ -2,7 +2,13 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { authLinks, fetchCatalogProducts, serviceReadiness, submitCheckout } from './integrations.js';
+import {
+  authLinks,
+  fetchCatalogProducts,
+  handlePaymentCallback,
+  serviceReadiness,
+  submitCheckout,
+} from './integrations.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const publicDir = join(root, 'public');
@@ -106,6 +112,13 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/api/checkout/submit' && req.method === 'POST') {
       const payload = await readRequestJson(req);
       const result = await submitCheckout(payload);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback' && req.method === 'POST') {
+      const payload = await readRequestJson(req);
+      const result = handlePaymentCallback(payload, req.headers);
       sendJson(res, result.httpStatus, result.body);
       return;
     }

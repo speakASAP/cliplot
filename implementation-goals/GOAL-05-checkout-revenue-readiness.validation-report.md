@@ -192,4 +192,17 @@ checkout.paymentPreview.paymentMethod=invoice
 checkout.paymentPreview.description=Cliplot objednávka <generated-order-id>
 checkout.notificationPreview.subject=Potvrzení objednávky <generated-order-id> - Cliplot
 checkout.notificationPreview.firstLine=Dobrý den, Smoke Test,
+
+Payment callback guarded ACK lane
+endpoint=POST /api/payments/callback
+auth=X-API-Key matched against Vault-projected PAYMENT_WEBHOOK_API_KEY
+expectedPayload=paymentId,orderId,status,event,timestamp,metadata
+runtimeBehavior=authenticated_ack_only
+orderMutation=false
+paymentMutation=false
+notificationSend=false
+syntheticCallbackFunctionSmoke=pass
+unauthorized=401:payment_callback_unauthorized
+invalidPayload=400:payment_callback_validation_failed:missing_order_id|invalid_status
+validSyntheticPayload=202:payment_callback_received_guarded:mutation=false
 ```

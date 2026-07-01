@@ -52,6 +52,10 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   now builds order, payment, and notification previews while
   `ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
   `ENABLE_LIVE_NOTIFICATIONS=false`.
+- GOAL-05 payment callback lane is implemented as a guarded authenticated ACK
+  endpoint at `/api/payments/callback`; it validates the Payments callback
+  API key and payload shape, but does not persist payment/order state until live
+  checkout storage is approved.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -77,6 +81,8 @@ smoke evidence.
   `ECONNREFUSED 192.168.88.53:11434`.
 - Warehouse stocked product selection, notification preview, and guarded
   payment-create payload generation have runtime smoke evidence.
+- Payment callback URL implementation has synthetic no-mutation validation as a
+  guarded ACK path for downstream callbacks from payments-microservice.
 - Valid payment creation and live notification sends still require explicit
   approved runtime evidence.
 
