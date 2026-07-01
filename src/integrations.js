@@ -57,6 +57,7 @@ export const serviceConfig = {
   channelAccountId: process.env.CLIPLOT_CHANNEL_ACCOUNT_ID || 'cliplot-storefront',
   frontendMode: process.env.CLIPLOT_FRONTEND_MODE || 'shared-service-integration',
   liveOrderSubmit: process.env.ENABLE_LIVE_ORDER_SUBMIT === 'true',
+  livePaymentCreate: process.env.ENABLE_LIVE_PAYMENT_CREATE === 'true',
   liveNotifications: process.env.ENABLE_LIVE_NOTIFICATIONS === 'true',
   catalogUrl: process.env.CATALOG_SERVICE_URL || 'http://catalog-microservice:3200',
   warehouseUrl: process.env.WAREHOUSE_SERVICE_URL || 'http://warehouse-microservice:3201',
@@ -67,6 +68,8 @@ export const serviceConfig = {
   authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
+  paymentCreatePath: process.env.PAYMENT_CREATE_PATH || '/payments/create',
+  paymentMethod: process.env.CLIPLOT_PAYMENT_METHOD || 'invoice',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
   catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
@@ -256,7 +259,7 @@ export function authLinks() {
 
 function checkoutMissingFacts() {
   const missing = [
-    '[MISSING: approved valid-body provider-backed payment evidence for Cliplot]',
+    '[MISSING: approved valid-body payment-create evidence for Cliplot]',
     '[MISSING: approved live notification send validation for Cliplot order confirmations]',
   ];
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
@@ -321,6 +324,44 @@ async function createOrder(checkout) {
         total: checkout.total,
       },
     }),
+  });
+}
+
+function buildPaymentCreatePayload(checkout, order) {
+  const orderId = String(order?.id || order?.orderId || checkout.externalOrderId);
+  return {
+    orderId,
+    applicationId: serviceConfig.applicationId,
+    amount: checkout.total,
+    currency: 'CZK',
+    paymentMethod: serviceConfig.paymentMethod,
+    callbackUrl: 'https://cliplot.alfares.cz/api/payments/callback',
+    successUrl: 'https://cliplot.alfares.cz/checkout/success',
+    cancelUrl: 'https://cliplot.alfares.cz/checkout/cancelled',
+    description: `Cliplot objednavka ${checkout.externalOrderId}`,
+    customer: {
+      email: checkout.customer.email,
+      name: checkout.customer.name,
+      phone: checkout.customer.phone || undefined,
+    },
+    metadata: {
+      source: serviceConfig.serviceName,
+      externalOrderId: checkout.externalOrderId,
+      userId: `cliplot:${checkout.customer.email}`,
+    },
+  };
+}
+
+async function createPayment(checkout, order) {
+  const url = new URL(serviceConfig.paymentCreatePath, serviceConfig.paymentUrl);
+  return fetchJson(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': serviceConfig.paymentApiKey,
+      'idempotency-key': `cliplot-payment-${checkout.externalOrderId}`,
+    },
+    body: JSON.stringify(buildPaymentCreatePayload(checkout, order)),
   });
 }
 
@@ -392,18 +433,25 @@ export async function submitCheckout(input) {
           currency: 'CZK',
         },
         notificationPreview: buildOrderConfirmationNotification(checkout),
+        paymentPreview: buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId }),
       },
     };
   }
 
   const order = await createOrder(checkout);
   const notificationPreview = buildOrderConfirmationNotification(checkout);
+  const paymentPreview = buildPaymentCreatePayload(checkout, order);
+  const payment = serviceConfig.livePaymentCreate
+    ? await createPayment(checkout, order)
+    : null;
   return {
-    httpStatus: 201,
+    httpStatus: serviceConfig.livePaymentCreate ? 201 : 202,
     body: {
       success: true,
-      status: 'order_created_payment_pending',
+      status: serviceConfig.livePaymentCreate ? 'order_created_payment_pending' : 'order_created_payment_guarded',
       order,
+      payment,
+      paymentPreview,
       notification: serviceConfig.liveNotifications
         ? 'pending_live_send_in_payment_lane'
         : 'guarded_notification_send',
@@ -419,12 +467,14 @@ export function serviceReadiness() {
     service: serviceConfig.serviceName,
     mode: serviceConfig.frontendMode,
     liveOrderSubmit: serviceConfig.liveOrderSubmit,
+    livePaymentCreate: serviceConfig.livePaymentCreate,
+    liveNotifications: serviceConfig.liveNotifications,
     integrations: {
       catalog: serviceConfig.catalogServiceToken ? 'read_enabled_authenticated' : 'read_enabled_with_fallback',
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
       notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
-      payments: serviceConfig.paymentApiKey ? 'identity_ready_provider_guarded' : 'token_missing',
+      payments: serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing',
       auth: 'public_links_contract_unverified',
     },
     missing: checkoutMissingFacts(),

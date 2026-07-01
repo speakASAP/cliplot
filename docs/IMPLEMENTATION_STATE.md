@@ -268,3 +268,10 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   a valid notification payload or customer send. Cliplot now returns a guarded
   Czech order-confirmation notification preview from checkout submit; live
   notification send remains disabled pending approved live-send validation.
+- GOAL-05 payment-create code path is wired behind
+  `ENABLE_LIVE_PAYMENT_CREATE=false`. Cliplot now builds a Payments-compatible
+  create payload with `applicationId=cliplot-service`, `paymentMethod=invoice`,
+  allowlisted Cliplot callback/success/cancel URLs, customer fields, metadata,
+  and idempotency key. No valid payment-create request was executed because it
+  would write a live payment record; live payment creation remains gated by
+  approved valid-body payment evidence.

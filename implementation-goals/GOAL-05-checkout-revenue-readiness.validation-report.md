@@ -143,4 +143,12 @@ before=http 401 Invalid token
 after=http 500 SEND_FAILED
 validNotificationSent=false
 cliplotCheckoutNotificationPreview=implemented_guarded
+
+Cliplot guarded payment-create path
+paymentCreatePath=/payments/create
+paymentMethod=invoice
+applicationId=cliplot-service
+callbackOrigin=https://cliplot.alfares.cz
+livePaymentCreate=false
+validPaymentCreateExecuted=false
 ```
