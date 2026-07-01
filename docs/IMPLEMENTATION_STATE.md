@@ -60,6 +60,9 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   payments-microservice `POST /payments/validate-create`; guarded checkout can
   validate the full Cliplot payment payload and still returns
   `service_identity_required` until live order/payment mutation is approved.
+  Deployed Cliplot image `localhost:5000/cliplot-service:52596f5` returned
+  `paymentValidation.status=validated_no_mutation`, `mutation=false`, and
+  `providerCall=false`.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 

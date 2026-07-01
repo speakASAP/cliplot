@@ -221,4 +221,20 @@ Cliplot guarded checkout payment validation
 config.ENABLE_PAYMENT_CREATE_VALIDATION=true
 config.PAYMENT_VALIDATE_CREATE_PATH=/payments/validate-create
 expectedCheckoutPaymentValidation=validated_no_mutation
+
+Post-deploy Cliplot payment validation smoke
+cliplotCommit=52596f5
+image=localhost:5000/cliplot-service:52596f5
+deploymentReady=1/1
+GET /api/integrations/readiness http=200
+readiness.paymentValidation=enabled_no_mutation
+readiness.payments=identity_ready_create_guarded
+readiness.livePaymentCreate=false
+POST /api/checkout/submit http=202
+checkout.status=service_identity_required
+checkout.paymentValidation.status=validated_no_mutation
+checkout.paymentValidation.mutation=false
+checkout.paymentValidation.providerCall=false
+checkout.paymentValidation.paymentMethod=invoice
+remainingMissing=approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
 ```
