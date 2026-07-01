@@ -151,4 +151,28 @@ applicationId=cliplot-service
 callbackOrigin=https://cliplot.alfares.cz
 livePaymentCreate=false
 validPaymentCreateExecuted=false
+
+GET https://cliplot.alfares.cz/api/integrations/readiness after guarded payment-create deploy
+http=200
+catalog=read_enabled_authenticated
+warehouse=token_present_not_mutating
+orders=guarded
+payments=identity_ready_create_guarded
+notifications=identity_ready_send_guarded
+liveOrderSubmit=false
+livePaymentCreate=false
+liveNotifications=false
+remainingMissing=approved_valid_body_payment_create_evidence|approved_live_notification_send_validation
+
+POST https://cliplot.alfares.cz/api/checkout/submit with valid stocked product payload
+http=202
+status=service_identity_required
+mode=guarded_checkout_submit
+paymentPreview.applicationId=cliplot-service
+paymentPreview.paymentMethod=invoice
+paymentPreview.callbackUrl=https://cliplot.alfares.cz/api/payments/callback
+notificationPreview.type=order_confirmation
+orderCreated=false
+paymentCreated=false
+notificationSent=false
 ```

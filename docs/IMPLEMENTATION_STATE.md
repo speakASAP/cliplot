@@ -6,7 +6,8 @@
 **Mode:** Goal-driven orchestration enabled  
 **Active goal:** GOAL-05-checkout-revenue-readiness
 **Goal status:** GOAL-05 active
-**Current checkpoint:** GOAL-05 Catalog real-product lane in progress; checkout revenue evidence not yet complete.
+**Current checkpoint:** GOAL-05 guarded checkout revenue path deployed; valid
+payment-create and live notification sends remain approval-gated.
 
 ## Current Intent Summary
 
@@ -47,6 +48,10 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   machine-auth header contract with Auth-owned
   `CATALOG_INTERNAL_SERVICE_TOKEN` and will stop relying on fallback products
   when Catalog responds.
+- GOAL-05 guarded payment-create path deployed as `c03fc7e`: checkout submit
+  now builds order, payment, and notification previews while
+  `ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
+  `ENABLE_LIVE_NOTIFICATIONS=false`.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -70,8 +75,10 @@ smoke evidence.
   Cliplot is being wired to that existing read path.
 - Docs/RAG publication tooling exists, but ingestion is blocked by
   `ECONNREFUSED 192.168.88.53:11434`.
-- Notification template/channel and Warehouse default selection still require
-  explicit runtime validation.
+- Warehouse stocked product selection, notification preview, and guarded
+  payment-create payload generation have runtime smoke evidence.
+- Valid payment creation and live notification sends still require explicit
+  approved runtime evidence.
 
 ## Closed Goal: GOAL-04-kubernetes-vault-rag-deployment
 
@@ -160,11 +167,10 @@ Serve the first production-visible Cliplot storefront frontend at
 
 ## Next Action
 
-Continue GOAL-05 Catalog lane: deploy authenticated Catalog reads, prove
-`/api/products` returns real Catalog product IDs instead of fallback Cliplot
-IDs, then proceed to payment API key/scopes and provider-backed checkout
-readiness. Keep live payment/order mutation disabled until Catalog, Warehouse,
-Notifications, Auth, and provider-backed payment evidence are verified.
+Continue GOAL-05 checkout readiness: keep live payment/order/notification
+mutation disabled, harden the remaining approved-evidence path for payment
+creation and notification send validation, and preserve guarded frontend
+checkout behavior until those approvals are present.
 
 ## Blockers For Product Code
 

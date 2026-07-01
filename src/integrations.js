@@ -338,7 +338,7 @@ function buildPaymentCreatePayload(checkout, order) {
     callbackUrl: 'https://cliplot.alfares.cz/api/payments/callback',
     successUrl: 'https://cliplot.alfares.cz/checkout/success',
     cancelUrl: 'https://cliplot.alfares.cz/checkout/cancelled',
-    description: `Cliplot objednavka ${checkout.externalOrderId}`,
+    description: `Cliplot objednávka ${checkout.externalOrderId}`,
     customer: {
       email: checkout.customer.email,
       name: checkout.customer.name,
@@ -367,22 +367,22 @@ async function createPayment(checkout, order) {
 
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
-    .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kc`)
+    .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)
     .join('\n');
   return {
     channel: 'email',
     type: 'order_confirmation',
     recipient: checkout.customer.email,
-    subject: `Potvrzeni objednavky ${checkout.externalOrderId} - Cliplot`,
+    subject: `Potvrzení objednávky ${checkout.externalOrderId} - Cliplot`,
     message: [
-      `Dobry den, ${checkout.customer.name},`,
+      `Dobrý den, ${checkout.customer.name},`,
       '',
-      'dekujeme za objednavku v obchode Cliplot.',
+      'děkujeme za objednávku v obchodě Cliplot.',
       '',
       itemLines,
       '',
-      `Celkem: ${checkout.total} Kc`,
-      'Doruceni: 1-2 dny podle dostupnosti dopravce.',
+      `Celkem: ${checkout.total} Kč`,
+      'Doručení: 1-2 dny podle dostupnosti dopravce.',
       '',
       'Cliplot',
     ].join('\n'),
@@ -421,7 +421,7 @@ export async function submitCheckout(input) {
         success: true,
         status: 'service_identity_required',
         mode: 'guarded_checkout_submit',
-        message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do doplnění Vault tokenů a schválených Cliplot kontraktů.',
+        message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
         missing,
         orderPreview: {
           channel: serviceConfig.orderChannel,
