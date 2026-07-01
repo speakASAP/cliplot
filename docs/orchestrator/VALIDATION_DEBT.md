@@ -142,3 +142,18 @@ Auth-owned CATALOG_INTERNAL_SERVICE_TOKEN pattern.
 
 Resolution target: deploy authenticated Cliplot Catalog reads now; then add an
 approved Cliplot SKU/filtering scope when product ownership rules are available.
+
+### VD-003: Docs RAG publication backend unavailable
+
+Status: active external service blocker.
+
+Evidence:
+
+```text
+./scripts/publish_docs_rag.sh cliplot-service
+DOCS_RAG_PUBLICATION=fail
+jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183
+error=fetch failed
+```
+
+Resolution target: rerun docs-rag publication after the RAG backend is reachable.

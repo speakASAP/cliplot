@@ -112,8 +112,10 @@ smoke evidence.
   `x-internal-service-token` plus `x-service-name` machine-auth contract backed
   by Auth-owned `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
   Cliplot is being wired to that existing read path.
-- Docs/RAG publication tooling exists, but ingestion is blocked by
-  `ECONNREFUSED 192.168.88.53:11434`.
+- Docs/RAG publication tooling exists, but ingestion is still blocked by the
+  RAG backend. The latest `./scripts/publish_docs_rag.sh cliplot-service` run
+  returned `DOCS_RAG_PUBLICATION=fail`,
+  `jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183`, and `error=fetch failed`.
 - Warehouse stocked product selection, notification preview, and guarded
   payment-create payload generation have runtime smoke evidence.
 - Payment callback URL implementation has synthetic no-mutation validation as a
@@ -386,3 +388,9 @@ behavior until those approvals are present.
   payment provider, or notification mutation. Warehouse availability before and
   after checkout remained `totalAvailable=63`, `totalReserved=0`,
   `warehouseAvailable=63`, and `warehouseReserved=0`.
+- GOAL-04/GOAL-05 docs-rag publication was retried after Warehouse routing
+  validation docs were committed. `./scripts/publish_docs_rag.sh cliplot-service`
+  returned `DOCS_RAG_PUBLICATION=fail`,
+  `jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183`, and `error=fetch failed`;
+  runtime checkout evidence is committed locally in the repo, but RAG ingestion
+  remains an external service blocker.
