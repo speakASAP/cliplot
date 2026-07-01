@@ -4,9 +4,9 @@
 
 **Date:** 2026-07-01  
 **Mode:** Goal-driven orchestration enabled  
-**Active goal:** none
-**Goal status:** GOAL-02 done
-**Current checkpoint:** GOAL-02 frontend storefront deployed and public smoke passed.
+**Active goal:** GOAL-03-shared-service-integration
+**Goal status:** GOAL-03 active
+**Current checkpoint:** GOAL-03 shared-service integration foundation in progress.
 
 ## Current Intent Summary
 
@@ -30,6 +30,40 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - Public `https://cliplot.alfares.cz/health` smoke returned HTTP 200.
 - Public `https://cliplot.alfares.cz/api/products` returned live product data.
 - Non-mutating checkout preview returned `frontend_preview_only`.
+
+## Active Goal: GOAL-03-shared-service-integration
+
+### Objective
+
+Connect Cliplot to shared Alfares commerce boundaries in a guarded way: Catalog
+read, hosted Auth links, service readiness, Vault projection, and checkout
+submit that refuses live order/payment mutation until secrets and contracts are
+present.
+
+### Allowed Changes
+
+- `src/server.js`;
+- `src/integrations.js`;
+- `public/index.html`;
+- `public/app.js`;
+- `public/styles.css`;
+- `package.json`;
+- `k8s/configmap.yaml`;
+- `k8s/deployment.yaml`;
+- `k8s/external-secret.yaml`;
+- `scripts/deploy.sh`;
+- `scripts/deployment_readiness_gate.py`;
+- `scripts/verify-static-assets.js`;
+- GOAL-03 docs and validation report;
+- state/goal/deployment readiness docs.
+
+### Forbidden Changes
+
+- Production secrets.
+- Live payment initiation.
+- Stock reservation or decrement.
+- Customer notification send.
+- Claims that checkout revenue is production-ready.
 
 ## Closed Goal: GOAL-02-storefront-foundation
 
@@ -62,9 +96,8 @@ Serve the first production-visible Cliplot storefront frontend at
 
 ## Next Action
 
-Start GOAL-03 shared-service integration planning. Define the Cliplot service
-identity contract before connecting live orders, stock reservations, or
-payments.
+Validate and deploy GOAL-03 guarded integration foundation. Keep GOAL-05
+blocked until provider-backed payment/order evidence and Vault values exist.
 
 ## Blockers For Product Code
 
@@ -84,6 +117,7 @@ payments.
 | Kubernetes/Vault/RAG pattern inspection | running/read-only | Subagent lane; no file edits. |
 | Foundation integration | done | Main orchestrator wrote and committed repo baseline. |
 | Storefront foundation | done | Frontend source, Dockerfile, K8s manifests, deploy, and public smoke completed. |
+| Shared-service guarded integration | active | Server integration layer, frontend checkout submit, ExternalSecret scaffold, and gates. |
 | Payment integration | blocked | Planned for GOAL-05 after shared-service contracts and provider evidence. |
 
 ## Validation Log

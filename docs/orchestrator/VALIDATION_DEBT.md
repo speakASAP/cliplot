@@ -4,7 +4,8 @@
 
 ### VD-001: Deployment readiness blocked
 
-Status: expected during GOAL-01.
+Status: resolved by GOAL-02/GOAL-03 frontend and guarded integration
+deployment artifacts.
 
 Evidence:
 
@@ -18,11 +19,13 @@ MISSING k8s/configmap.yaml
 MISSING k8s/external-secret.yaml
 ```
 
-Resolution target: GOAL-04.
+Resolution target: resolved; remaining work is revenue readiness, not base
+deployment readiness.
 
 ### VD-002: Shared service identity contract missing
 
-Status: blocks live integrations.
+Status: partially resolved by GOAL-03 service identity scaffolding; still
+blocks live order/payment/stock/notification mutation.
 
 Missing facts:
 
@@ -33,4 +36,5 @@ Missing facts:
 - Warehouse service token/default warehouse.
 - Notification sender/template contract.
 
-Resolution target: GOAL-03.
+Resolution target: GOAL-05 for provider-backed payment/order evidence, with
+Vault values prepared through GOAL-04.

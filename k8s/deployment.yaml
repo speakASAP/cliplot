@@ -31,6 +31,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: cliplot-service-config
+            - secretRef:
+                name: cliplot-service-secret
+                optional: true
           startupProbe:
             httpGet:
               path: /health

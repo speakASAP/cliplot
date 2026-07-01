@@ -21,7 +21,7 @@ const js = await readFile('public/app.js', 'utf8');
 
 const requiredHtml = ['Cliplot', 'Kategorie', 'Doprava a platba', 'Do košíku', 'Bezpečná platba'];
 const requiredCss = ['#FAFAF7', '#2F6B4F', '#8A3A36'];
-const requiredJs = ['localStorage', 'renderCart', 'checkoutForm'];
+const requiredJs = ['localStorage', 'renderCart', 'checkoutForm', '/api/checkout/submit', '/api/auth/links'];
 
 const missing = [
   ...requiredHtml.filter((item) => !html.includes(item)).map((item) => `html:${item}`),

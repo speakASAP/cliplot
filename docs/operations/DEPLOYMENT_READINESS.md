@@ -2,8 +2,10 @@
 
 ## Current Status
 
-Blocked. The repository contains foundation docs and guard scripts, but no
-deployable application yet.
+Partially ready. The frontend storefront is deployed, and GOAL-03 adds a
+guarded shared-service integration foundation. Live payment/order revenue
+readiness remains blocked until Vault secrets and provider-backed evidence are
+present.
 
 ## Deployment Target
 
@@ -14,7 +16,7 @@ deployable application yet.
 - Secret target: `cliplot-service-secret`
 - Vault path: `secret/prod/cliplot-service`
 
-## Required Before First Deploy
+## Deployed Artifacts
 
 - Dockerfile.
 - Application source.
@@ -29,6 +31,15 @@ deployable application yet.
 - Public smoke contract.
 - Rollback command.
 
+## Current Safety Contract
+
+- `ENABLE_LIVE_ORDER_SUBMIT` remains `false`.
+- `cliplot-service-secret` is mounted as optional.
+- `k8s/external-secret.yaml` maps planned keys from
+  `secret/prod/cliplot-service`.
+- `/api/checkout/submit` must return `service_identity_required` until live
+  order submission is explicitly enabled with required tokens.
+
 ## Deploy Command
 
 ```bash
@@ -37,4 +48,8 @@ ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && ./scripts/deploy.s
 
 ## Rollback Plan
 
-`[MISSING: rollback command after first successful image-tag deployment]`
+Use the previous image tag from deployment history:
+
+```bash
+ssh alfares 'kubectl rollout undo deployment/cliplot-service -n statex-apps'
+```

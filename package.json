@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "build": "node --check src/server.js && node scripts/verify-static-assets.js",
-    "check": "node --check src/server.js && node --check scripts/verify-static-assets.js"
+    "build": "node --check src/server.js && node --check src/integrations.js && node scripts/verify-static-assets.js",
+    "check": "node --check src/server.js && node --check src/integrations.js && node --check scripts/verify-static-assets.js"
   },
   "engines": {
     "node": ">=20"

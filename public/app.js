@@ -231,20 +231,48 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
   }
 
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  const response = await fetch('/api/checkout/preview', {
+  selectors.result.hidden = false;
+  selectors.result.textContent = 'Kontrolujeme objednávku...';
+
+  const response = await fetch('/api/checkout/submit', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ customer: data, items: entries, total: cartTotal() }),
   });
   const payload = await response.json();
 
-  selectors.result.hidden = false;
+  if (!response.ok || !payload.success) {
+    selectors.result.innerHTML = `
+      <strong>Objednávku teď nejde připravit.</strong>
+      <p>Zkontrolujte prosím kontaktní údaje a položky v košíku.</p>
+    `;
+    return;
+  }
+
+  const missing = Array.isArray(payload.missing) && payload.missing.length
+    ? `<ul>${payload.missing.map((item) => `<li>${item}</li>`).join('')}</ul>`
+    : '';
+
   selectors.result.innerHTML = `
-    <strong>Objednávka je připravena ve frontendovém náhledu.</strong>
+    <strong>Objednávka je připravena ke sdíleným službám.</strong>
     <p>Zákazník: ${data.name} | Celkem: ${formatPrice(cartTotal())}</p>
-    <p>Stav: ${payload.status}. Reálná platba bude připojena přes payments-microservice v dalším goalu.</p>
+    <p>Stav: ${payload.status}. Platba se nespustila, dokud nejsou potvrzené servisní tokeny a provider evidence.</p>
+    ${missing}
   `;
 });
 
+async function loadAuthLinks() {
+  const link = document.querySelector('[data-auth-login]');
+  if (!link) return;
+  try {
+    const response = await fetch('/api/auth/links');
+    const payload = await response.json();
+    if (payload.success && payload.loginUrl) link.href = payload.loginUrl;
+  } catch {
+    link.href = '#checkout';
+  }
+}
+
 document.querySelector('[data-category="all"]').classList.add('is-active');
+loadAuthLinks();
 loadProducts();

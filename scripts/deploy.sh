@@ -29,6 +29,9 @@ trap 'rm -f "$TMP_DEPLOYMENT"' EXIT
 sed "s#localhost:5000/cliplot-service:latest#$IMAGE#g" "$K8S_DIR/deployment.yaml" > "$TMP_DEPLOYMENT"
 
 kubectl apply -f "$K8S_DIR/configmap.yaml" -n "$NAMESPACE"
+if [ -f "$K8S_DIR/external-secret.yaml" ]; then
+  kubectl apply -f "$K8S_DIR/external-secret.yaml" -n "$NAMESPACE"
+fi
 kubectl apply -f "$TMP_DEPLOYMENT" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/service.yaml" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/ingress.yaml" -n "$NAMESPACE"

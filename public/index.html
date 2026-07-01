@@ -21,6 +21,7 @@
         <a href="#novinky">Novinky</a>
         <a href="#akce">Akce</a>
         <a href="#doprava">Doprava a platba</a>
+        <a href="#" data-auth-login>Přihlášení</a>
       </nav>
       <label class="search-box">
         <span class="sr-only">Hledat produkt</span>
@@ -120,7 +121,7 @@
         <form class="checkout-form" id="checkoutForm">
           <div class="section-heading">
             <h2>Objednávka bez registrace</h2>
-            <p>Frontendový náhled. Platba bude připojena v dalším goalu.</p>
+            <p>Ověřený formulář. Živá objednávka a platba se spustí po doplnění servisních tokenů.</p>
           </div>
           <label>
             Jméno a příjmení
@@ -157,8 +158,9 @@
           </div>
           <button class="primary-button" type="submit">Připravit objednávku</button>
           <p class="checkout-note">
-            Tato akce zatím nevytváří placenou objednávku. Payment system bude
-            připojen až po provider-backed validaci.
+            Tato akce zatím nevytváří placenou objednávku. Systém vrátí přesný
+            stav chybějících kontraktů, dokud nejsou připravené Vault secrety,
+            Orders, sklad a payment provider.
           </p>
           <div class="checkout-result" data-checkout-result hidden></div>
         </form>

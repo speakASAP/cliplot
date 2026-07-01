@@ -469,6 +469,13 @@ select {
   background: rgba(47, 107, 79, 0.08);
 }
 
+.checkout-result ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .cart-drawer {
   position: fixed;
   top: 0;

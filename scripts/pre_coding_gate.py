@@ -25,6 +25,11 @@ REQUIRED = [
     "implementation-goals/GOAL-01-orchestration-foundation.context-package.md",
     "implementation-goals/GOAL-01-orchestration-foundation.coding-prompt.md",
     "implementation-goals/GOAL-01-orchestration-foundation.validation-report.md",
+    "implementation-goals/GOAL-03-shared-service-integration.md",
+    "implementation-goals/GOAL-03-shared-service-integration.execution-plan.md",
+    "implementation-goals/GOAL-03-shared-service-integration.context-package.md",
+    "implementation-goals/GOAL-03-shared-service-integration.coding-prompt.md",
+    "implementation-goals/GOAL-03-shared-service-integration.validation-report.md",
 ]
 
 
@@ -44,9 +49,15 @@ def main() -> int:
         print("PRE_CODING_GATE=fail")
         print("MISSING active goal in docs/IMPLEMENTATION_STATE.md")
         return 1
+    if "Active goal: GOAL-03-shared-service-integration" in state:
+        goal = (root / "implementation-goals/GOAL-03-shared-service-integration.execution-plan.md").read_text()
+        if "No live payment creation" not in goal or "No stock reservation" not in goal:
+            print("PRE_CODING_GATE=fail")
+            print("GOAL-03 execution plan must preserve live mutation boundaries.")
+            return 1
     print("PRE_CODING_GATE=pass")
-    print("scope=foundation")
-    print("note=Product code still requires the selected goal execution plan.")
+    print("scope=goal-driven")
+    print("note=Selected goal execution plan and validation artifact are present.")
     return 0
 
 
