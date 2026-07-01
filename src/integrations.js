@@ -251,18 +251,22 @@ async function fetchConfiguredCatalogProducts(headers) {
     .map((result) => result.value);
 }
 
-async function fetchWarehouseAvailability(productIds) {
-  if (!serviceConfig.warehouseServiceToken || productIds.length === 0) {
+async function fetchWarehouseAvailability(productIds, warehouseIds = []) {
+  const normalizedProductIds = [...new Set(productIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  const normalizedWarehouseIds = [...new Set(warehouseIds.map((id) => String(id || "").trim()).filter(Boolean))];
+  if (!serviceConfig.warehouseServiceToken || normalizedProductIds.length === 0) {
     return new Map();
   }
   try {
-    const payload = await fetchJson(new URL('/api/stock/availability/batch', serviceConfig.warehouseUrl), {
-      method: 'POST',
+    const body = { productIds: normalizedProductIds };
+    if (normalizedWarehouseIds.length) body.warehouseIds = normalizedWarehouseIds;
+    const payload = await fetchJson(new URL("/api/stock/availability/batch", serviceConfig.warehouseUrl), {
+      method: "POST",
       headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${serviceConfig.warehouseServiceToken}`,
+        "content-type": "application/json",
+        authorization: "Bearer " + serviceConfig.warehouseServiceToken,
       },
-      body: JSON.stringify({ productIds }),
+      body: JSON.stringify(body),
     });
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     return new Map(rows.map((row) => [String(row.productId), row]));
@@ -345,6 +349,82 @@ function validateCheckout(checkout) {
   if (!checkout.customer.email.includes('@')) errors.push('invalid_email');
   if (!checkout.customer.address) errors.push('missing_address');
   return errors;
+}
+
+function findCheckoutWarehouseAvailability(availabilityByProductId, item) {
+  const availability = availabilityByProductId.get(item.productId);
+  const warehouses = Array.isArray(availability?.warehouses) ? availability.warehouses : [];
+  return warehouses.find((warehouse) => String(warehouse?.warehouseId || "").trim() === item.warehouseId) || null;
+}
+
+function buildWarehouseReservationReadiness(checkout, availabilityByProductId) {
+  const items = checkout.items.map((item) => {
+    const warehouse = findCheckoutWarehouseAvailability(availabilityByProductId, item);
+    const available = Number(warehouse?.available || 0);
+    const warehouseType = String(warehouse?.warehouseType || "").toLowerCase();
+    const supplierLinked = Boolean(warehouse?.supplierId);
+    const originReservable = warehouseType === "own" || supplierLinked;
+    const ready = Boolean(warehouse) && originReservable && available >= item.quantity;
+    const blockers = [];
+    if (!warehouse) blockers.push("warehouse_availability_missing");
+    if (warehouse && !originReservable) blockers.push("warehouse_origin_not_reservable");
+    if (warehouse && available < item.quantity) blockers.push("insufficient_warehouse_available");
+
+    return {
+      productId: item.productId,
+      warehouseId: item.warehouseId,
+      quantity: item.quantity,
+      available,
+      warehouseType: warehouse?.warehouseType || null,
+      supplierId: warehouse?.supplierId || null,
+      ready,
+      blockers,
+    };
+  });
+  const ready = items.every((item) => item.ready);
+  return {
+    status: ready ? "validated_no_mutation" : "blocked_no_mutation",
+    valid: ready,
+    mutation: false,
+    reservationCreated: false,
+    stockMutation: false,
+    items,
+    blockers: [...new Set(items.flatMap((item) => item.blockers))],
+  };
+}
+
+async function guardedWarehouseReservationReadiness(checkout) {
+  if (!serviceConfig.warehouseServiceToken) {
+    return {
+      status: "missing_warehouse_service_token",
+      valid: false,
+      mutation: false,
+      reservationCreated: false,
+      stockMutation: false,
+      items: [],
+      blockers: ["missing_warehouse_service_token"],
+    };
+  }
+
+  try {
+    const availabilityByProductId = await fetchWarehouseAvailability(
+      checkout.items.map((item) => item.productId),
+      checkout.items.map((item) => item.warehouseId),
+    );
+    return buildWarehouseReservationReadiness(checkout, availabilityByProductId);
+  } catch (error) {
+    return {
+      status: "validation_failed_guarded",
+      valid: false,
+      httpStatus: error?.status || 0,
+      code: error?.payload?.error || error?.payload?.message || "unknown",
+      mutation: false,
+      reservationCreated: false,
+      stockMutation: false,
+      items: [],
+      blockers: ["warehouse_availability_check_failed"],
+    };
+  }
 }
 
 function buildOrderCreatePayload(checkout) {
@@ -717,6 +797,7 @@ export async function submitCheckout(input) {
   const missing = checkoutMissingFacts();
   if (!serviceConfig.liveOrderSubmit || missing.length) {
     const orderPreview = buildOrderCreatePayload(checkout);
+    const warehouseReservationReadiness = await guardedWarehouseReservationReadiness(checkout);
     const orderValidation = await guardedOrderValidation(checkout, orderPreview);
     const paymentPreview = buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId });
     const paymentValidation = await guardedPaymentValidation(checkout, paymentPreview);
@@ -731,11 +812,25 @@ export async function submitCheckout(input) {
         message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
         missing,
         orderPreview,
+        warehouseReservationReadiness,
         orderValidation,
         notificationPreview,
         notificationValidation,
         paymentPreview,
         paymentValidation,
+      },
+    };
+  }
+
+  const warehouseReservationReadiness = await guardedWarehouseReservationReadiness(checkout);
+  if (!warehouseReservationReadiness.valid) {
+    return {
+      httpStatus: 409,
+      body: {
+        success: false,
+        status: "warehouse_reservation_not_ready",
+        mode: "live_order_preflight_blocked",
+        warehouseReservationReadiness,
       },
     };
   }
