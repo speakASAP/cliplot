@@ -5,8 +5,8 @@
 **Date:** 2026-07-01  
 **Mode:** Goal-driven orchestration enabled  
 **Active goal:** GOAL-05-checkout-revenue-readiness
-**Goal status:** GOAL-05 planned
-**Current checkpoint:** GOAL-04 platform/Vault/Orders/Payments readiness deployed; GOAL-05 checkout revenue evidence not yet complete.
+**Goal status:** GOAL-05 active
+**Current checkpoint:** GOAL-05 Catalog real-product lane in progress; checkout revenue evidence not yet complete.
 
 ## Current Intent Summary
 
@@ -43,6 +43,10 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - Orders Cliplot support deployed as `localhost:5000/orders-microservice:971a446`.
 - Payments Cliplot allowlist deployed as `localhost:5000/payments-microservice:eab6ae7`.
 - Public Cliplot readiness shows service tokens present, live submit still disabled, and checkout still guarded.
+- GOAL-05 Catalog lane started: Cliplot uses the existing Catalog
+  machine-auth header contract with Auth-owned
+  `CATALOG_INTERNAL_SERVICE_TOKEN` and will stop relying on fallback products
+  when Catalog responds.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -60,8 +64,10 @@ smoke evidence.
 - Payments allowlists include `cliplot-service` and `https://cliplot.alfares.cz`.
 - Cliplot has required secret keys projected, but `ENABLE_LIVE_ORDER_SUBMIT`
   remains `false`.
-- Catalog still returns fallback Cliplot products because product APIs are
-  Auth-guarded and no Cliplot product scope/service-auth path is implemented.
+- Catalog product APIs are Auth-guarded, but Catalog supports the existing
+  `x-internal-service-token` plus `x-service-name` machine-auth contract backed
+  by Auth-owned `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
+  Cliplot is being wired to that existing read path.
 - Docs/RAG publication tooling exists, but ingestion is blocked by
   `ECONNREFUSED 192.168.88.53:11434`.
 - Notification template/channel and Warehouse default selection still require
@@ -154,19 +160,19 @@ Serve the first production-visible Cliplot storefront frontend at
 
 ## Next Action
 
-Start GOAL-05 checkout revenue readiness. First executable lane is Catalog:
-replace fallback products with authenticated or approved real Catalog product
-reads for Cliplot. Keep live payment/order mutation disabled until Catalog,
-Warehouse, Notifications, Auth, and provider-backed payment evidence are
-verified.
+Continue GOAL-05 Catalog lane: deploy authenticated Catalog reads, prove
+`/api/products` returns real Catalog product IDs instead of fallback Cliplot
+IDs, then proceed to payment API key/scopes and provider-backed checkout
+readiness. Keep live payment/order mutation disabled until Catalog, Warehouse,
+Notifications, Auth, and provider-backed payment evidence are verified.
 
 ## Blockers For Product Code
 
-- `[MISSING: Cliplot product/catalog scope and approved SKU list]`
+- `[MISSING: approved Cliplot product SKU list/filtering rule; current Catalog read lane uses active Catalog products until owner-specific SKU scope exists]`
 - `[MISSING: Cliplot brand/legal/payment identity approval]`
 - `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
 - `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
-- `[UNKNOWN: whether Catalog needs new marketplace key cliplot or reuse flipflop connector]`
+- `[UNKNOWN: whether Catalog needs new marketplace key cliplot or reuse flipflop connector for long-term owner-specific filtering]`
 - `[UNKNOWN: whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop]`
 
 ## Parallel Execution Status
@@ -183,7 +189,7 @@ verified.
 | Docs/RAG publication | blocked | Embedding backend `192.168.88.53:11434` refused connection. |
 | Orders Cliplot support | done | `orders-microservice:971a446` deployed. |
 | Payments Cliplot allowlist | done | `payments-microservice:eab6ae7` deployed. |
-| Catalog real product reads | planned | Cliplot still returns fallback products. |
+| Catalog real product reads | active | Wiring Auth-owned Catalog machine-auth token and real Catalog response normalization. |
 | Payment integration | planned | GOAL-05 after Catalog/Warehouse/Notifications/Auth/provider evidence. |
 
 ## Validation Log
@@ -210,3 +216,8 @@ verified.
 - GOAL-03 temporary runtime smoke passed for `/health`, `/api/integrations/readiness`, `/api/auth/links`, `/api/products`, and `/api/checkout/submit`.
 - GOAL-03 `./scripts/deploy.sh` passed and deployed image `localhost:5000/cliplot-service:0556cec`.
 - GOAL-03 public smoke from `alfares` passed for `/health`, `/api/integrations/readiness`, `/api/auth/links`, `/api/products`, and `/api/checkout/submit`.
+- GOAL-05 Catalog lane pre-deploy validation passed: `npm run build`,
+  `python3 scripts/pre_coding_gate.py --root .`,
+  `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues`,
+  `python3 scripts/deployment_readiness_gate.py --root .`, `git diff --check`,
+  and `kubectl apply --dry-run=server -f k8s/external-secret.yaml`.

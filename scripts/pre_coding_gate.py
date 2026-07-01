@@ -35,6 +35,11 @@ REQUIRED = [
     "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.context-package.md",
     "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.coding-prompt.md",
     "implementation-goals/GOAL-04-kubernetes-vault-rag-deployment.validation-report.md",
+    "implementation-goals/GOAL-05-checkout-revenue-readiness.md",
+    "implementation-goals/GOAL-05-checkout-revenue-readiness.execution-plan.md",
+    "implementation-goals/GOAL-05-checkout-revenue-readiness.context-package.md",
+    "implementation-goals/GOAL-05-checkout-revenue-readiness.coding-prompt.md",
+    "implementation-goals/GOAL-05-checkout-revenue-readiness.validation-report.md",
 ]
 
 

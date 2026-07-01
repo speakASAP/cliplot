@@ -15,7 +15,7 @@ backlog -> ready -> active -> validating -> done
 | `GOAL-02-storefront-foundation` | done | GOAL-01 | First deployed storefront slice matching design contract. |
 | `GOAL-03-shared-service-integration` | done | GOAL-02 | Catalog/auth reads, guarded checkout submit, service identity, Vault projection, and shared-service blockers recorded. |
 | `GOAL-04-kubernetes-vault-rag-deployment` | done | GOAL-03 platform-ready subset | Deployable Kubernetes service with Vault and RAG docs. |
-| `GOAL-05-checkout-revenue-readiness` | planned | GOAL-03/04 plus owner/provider evidence | Provider-backed payment and order evidence. |
+| `GOAL-05-checkout-revenue-readiness` | active | GOAL-03/04 plus owner/provider evidence | Provider-backed payment and order evidence; current lane authenticates Catalog product reads. |
 | `GOAL-06-operational-closure` | blocked | GOAL-05 | Monitoring, runbook, smoke, final handoff. |
 
 ## Before Coding

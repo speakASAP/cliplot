@@ -83,7 +83,8 @@ Resolution target: Orders and Payments service patches plus deployment.
 
 ### VD-006: Cliplot Catalog scope missing
 
-Status: blocks real product catalog.
+Status: partially resolved by GOAL-05 Catalog lane; owner-specific product
+filtering still needs approval.
 
 Evidence:
 
@@ -92,7 +93,9 @@ Catalog requires authentication for product APIs.
 Catalog supports marketplace keys allegro, bazos, aukro, flipflop, heureka.
 Catalog has no cliplot marketplace key.
 Cliplot /api/products currently returns fallback product IDs.
+Catalog accepts x-internal-service-token plus x-service-name through the
+Auth-owned CATALOG_INTERNAL_SERVICE_TOKEN pattern.
 ```
 
-Resolution target: approved Catalog product scope and service-auth path for
-Cliplot.
+Resolution target: deploy authenticated Cliplot Catalog reads now; then add an
+approved Cliplot SKU/filtering scope when product ownership rules are available.

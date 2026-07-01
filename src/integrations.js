@@ -66,6 +66,7 @@ export const serviceConfig = {
   authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
+  catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
@@ -104,30 +105,85 @@ async function fetchJson(url, options = {}) {
 
 function normalizeCatalogItem(item, index) {
   const fallback = fallbackProducts[index % fallbackProducts.length];
-  const price = Number(item.price ?? item.basePrice ?? item.finalPrice ?? item.priceCzk ?? 0);
+  const price = normalizeCatalogPrice(item);
   const stockQuantity = Number(item.stockQuantity ?? item.stock?.quantity ?? NaN);
   const outOfStock = stockQuantity === 0 || item.available === false;
 
   return {
     id: String(item.id ?? item.productId ?? item.catalogProductId ?? `catalog-${index}`),
-    name: String(item.name ?? item.title ?? 'Produkt Cliplot'),
-    category: String(item.categoryName ?? item.category?.name ?? item.category ?? 'Cliplot'),
+    name: String(item.title ?? item.name ?? 'Produkt Cliplot'),
+    category: normalizeCatalogCategory(item),
     price: Number.isFinite(price) && price > 0 ? price : fallback.price,
     originalPrice: item.originalPrice ? Number(item.originalPrice) : undefined,
     currency: 'Kč',
     stockStatus: outOfStock ? 'Vyprodáno' : 'Skladem',
     delivery: outOfStock ? 'Hlídáme dostupnost' : 'Doručení 1-2 dny',
-    image: item.imageUrl || item.image || item.media?.[0]?.url || fallback.image,
-    description: String(item.shortDescription ?? item.description ?? fallback.description),
+    image: normalizeCatalogImage(item) || fallback.image,
+    description: normalizeCatalogDescription(item) || fallback.description,
   };
+}
+
+function normalizeCatalogPrice(item) {
+  const directPrice = Number(item.price ?? item.basePrice ?? item.finalPrice ?? item.priceCzk ?? 0);
+  if (Number.isFinite(directPrice) && directPrice > 0) return directPrice;
+
+  const pricing = Array.isArray(item.pricing) ? item.pricing : [];
+  const activePrice = pricing.find((entry) => entry?.isActive !== false) || pricing[0] || {};
+  return Number(
+    activePrice.salePrice ??
+      activePrice.finalPrice ??
+      activePrice.price ??
+      activePrice.basePrice ??
+      0,
+  );
+}
+
+function normalizeCatalogCategory(item) {
+  const categories = Array.isArray(item.categories) ? item.categories : [];
+  const category = categories[0] || item.category || {};
+  return String(item.categoryName ?? category.name ?? item.category?.name ?? item.category ?? 'Cliplot');
+}
+
+function normalizeCatalogImage(item) {
+  const media = Array.isArray(item.media) ? item.media : [];
+  const primary = media.find((entry) => entry?.isPrimary) || media[0] || {};
+  return item.imageUrl || item.image || primary.url || primary.publicUrl || '';
+}
+
+function normalizeRichDescription(descriptionRich) {
+  const blocks = Array.isArray(descriptionRich?.blocks) ? descriptionRich.blocks : [];
+  return blocks
+    .map((block) => {
+      if (typeof block?.text === 'string') return block.text;
+      if (Array.isArray(block?.children)) {
+        return block.children.map((child) => child?.text || '').join(' ');
+      }
+      return '';
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCatalogDescription(item) {
+  const plain = item.shortDescription ?? item.description;
+  if (typeof plain === 'string' && plain.trim()) return plain;
+  return normalizeRichDescription(item.descriptionRich);
 }
 
 export async function fetchCatalogProducts() {
   try {
     const url = new URL('/api/products', serviceConfig.catalogUrl);
     url.searchParams.set('limit', '8');
-    url.searchParams.set('marketplace', serviceConfig.orderChannel);
-    const payload = await fetchJson(url);
+    url.searchParams.set('isActive', 'true');
+    url.searchParams.set('lifecycle', 'active');
+    const headers = serviceConfig.catalogServiceToken
+      ? {
+          'x-internal-service-token': serviceConfig.catalogServiceToken,
+          'x-service-name': serviceConfig.serviceName,
+        }
+      : {};
+    const payload = await fetchJson(url, { headers });
     const items = payload?.data?.items || payload?.items || payload?.data || [];
     if (!Array.isArray(items) || items.length === 0) return fallbackProducts;
     return items.slice(0, 8).map(normalizeCatalogItem);
@@ -280,7 +336,7 @@ export function serviceReadiness() {
     mode: serviceConfig.frontendMode,
     liveOrderSubmit: serviceConfig.liveOrderSubmit,
     integrations: {
-      catalog: 'read_enabled_with_fallback',
+      catalog: serviceConfig.catalogServiceToken ? 'read_enabled_authenticated' : 'read_enabled_with_fallback',
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
       notifications: serviceConfig.notificationServiceToken ? 'token_present_non_blocking' : 'token_missing',
