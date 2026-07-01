@@ -97,4 +97,9 @@ Cliplot pod safe invalid-body smoke to POST /payments/create
 http=400
 code=VALIDATION_ERROR
 paymentCreated=false
+
+Cliplot pod safe invalid-body smoke to POST /api/orders
+http=400
+status=Bad Request
+orderCreated=false
 ```

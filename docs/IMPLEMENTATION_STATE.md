@@ -235,3 +235,9 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   with `VALIDATION_ERROR`, proving Cliplot API-key auth and `payments:create`
   scope without creating a payment. Provider-backed payment creation remains
   disabled until an approved valid-body/payment-provider validation exists.
+- GOAL-05 Orders identity smoke from the Cliplot pod to `POST /api/orders`
+  returned HTTP `400 Bad Request` for an invalid body, proving the Cliplot
+  Orders service token is accepted before validation and no order was created.
+  Checkout guard text now blocks on provider-backed payment evidence,
+  Warehouse runtime evidence, and notification template rules rather than the
+  already-deployed Orders channel support.

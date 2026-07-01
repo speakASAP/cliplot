@@ -70,6 +70,7 @@ export const serviceConfig = {
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
+  paymentApiKey: process.env.PAYMENT_API_KEY || '',
 };
 
 function timeoutSignal() {
@@ -212,12 +213,13 @@ export function authLinks() {
 
 function checkoutMissingFacts() {
   const missing = [
-    '[MISSING: Cliplot Orders channel and channelAccountId owner approval]',
-    '[MISSING: Cliplot payment applicationId/provider evidence]',
+    '[MISSING: approved valid-body provider-backed payment evidence for Cliplot]',
+    '[MISSING: Warehouse service token acceptance and default warehouseId runtime evidence]',
     '[MISSING: Notification sender/template rules for Cliplot order confirmations]',
   ];
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
+  if (!serviceConfig.paymentApiKey) missing.push('[MISSING: PAYMENT_API_KEY in Vault]');
   return missing;
 }
 
@@ -340,7 +342,7 @@ export function serviceReadiness() {
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
       notifications: serviceConfig.notificationServiceToken ? 'token_present_non_blocking' : 'token_missing',
-      payments: 'blocked_until_GOAL-05',
+      payments: serviceConfig.paymentApiKey ? 'identity_ready_provider_guarded' : 'token_missing',
       auth: 'public_links_contract_unverified',
     },
     missing: checkoutMissingFacts(),
