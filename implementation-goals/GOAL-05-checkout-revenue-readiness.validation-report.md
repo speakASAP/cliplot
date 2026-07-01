@@ -401,4 +401,21 @@ after.totalReserved=0
 after.warehouseAvailable=63
 after.warehouseReserved=0
 availabilityUnchanged=true
+
+Frontend cart Warehouse guard
+cliplotCommit=9fce9c7
+image=localhost:5000/cliplot-service:9fce9c7
+publicAppGuard.inPodHttp=200
+publicAppGuard.hasWarehouseIdAttr=true
+publicAppGuard.hasCartPrune=true
+publicAppGuard.hasDisabledLabel=true
+postDeployCheckout.http=202
+postDeployCheckout.status=service_identity_required
+postDeployCheckout.productWarehouseId=c0de0000-0000-4000-8000-000000000013
+postDeployCheckout.orderPreviewWarehouseId=c0de0000-0000-4000-8000-000000000013
+postDeployCheckout.orderValidationStatus=validated_no_mutation
+postDeployCheckout.orderCreated=false
+postDeployCheckout.warehouseMutation=false
+postDeployCheckout.paymentValidationStatus=validated_no_mutation
+postDeployCheckout.notificationValidationStatus=validated_no_send
 ```

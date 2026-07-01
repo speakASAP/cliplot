@@ -84,6 +84,9 @@ Known current blocker: docs-rag ingestion may fail while
 - Product reads include Warehouse availability origin fields; guarded checkout
   copies the Warehouse-owned `warehouseId` into `orderPreview.items[]` for
   `orders.create.v1` validation only.
+- Frontend cart behavior is also fail-closed: products without Warehouse
+  origin are not addable to the cart, and stale cart entries without a
+  reservable product are pruned after product load.
 - Live submit remains disabled until approved live order-create plus Warehouse
   reservation evidence, approved live payment-create evidence, approved live
   notification-send evidence, owner-specific Catalog product scope, and

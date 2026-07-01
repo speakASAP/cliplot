@@ -388,6 +388,15 @@ behavior until those approvals are present.
   payment provider, or notification mutation. Warehouse availability before and
   after checkout remained `totalAvailable=63`, `totalReserved=0`,
   `warehouseAvailable=63`, and `warehouseReserved=0`.
+- GOAL-05 frontend cart guard deployed as
+  `localhost:5000/cliplot-service:9fce9c7`. `public/app.js` now prunes cart
+  entries without Warehouse origin, disables add-to-cart for products without
+  `warehouseId`, and renders `data-warehouse-id` on reservable product buttons.
+  In-pod `/app.js` smoke confirmed `data-warehouse-id`,
+  `removeUnreservableCartItems`, and `Nelze objednat` are present. Guarded
+  checkout still returned HTTP `202`, carried the same Warehouse id into
+  `orderPreview.items[0]`, and kept order/payment/notification validation
+  no-mutation/no-send.
 - GOAL-04/GOAL-05 docs-rag publication was retried after Warehouse routing
   validation docs were committed. `./scripts/publish_docs_rag.sh cliplot-service`
   returned `DOCS_RAG_PUBLICATION=fail`,
