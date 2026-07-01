@@ -4,9 +4,9 @@
 
 **Date:** 2026-07-01  
 **Mode:** Goal-driven orchestration enabled  
-**Active goal:** `GOAL-01-orchestration-foundation`  
-**Goal status:** validating  
-**Current checkpoint:** Remote repository foundation exists; validation gates ran with expected deployment blocker.
+**Active goal:** none
+**Goal status:** GOAL-01 done
+**Current checkpoint:** GOAL-01 foundation committed at `0f360ce`.
 
 ## Current Intent Summary
 
@@ -23,6 +23,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - Gate scripts created.
 - Design mockup stored at `docs/design/cliplot-homepage-mockup.png`.
 - IPS anchor docs created under `00_constitution` through `24_onboarding`.
+- Initial foundation commit created: `0f360ce docs: initialize cliplot service foundation`.
 
 ## Active Goal: GOAL-01-orchestration-foundation
 
@@ -49,8 +50,7 @@ deployment scaffold before any product code.
 
 ## Next Action
 
-Commit the GOAL-01 foundation. Then expand GOAL-02 execution plan before any
-storefront source edits.
+Expand GOAL-02 execution plan before any storefront source edits.
 
 ## Blockers For Product Code
 
@@ -68,7 +68,8 @@ storefront source edits.
 | RunLayer guardrail inspection | running/read-only | Subagent lane; no file edits. |
 | FlipFlop integration inspection | running/read-only | Subagent lane; no file edits. |
 | Kubernetes/Vault/RAG pattern inspection | running/read-only | Subagent lane; no file edits. |
-| Foundation integration | active | Main orchestrator writes repo baseline. |
+| Foundation integration | done | Main orchestrator wrote and committed repo baseline. |
+| Storefront foundation | planned | Requires expanded GOAL-02 execution plan and gates. |
 
 ## Validation Log
 

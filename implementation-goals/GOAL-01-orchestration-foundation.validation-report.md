@@ -2,7 +2,7 @@
 
 ## Status
 
-Validated with expected deployment blocker.
+Done. Validated with expected deployment blocker.
 
 ## Commands
 
@@ -37,3 +37,7 @@ GOAL-01 preserved the owner intent to plan in detail before coding. It created
 guardrails, design contract, goal artifacts, RAG/Vault/deploy plans, and gate
 scripts. Product code, live deployment, payment/order/stock mutation, and secret
 changes were intentionally not performed.
+
+## Commit
+
+`0f360ce docs: initialize cliplot service foundation`

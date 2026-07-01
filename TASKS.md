@@ -4,7 +4,7 @@
 
 ### TASK-001: Orchestration foundation
 
-Status: validating.
+Status: done.
 
 Objective: create remote repository foundation, guardrails, design contract,
 goal backlog, gate scripts, and guarded deployment scaffold.
@@ -15,6 +15,8 @@ Validation:
 - `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues`
 - `python3 scripts/deployment_readiness_gate.py --root .`
 - `git diff --check`
+
+Commit: `0f360ce docs: initialize cliplot service foundation`.
 
 ## Planned
 
