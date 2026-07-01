@@ -70,8 +70,18 @@ Known current blocker: docs-rag ingestion may fail while
 ## Checkout Contract Status
 
 - Orders create endpoint: `POST /api/orders`.
+- Orders no-mutation validation endpoint: `POST /api/orders/validate-create`.
 - Required order contract: `orders.create.v1`.
-- Cliplot live submit remains disabled until Orders accepts
-  `cliplot-service` and channel `cliplot`, Payments allowlists
-  `cliplot-service`, Catalog product scope is approved, and Vault values are
-  populated.
+- Payments no-mutation validation endpoint: `POST /payments/validate-create`.
+- Notifications no-send validation endpoint: `POST /notifications/validate`.
+- Runtime guarded state:
+  `ENABLE_LIVE_ORDER_SUBMIT=false`,
+  `ENABLE_LIVE_PAYMENT_CREATE=false`, and
+  `ENABLE_LIVE_NOTIFICATIONS=false`.
+- Cliplot guarded checkout currently validates order, payment, and
+  notification payloads without creating orders, reserving stock, calling a
+  payment provider, or sending customer notifications.
+- Live submit remains disabled until approved live order-create plus Warehouse
+  reservation evidence, approved live payment-create evidence, approved live
+  notification-send evidence, owner-specific Catalog product scope, and
+  brand/legal/payment identity approvals are present.

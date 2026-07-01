@@ -1,6 +1,6 @@
 # GOAL-05 Checkout Revenue Readiness Coding Prompt
 
-Implement the Catalog product read lane only.
+Implement guarded checkout validation lanes without enabling live mutation.
 
 Use the remote repository `/home/ssf/Documents/Github/cliplot-service` as the
 source of truth. Do not save project source under local
@@ -8,16 +8,16 @@ source of truth. Do not save project source under local
 
 Requirements:
 
-- Project `CATALOG_INTERNAL_SERVICE_TOKEN` into the Cliplot Kubernetes Secret
-  from Auth-owned Vault path `secret/prod/auth-microservice`.
-- Use Catalog machine-auth headers for product reads when the token is present.
-- Query active Catalog products without the unsupported `marketplace=cliplot`
-  parameter.
-- Normalize real Catalog products to the storefront product card shape.
-- Preserve fallback products only for degraded Catalog failures.
-- Report Catalog readiness as `read_enabled_authenticated` when token-backed
-  reads are configured.
-- Keep checkout, payment, warehouse, and notifications guarded.
+- Keep Catalog reads authenticated through the existing machine-auth token.
+- Validate Cliplot `orders.create.v1` payloads through
+  `POST /api/orders/validate-create` without creating orders, reserving
+  Warehouse stock, or publishing order events.
+- Validate payment payloads through `POST /payments/validate-create` without
+  provider calls or persistence.
+- Validate notification payloads through `POST /notifications/validate`
+  without sending customer notifications.
+- Report readiness for order, payment, and notification validation.
+- Keep checkout, payment, warehouse, and notifications live mutation guarded.
 - Do not print or commit secret values.
 
 Validation:
@@ -29,5 +29,5 @@ Validation:
 - `git diff --check`
 - Kubernetes dry-run for changed manifests.
 - Deploy with `./scripts/deploy.sh`.
-- Public smoke for `/api/products` and `/api/integrations/readiness`.
-
+- Public or in-cluster smoke for `/api/products`,
+  `/api/integrations/readiness`, and guarded `/api/checkout/submit`.

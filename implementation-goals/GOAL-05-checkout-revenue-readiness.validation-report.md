@@ -2,10 +2,11 @@
 
 ## Status
 
-Catalog, guarded payment-create validation, and guarded notification payload
-validation are deployed and validated. Full GOAL-05 checkout revenue readiness
-is still in progress because live payment creation, live order mutation, stock
-mutation, and live customer notification sends remain guarded.
+Catalog, guarded order-create validation, guarded payment-create validation,
+and guarded notification payload validation are deployed and validated. Full
+GOAL-05 checkout revenue readiness is still in progress because live payment
+creation, live order mutation, stock mutation, and live customer notification
+sends remain guarded.
 
 ## Catalog Product Read Lane
 
@@ -29,7 +30,8 @@ Runtime validation:
 
 ## Deferred Revenue Readiness
 
-Payment identity auth/scope readiness, no-mutation payment payload validation,
+Orders identity auth/scope readiness, no-mutation order payload validation,
+payment identity auth/scope readiness, no-mutation payment payload validation,
 and no-send notification payload validation are validated. Live payment
 creation, order creation, warehouse stock mutation, and customer notification
 sends remain guarded until approved provider-backed runtime evidence exists.
@@ -285,4 +287,68 @@ checkout.notificationValidation.type=order_confirmation
 checkout.notificationValidation.decisionReason=legacy_fallback_no_channel_key
 checkout.paymentValidation.status=validated_no_mutation
 remainingMissing=approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
+
+Orders no-mutation create validation
+ordersCommit=0611e4c
+ordersEndpoint=POST /api/orders/validate-create
+ordersAuth=x-service-name:cliplot-service plus runtime ORDERS_SERVICE_TOKEN
+publicNoTokenSmoke=401
+cliplotPodValidBodySmoke=201
+cliplotPodValidBodySmoke.success=true
+cliplotPodValidBodySmoke.valid=true
+cliplotPodValidBodySmoke.mutation=false
+cliplotPodValidBodySmoke.orderCreated=false
+cliplotPodValidBodySmoke.warehouseMutation=false
+cliplotPodValidBodySmoke.eventPublished=false
+cliplotPodValidBodySmoke.channel=cliplot
+cliplotPodValidBodySmoke.idempotencyStatus=available
+
+Cliplot guarded checkout order validation
+cliplotCommit=80e23c5
+image=localhost:5000/cliplot-service:80e23c5
+config.ENABLE_ORDER_CREATE_VALIDATION=true
+config.ORDERS_VALIDATE_CREATE_PATH=/api/orders/validate-create
+config.ENABLE_LIVE_ORDER_SUBMIT=false
+
+Pre-deploy validation for order validation
+npm run build=pass
+python3 scripts/pre_coding_gate.py=pass
+python3 scripts/strict_doc_audit.py=pass
+python3 scripts/deployment_readiness_gate.py=pass
+git diff --check=pass
+orders npm test=pass
+
+./scripts/deploy.sh
+image localhost:5000/cliplot-service:80e23c5 built and pushed
+deployment image=localhost:5000/cliplot-service:80e23c5
+deploymentReady=1/1
+
+In-cluster GET /api/integrations/readiness after order validation deploy
+readiness.liveOrderSubmit=false
+readiness.livePaymentCreate=false
+readiness.liveNotifications=false
+readiness.orders=guarded
+readiness.orderValidation=enabled_no_mutation
+readiness.paymentValidation=enabled_no_mutation
+readiness.notificationValidation=enabled_no_send
+remainingMissing=approved_live_order_create_and_warehouse_reservation_evidence|approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
+
+In-cluster POST /api/checkout/submit after order validation deploy
+http=202
+checkout.status=service_identity_required
+checkout.mode=guarded_checkout_submit
+checkout.orderPreview.contractVersion=orders.create.v1
+checkout.orderPreview.channel=cliplot
+checkout.orderPreview.totals.subtotal=1590
+checkout.orderPreview.totals.total=1590
+checkout.orderValidation.status=validated_no_mutation
+checkout.orderValidation.valid=true
+checkout.orderValidation.mutation=false
+checkout.orderValidation.orderCreated=false
+checkout.orderValidation.warehouseMutation=false
+checkout.orderValidation.eventPublished=false
+checkout.paymentValidation.status=validated_no_mutation
+checkout.notificationValidation.status=validated_no_send
+checkout.hasLiveOrder=false
+remainingMissing=approved_live_order_create_and_warehouse_reservation_evidence|approved_live_payment_create_execution_evidence|approved_live_notification_send_validation
 ```

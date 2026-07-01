@@ -25,15 +25,19 @@ creation is treated as production-ready.
 
 ## Feature
 
-Authenticated Catalog product reads are the first executable GOAL-05 lane.
-Cliplot must show real Catalog products when Catalog is available, while
-retaining fallback products only as a degraded fallback.
+Authenticated Catalog product reads and guarded checkout validation are the
+current executable GOAL-05 lanes. Cliplot must show real Catalog products when
+Catalog is available, validate Orders/Payments/Notifications payloads without
+mutation, and retain fallback products only as a degraded fallback.
 
 ## Task
 
-Wire Cliplot to Catalog's existing machine-auth read path using
-`CATALOG_INTERNAL_SERVICE_TOKEN` sourced from
-`secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
+Wire Cliplot to Catalog's existing machine-auth read path and prove guarded
+checkout payload readiness through:
+
+- Orders `POST /api/orders/validate-create`;
+- Payments `POST /payments/validate-create`;
+- Notifications `POST /notifications/validate`.
 
 ## Boundaries
 
@@ -55,5 +59,9 @@ Completion of the Catalog lane requires:
 - deployed Cliplot pod has `CATALOG_INTERNAL_SERVICE_TOKEN` present without
   printing the value.
 - public `/api/products` returns real Catalog product IDs, not fallback IDs.
-- public `/api/integrations/readiness` reports authenticated Catalog reads.
-
+- public or in-cluster `/api/integrations/readiness` reports authenticated
+  Catalog reads plus `orderValidation=enabled_no_mutation`,
+  `paymentValidation=enabled_no_mutation`, and
+  `notificationValidation=enabled_no_send`;
+- guarded checkout returns HTTP `202` with order, payment, and notification
+  validation results and no live order/payment/notification mutation.

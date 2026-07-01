@@ -19,8 +19,12 @@ Remote source of truth:
   payload without persistence or provider calls.
 - Notifications `POST /notifications/validate` validates the Cliplot order
   confirmation payload without persistence, provider calls, or customer send.
-- Cliplot guarded checkout returns `paymentValidation.status=validated_no_mutation`
-  and `notificationValidation.status=validated_no_send` while still returning
+- Orders `POST /api/orders/validate-create` validates the Cliplot
+  `orders.create.v1` payload without order creation, Warehouse reservation, or
+  event publication.
+- Cliplot guarded checkout returns `orderValidation.status=validated_no_mutation`,
+  `paymentValidation.status=validated_no_mutation`, and
+  `notificationValidation.status=validated_no_send` while still returning
   `service_identity_required`.
 - Catalog supports machine-auth through `x-internal-service-token` and
   `x-service-name`.
@@ -42,6 +46,6 @@ Product fields may include `title`, `categories`, `pricing`, `media`,
 
 `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, and
 `ENABLE_LIVE_NOTIFICATIONS` remain false. Catalog reads and no-mutation/no-send
-validation can run, but order creation, payment initiation, stock mutation, and
-customer notification sends remain guarded until explicit provider-backed
-validation and approval exist.
+validation can run, but order creation, Warehouse reservation, payment
+initiation, stock mutation, and customer notification sends remain guarded until
+explicit provider-backed validation and approval exist.

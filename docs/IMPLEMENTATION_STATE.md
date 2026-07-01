@@ -6,8 +6,9 @@
 **Mode:** Goal-driven orchestration enabled  
 **Active goal:** GOAL-05-checkout-revenue-readiness
 **Goal status:** GOAL-05 active
-**Current checkpoint:** GOAL-05 guarded checkout revenue path deployed; no-send
-payment-create and notification validation pass, while live payment creation
+**Current checkpoint:** GOAL-05 guarded checkout revenue path deployed;
+no-mutation order-create and payment-create validation plus no-send
+notification validation pass, while live order creation, live payment creation,
 and live notification sends remain approval-gated.
 
 ## Current Intent Summary
@@ -72,6 +73,15 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `localhost:5000/cliplot-service:fef5fd8` returned
   `notificationValidation.status=validated_no_send`, `mutation=false`,
   `providerCall=false`, and `notificationSent=false`.
+- GOAL-05 no-mutation order create validation is enabled through
+  orders-microservice `POST /api/orders/validate-create`; guarded checkout
+  validates the full Cliplot `orders.create.v1` payload and still returns
+  `service_identity_required` until live order creation and Warehouse
+  reservation are approved. Deployed Cliplot image
+  `localhost:5000/cliplot-service:80e23c5` returned
+  `orderValidation.status=validated_no_mutation`, `mutation=false`,
+  `orderCreated=false`, `warehouseMutation=false`, and
+  `eventPublished=false`.
 
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
@@ -99,10 +109,11 @@ smoke evidence.
   payment-create payload generation have runtime smoke evidence.
 - Payment callback URL implementation has synthetic no-mutation validation as a
   guarded ACK path for downstream callbacks from payments-microservice.
-- Valid payment payload validation now has a no-mutation Payments endpoint.
-  Valid notification payload validation now has a no-send Notifications
-  endpoint. Live payment creation and live notification sends still require
-  explicit approved runtime evidence.
+- Valid order payload validation now has a no-mutation Orders endpoint. Valid
+  payment payload validation now has a no-mutation Payments endpoint. Valid
+  notification payload validation now has a no-send Notifications endpoint.
+  Live order creation, live payment creation, and live notification sends still
+  require explicit approved runtime evidence.
 
 ## Closed Goal: GOAL-04-kubernetes-vault-rag-deployment
 
@@ -192,9 +203,10 @@ Serve the first production-visible Cliplot storefront frontend at
 ## Next Action
 
 Continue GOAL-05 checkout readiness: keep live payment/order/notification
-mutation disabled, collect approved live payment-create and live notification
-send evidence when allowed, and preserve guarded frontend checkout behavior
-until those approvals are present.
+mutation disabled, collect approved live order-create plus Warehouse
+reservation evidence, approved live payment-create evidence, and approved live
+notification-send evidence when allowed, and preserve guarded frontend checkout
+behavior until those approvals are present.
 
 ## Blockers For Product Code
 
@@ -220,9 +232,10 @@ until those approvals are present.
 | Orders Cliplot support | done | `orders-microservice:971a446` deployed. |
 | Payments Cliplot allowlist | done | `payments-microservice:eab6ae7` deployed. |
 | Catalog real product reads | active | Wiring Auth-owned Catalog machine-auth token and real Catalog response normalization. |
+| Order validation | done | Guarded no-mutation `orders.create.v1` payload validation is deployed. |
 | Payment validation | done | Guarded no-mutation payment payload validation is deployed. |
 | Notification validation | done | Guarded no-send order confirmation payload validation is deployed. |
-| Live revenue mutation | dependency-gated | Requires approved live payment-create and live notification-send evidence. |
+| Live revenue mutation | dependency-gated | Requires approved live order-create/Warehouse, payment-create, and notification-send evidence. |
 
 ## Validation Log
 
@@ -287,6 +300,25 @@ until those approvals are present.
   `checkout.notificationValidation.mutation=false`,
   `checkout.notificationValidation.providerCall=false`, and
   `checkout.notificationValidation.notificationSent=false`.
+- GOAL-05 order validation code validation passed: `npm run build`,
+  `python3 scripts/pre_coding_gate.py`, `python3 scripts/strict_doc_audit.py`,
+  `python3 scripts/deployment_readiness_gate.py`, `git diff --check`, and
+  Orders full `npm test` for the new validation endpoint.
+- Orders no-mutation endpoint deployed as
+  `localhost:5000/orders-microservice:0611e4c`; direct Cliplot pod smoke to
+  `POST /api/orders/validate-create` returned HTTP `201`, `valid=true`,
+  `mutation=false`, `orderCreated=false`, `warehouseMutation=false`,
+  `eventPublished=false`, and `idempotencyStatus=available`.
+- Cliplot order validation deployed as
+  `localhost:5000/cliplot-service:80e23c5`. In-cluster checkout smoke returned
+  `readiness.orderValidation=enabled_no_mutation`, guarded checkout HTTP `202`,
+  `checkout.orderPreview.contractVersion=orders.create.v1`,
+  `checkout.orderPreview.totals.subtotal=1590`,
+  `checkout.orderValidation.status=validated_no_mutation`,
+  `checkout.orderValidation.mutation=false`,
+  `checkout.orderValidation.orderCreated=false`,
+  `checkout.orderValidation.warehouseMutation=false`,
+  `checkout.orderValidation.eventPublished=false`, and no live `order` object.
   Checkout guard text now blocks on provider-backed payment evidence,
   Warehouse runtime evidence, and notification template rules rather than the
   already-deployed Orders channel support.

@@ -8,8 +8,8 @@ Prompt -> Code -> Validation.
 ## Current Lane
 
 Guarded checkout revenue validation: authenticated Catalog product reads,
-no-mutation payment-create validation, and no-send notification payload
-validation.
+no-mutation order-create validation, no-mutation payment-create validation, and
+no-send notification payload validation.
 
 ## Allowed Changes
 
@@ -55,14 +55,15 @@ validation.
 | --- | --- | --- | --- | --- |
 | Catalog product read lane | ready now | main orchestrator | Cliplot integration and ExternalSecret files | build, docs gates, deploy, public product smoke |
 | Payment API key/scope lane | done | payments/platform lane | Payments Vault/K8s identity maps | invalid-body smoke returned 400 VALIDATION_ERROR |
+| Order validation lane | done | main orchestrator | Orders validate endpoint and Cliplot checkout order validation | checkout returned `orderValidation.status=validated_no_mutation` |
 | Payment validation lane | done | main orchestrator | Cliplot checkout/payment code and payments validate endpoint | checkout returned `paymentValidation.status=validated_no_mutation` |
 | Notification validation lane | done | main orchestrator | Cliplot checkout notification code and notifications validate endpoint | checkout returned `notificationValidation.status=validated_no_send` |
-| Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/payment/notification mutation paths | approved live payment-create and live notification-send evidence |
+| Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
 ## Blockers
 
 - `[MISSING: approved Cliplot product SKU list/filtering rule]`
+- `[MISSING: approved live order-create execution and Warehouse reservation evidence for Cliplot]`
 - `[MISSING: approved live payment-create execution evidence for Cliplot]`
-- `[MISSING: Warehouse service token accepted by warehouse-microservice and default warehouseId]`
 - `[MISSING: approved live notification send validation for Cliplot order confirmations]`
