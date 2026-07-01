@@ -102,4 +102,17 @@ Cliplot pod safe invalid-body smoke to POST /api/orders
 http=400
 status=Bad Request
 orderCreated=false
+
+GET https://cliplot.alfares.cz/api/integrations/readiness after guard refinement
+http=200
+catalog=read_enabled_authenticated
+payments=identity_ready_provider_guarded
+orders=guarded
+liveOrderSubmit=false
+remainingMissing=provider_payment_evidence|warehouse_runtime_evidence|notification_template_rules
+
+POST https://cliplot.alfares.cz/api/checkout/submit after guard refinement
+http=202
+status=service_identity_required
+mode=guarded_checkout_submit
 ```

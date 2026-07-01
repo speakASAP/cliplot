@@ -241,3 +241,10 @@ Notifications, Auth, and provider-backed payment evidence are verified.
   Checkout guard text now blocks on provider-backed payment evidence,
   Warehouse runtime evidence, and notification template rules rather than the
   already-deployed Orders channel support.
+- GOAL-05 checkout guard refinement deployed as
+  `localhost:5000/cliplot-service:7ba1936`. Public readiness now reports
+  `payments=identity_ready_provider_guarded`, `catalog=read_enabled_authenticated`,
+  `orders=guarded`, and `liveOrderSubmit=false`. Public guarded checkout still
+  returns HTTP `202 service_identity_required`; remaining blockers are
+  provider-backed valid-body payment evidence, Warehouse runtime evidence, and
+  notification sender/template rules.
