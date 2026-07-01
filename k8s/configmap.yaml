@@ -30,6 +30,8 @@ data:
   AUTH_CLIENT_ID: "cliplot-service"
   AUTH_RETURN_URL: "https://cliplot.alfares.cz/auth/callback"
   ORDERS_CREATE_PATH: "/api/orders"
+  ORDERS_VALIDATE_CREATE_PATH: "/api/orders/validate-create"
+  ENABLE_ORDER_CREATE_VALIDATION: "true"
   PAYMENT_VALIDATE_CREATE_PATH: "/payments/validate-create"
   ENABLE_PAYMENT_CREATE_VALIDATION: "true"
   NOTIFICATION_VALIDATE_PATH: "/notifications/validate"

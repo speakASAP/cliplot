@@ -70,10 +70,12 @@ export const serviceConfig = {
   authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
+  ordersValidateCreatePath: process.env.ORDERS_VALIDATE_CREATE_PATH || '/api/orders/validate-create',
   notificationValidatePath: process.env.NOTIFICATION_VALIDATE_PATH || '/notifications/validate',
   paymentCreatePath: process.env.PAYMENT_CREATE_PATH || '/payments/create',
   paymentValidateCreatePath: process.env.PAYMENT_VALIDATE_CREATE_PATH || '/payments/validate-create',
   paymentMethod: process.env.CLIPLOT_PAYMENT_METHOD || 'invoice',
+  orderCreateValidation: process.env.ENABLE_ORDER_CREATE_VALIDATION === 'true',
   notificationValidation: process.env.ENABLE_NOTIFICATION_VALIDATION === 'true',
   paymentCreateValidation: process.env.ENABLE_PAYMENT_CREATE_VALIDATION === 'true',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
@@ -265,10 +267,14 @@ export function authLinks() {
 }
 
 function checkoutMissingFacts() {
+  const orderBlocker = serviceConfig.orderCreateValidation
+    ? '[MISSING: approved live order-create execution and Warehouse reservation evidence for Cliplot]'
+    : '[MISSING: approved no-mutation order-create validation evidence for Cliplot]';
   const notificationBlocker = serviceConfig.notificationValidation
     ? '[MISSING: approved live notification send validation for Cliplot order confirmations]'
     : '[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]';
   const missing = [
+    orderBlocker,
     serviceConfig.paymentCreateValidation
       ? '[MISSING: approved live payment-create execution evidence for Cliplot]'
       : '[MISSING: approved valid-body payment-create validation evidence for Cliplot]',
@@ -316,28 +322,112 @@ function validateCheckout(checkout) {
   return errors;
 }
 
-async function createOrder(checkout) {
-  const url = new URL(serviceConfig.ordersCreatePath, serviceConfig.ordersUrl);
+function buildOrderCreatePayload(checkout) {
+  const subtotal = checkout.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  return {
+    contractVersion: 'orders.create.v1',
+    channel: serviceConfig.orderChannel,
+    externalOrderId: checkout.externalOrderId,
+    channelAccountId: serviceConfig.channelAccountId,
+    customer: {
+      name: checkout.customer.name,
+      email: checkout.customer.email,
+      phone: checkout.customer.phone || undefined,
+    },
+    shippingAddress: {
+      name: checkout.customer.name,
+      street: checkout.customer.address,
+      city: 'Praha',
+      postalCode: '11000',
+      country: 'CZ',
+    },
+    items: checkout.items.map((item) => ({
+      productId: item.productId,
+      title: item.title,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.unitPrice * item.quantity,
+    })),
+    totals: {
+      subtotal,
+      shippingCost: 0,
+      taxAmount: 0,
+      total: checkout.total,
+      currency: 'CZK',
+    },
+    payment: {
+      method: serviceConfig.paymentMethod,
+      status: 'pending',
+    },
+    shipping: {
+      method: checkout.shipping || 'Balikovna',
+    },
+  };
+}
+
+async function postOrderPayload(path, checkout, orderPayload) {
+  const url = new URL(path, serviceConfig.ordersUrl);
   return fetchJson(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-internal-service-token': serviceConfig.ordersServiceToken,
       'x-service-name': serviceConfig.serviceName,
+      'idempotency-key': `cliplot-order-${checkout.externalOrderId}`,
     },
-    body: JSON.stringify({
-      contractVersion: 'orders.create.v1',
-      channel: serviceConfig.orderChannel,
-      externalOrderId: checkout.externalOrderId,
-      channelAccountId: serviceConfig.channelAccountId,
-      customer: checkout.customer,
-      items: checkout.items,
-      totals: {
-        currency: 'CZK',
-        total: checkout.total,
-      },
-    }),
+    body: JSON.stringify(orderPayload),
   });
+}
+
+async function createOrder(checkout) {
+  return postOrderPayload(serviceConfig.ordersCreatePath, checkout, buildOrderCreatePayload(checkout));
+}
+
+async function validateOrderCreate(checkout, orderPayload) {
+  return postOrderPayload(serviceConfig.ordersValidateCreatePath, checkout, orderPayload);
+}
+
+async function guardedOrderValidation(checkout, orderPayload) {
+  if (!serviceConfig.orderCreateValidation) {
+    return {
+      status: 'disabled',
+      mutation: false,
+      orderCreated: false,
+      warehouseMutation: false,
+      eventPublished: false,
+    };
+  }
+  if (!serviceConfig.ordersServiceToken) {
+    return {
+      status: 'missing_orders_service_token',
+      mutation: false,
+      orderCreated: false,
+      warehouseMutation: false,
+      eventPublished: false,
+    };
+  }
+
+  try {
+    const payload = await validateOrderCreate(checkout, orderPayload);
+    return {
+      status: 'validated_no_mutation',
+      ...(payload?.data || {}),
+      mutation: false,
+      orderCreated: false,
+      warehouseMutation: false,
+      eventPublished: false,
+    };
+  } catch (error) {
+    return {
+      status: 'validation_failed_guarded',
+      httpStatus: error?.status || 0,
+      code: error?.payload?.error || error?.payload?.message || 'unknown',
+      mutation: false,
+      orderCreated: false,
+      warehouseMutation: false,
+      eventPublished: false,
+    };
+  }
 }
 
 function buildPaymentCreatePayload(checkout, order) {
@@ -600,6 +690,8 @@ export async function submitCheckout(input) {
 
   const missing = checkoutMissingFacts();
   if (!serviceConfig.liveOrderSubmit || missing.length) {
+    const orderPreview = buildOrderCreatePayload(checkout);
+    const orderValidation = await guardedOrderValidation(checkout, orderPreview);
     const paymentPreview = buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId });
     const paymentValidation = await guardedPaymentValidation(checkout, paymentPreview);
     const notificationPreview = buildOrderConfirmationNotification(checkout);
@@ -612,15 +704,8 @@ export async function submitCheckout(input) {
         mode: 'guarded_checkout_submit',
         message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
         missing,
-        orderPreview: {
-          channel: serviceConfig.orderChannel,
-          channelAccountId: serviceConfig.channelAccountId,
-          applicationId: serviceConfig.applicationId,
-          externalOrderId: checkout.externalOrderId,
-          itemCount: checkout.items.reduce((sum, item) => sum + item.quantity, 0),
-          total: checkout.total,
-          currency: 'CZK',
-        },
+        orderPreview,
+        orderValidation,
         notificationPreview,
         notificationValidation,
         paymentPreview,
@@ -664,6 +749,9 @@ export function serviceReadiness() {
       catalog: serviceConfig.catalogServiceToken ? 'read_enabled_authenticated' : 'read_enabled_with_fallback',
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
       orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
+      orderValidation: serviceConfig.orderCreateValidation
+        ? (serviceConfig.ordersServiceToken ? 'enabled_no_mutation' : 'missing_orders_service_token')
+        : 'disabled',
       notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
       notificationValidation: serviceConfig.notificationValidation
         ? (serviceConfig.notificationServiceToken ? 'enabled_no_send' : 'missing_notification_service_token')
