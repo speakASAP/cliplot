@@ -20,6 +20,14 @@ In progress.
   `DOCS_RAG_PUBLICATION=fail` with `error=fetch failed`.
 - Temporary checkout smoke returned `service_identity_required` and included a
   generated Cliplot `externalOrderId`.
+- `./scripts/deploy.sh` passed and deployed image
+  `localhost:5000/cliplot-service:a969cb5`.
+- Public smoke from `alfares` passed for `/health`,
+  `/api/integrations/readiness`, and `/api/checkout/submit`.
+- Kubernetes deployment `cliplot-service` is `1/1` ready/available on image
+  `a969cb5`.
+- ExternalSecret `cliplot-service-secret` remains `SecretSyncedError` because
+  the Vault path is missing.
 
 ## Expected Outcomes
 
