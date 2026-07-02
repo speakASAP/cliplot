@@ -490,3 +490,13 @@ behavior until those approvals are present.
   lane statuses, and the remaining approval blockers. This makes the future
   live-checkout go/no-go auditable without enabling order, payment, Warehouse,
   callback persistence, or notification mutation.
+
+- GOAL-05 live checkout preflight endpoint deployed and refined as
+  `localhost:5000/cliplot-service:d7caf93`. `GET /api/checkout/live-preflight`
+  exposes the guarded preflight contract as JSON with
+  `status=blocked`, `wouldMutate=false`, and an explicit `mutationPlan` where
+  `wouldCreateOrder=false`, `wouldCreatePayment=false`, and
+  `wouldSendNotification=false`. This fixes the partial-live semantic risk:
+  operators can distinguish full live readiness from whether any mutation would
+  occur. The endpoint remains read-only and does not call Orders, Payments,
+  Warehouse reservation, Notifications, or persistence.
