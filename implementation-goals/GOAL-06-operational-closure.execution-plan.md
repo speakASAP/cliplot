@@ -61,6 +61,7 @@ readiness.
 | Customer status approval evidence packet | ready now | main orchestrator | customer status approval evidence endpoint/script/docs | `npm run readiness:customer-status-approval -- https://cliplot.alfares.cz` |
 | Order/payment status mapping ownership | ready now | main orchestrator | payment mapping ownership endpoint/script/ADR/docs | `npm run readiness:payment-mapping -- https://cliplot.alfares.cz` |
 | Approved read-only customer status runtime | ready now | main orchestrator | runtime flags, status scripts, k8s probe | `npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz`, `npm run readiness:k8s -- https://cliplot.alfares.cz` |
+| Revenue closure packet | ready now | main orchestrator | live revenue closure endpoint/script/docs | `npm run readiness:revenue-closure -- https://cliplot.alfares.cz` |
 | Final live revenue closure | dependency-gated | main orchestrator | checkout/order/payment/notification config | approved live evidence and approval IDs |
 | Kubernetes readiness monitor | ready now | main orchestrator | `scripts/k8s-readiness-probe.js`, `k8s/readiness-cronjob.yaml`, `scripts/deploy.sh` | `npm run readiness:k8s -- https://cliplot.alfares.cz`, server dry-run, deployed CronJob inspect |
 | Docs/RAG publication | dependency-gated | main orchestrator | docs-rag service | preflight pass then intentional ingestion approval |

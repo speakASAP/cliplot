@@ -3768,6 +3768,168 @@ export async function liveCheckoutApprovalPacket() {
   };
 }
 
+
+export async function revenueClosurePacket() {
+  const approvalPacket = await liveCheckoutApprovalPacket();
+  const productFilter = await catalogProductFilterReadiness();
+  const orderWarehouse = await orderWarehouseReadinessReport();
+  const liveSmokePlan = await liveOrderWarehouseSmokePlan();
+  const paymentStatusReadinessPacket = await paymentStatusReadiness();
+  const paymentStorage = await paymentStatusStorageReadiness();
+  const paymentDecision = await paymentStatusPersistenceDecisionPacket();
+  const paymentMapping = await paymentStatusMappingOwnershipPacket();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const customerStatusActivation = await customerStatusRuntimeActivationGate();
+  const customerStatusApproval = await customerStatusApprovalEvidencePacket();
+  const readiness = serviceReadiness();
+  const preflight = readiness.liveCheckoutPreflight;
+
+  const readinessEvidence = {
+    catalogProductFilter: productFilter.status,
+    orderWarehouse: orderWarehouse.status,
+    liveOrderWarehouseSmokePlan: liveSmokePlan.status,
+    paymentStatus: paymentStatusReadinessPacket.status,
+    paymentStorage: paymentStorage.status,
+    paymentDecision: paymentDecision.status,
+    paymentMapping: paymentMapping.status,
+    callbackReplayPolicy: callbackPolicy.status,
+    customerStatusActivation: customerStatusActivation.status,
+    customerStatusApproval: customerStatusApproval.status,
+    liveCheckoutApproval: approvalPacket.status,
+    livePreflight: preflight.status,
+  };
+
+  const blockers = [
+    ...new Set([
+      ...(approvalPacket.missing || []),
+      ...(productFilter.blockers || []),
+      ...(liveSmokePlan.liveExecutionBlockers || []),
+      ...(paymentStatusReadinessPacket.blockers || []),
+      ...(paymentStorage.blockers || []),
+      ...(paymentDecision.blockers || []),
+      ...(paymentMapping.blockers || []),
+      ...(callbackPolicy.blockers || []),
+      ...(customerStatusApproval.blockers || []),
+      ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
+      ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
+    ]),
+  ];
+
+  const readyForLiveMutation = preflight.status === 'ready_for_approved_live_mutation'
+    && preflight.wouldMutate === true
+    && productFilter.approvedCliplotSkuScope === true
+    && orderWarehouse.status === 'validated_no_mutation'
+    && paymentStatusReadinessPacket.status === 'ready_for_approved_payment_status_runtime_read'
+    && callbackPolicy.callbackPersistence === false
+    && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
+    && blockers.length === 0;
+
+  return {
+    success: true,
+    status: readyForLiveMutation ? 'ready_for_owner_live_checkout_execution' : 'approval_required_live_revenue_closure',
+    mode: 'read_only_live_revenue_closure_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    wouldMutateNow: preflight.wouldMutate === true,
+    liveCheckoutPreflight: preflight,
+    approvalPacket: {
+      status: approvalPacket.status,
+      requiredApprovalIds: approvalPacket.requiredApprovalIds,
+      requiredRuntimeKeys: approvalPacket.requiredRuntimeKeys,
+      missingCount: approvalPacket.missing?.length || 0,
+    },
+    requiredApprovalIds: [
+      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
+      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+      'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
+    ],
+    requiredRuntimeKeys: [
+      'ORDERS_SERVICE_TOKEN',
+      'WAREHOUSE_SERVICE_TOKEN',
+      'ORDERS_STATUS_SERVICE_TOKEN',
+      'PAYMENT_API_KEY',
+      'PAYMENT_WEBHOOK_API_KEY',
+      'NOTIFICATIONS_SERVICE_TOKEN',
+    ],
+    readinessEvidence,
+    catalog: {
+      status: productFilter.status,
+      catalogSource: productFilter.catalogSource,
+      productCount: productFilter.productCount,
+      warehouseBackedProductCount: productFilter.warehouseBackedProductCount,
+      approvedCliplotSkuScope: productFilter.approvedCliplotSkuScope,
+      selectionMode: productFilter.selectionMode,
+    },
+    orderWarehouse: {
+      status: orderWarehouse.status,
+      mutation: orderWarehouse.mutation,
+      providerCall: orderWarehouse.providerCall,
+      persistence: orderWarehouse.persistence,
+      productId: orderWarehouse.catalog?.sampleProduct?.id || null,
+      warehouseId: orderWarehouse.catalog?.sampleProduct?.warehouseId || null,
+      orderValidation: orderWarehouse.orderValidation?.status || null,
+      warehouseReservationReadiness: orderWarehouse.warehouseReservationReadiness?.status || null,
+    },
+    payment: {
+      statusReadiness: paymentStatusReadinessPacket.status,
+      storageReadiness: paymentStorage.status,
+      decision: paymentDecision.status,
+      mappingOwnership: paymentMapping.status,
+      snapshotReadRuntime: paymentStatusReadinessPacket.passiveSnapshotAdapter?.currentRuntimeStatus || null,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    notifications: {
+      validation: readiness.integrations.notificationValidation,
+      liveSend: readiness.integrations.notifications,
+      mutation: false,
+      providerCall: false,
+      persistence: false,
+    },
+    callbackPolicy: {
+      status: callbackPolicy.status,
+      callbackPersistence: callbackPolicy.callbackPersistence,
+      callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
+    },
+    customerStatus: {
+      activation: customerStatusActivation.status,
+      approvalEvidence: customerStatusApproval.status,
+      runtimeReadEnabled: customerStatusApproval.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: customerStatusApproval.paymentsSnapshotReadEnabled,
+      storageRead: customerStatusApproval.storageRead,
+      callbackPersistence: customerStatusApproval.callbackPersistence,
+    },
+    liveSmokePlan: {
+      status: liveSmokePlan.status,
+      liveExecutionAllowed: liveSmokePlan.liveExecutionAllowed,
+      blockerCount: liveSmokePlan.liveExecutionBlockers?.length || 0,
+      payloadFingerprint: liveSmokePlan.plan?.payloadPreview?.fingerprintSha256 || null,
+      stepCount: liveSmokePlan.plan?.steps?.length || 0,
+    },
+    forbiddenOperations: [
+      'create order',
+      'create payment',
+      'reserve Warehouse stock',
+      'send notification',
+      'persist callback state',
+      'read /payments/{paymentId}',
+      'call payment provider',
+      'print API keys or webhook keys',
+      'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
+    ],
+    blockers,
+    next: readyForLiveMutation
+      ? 'Owner must execute the approved live checkout runbook; this packet itself remains read-only.'
+      : 'Resolve the listed approval, SKU-scope, live smoke, and provider evidence blockers before enabling live checkout mutation.',
+  };
+}
+
+
 export function serviceReadiness() {
   const approvals = liveMutationApprovals();
   return {

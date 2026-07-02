@@ -45,46 +45,24 @@ present.
   order submission is explicitly enabled with required tokens.
 - The callback replay policy gate must remain `approval_required_callback_replay_policy` with `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false` until callback persistence/replay ownership, idempotency, retention, operator replay, and rollback ownership are approved.
 - Payment read-scope is validated through the DB-only
-  `/payments/status/by-order-id` readiness probe, but passive customer status
-  reads remain disabled until ADR-002 owner approval, callback replay policy,
-  and live status read/write approvals exist.
-- The passive payment status snapshot-read approval packet is read-only and
-  must remain `approval_required_passive_payments_snapshot_read` with
-  `runtimeReadEnabled=false`, `mutation=false`, `persistence=false`, and
-  `providerCall=false` until owner approval and runtime rollout evidence exist.
-- The customer status surface contract must remain
-  `guarded_customer_status_surface_contract` with
-  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
-  `storageRead=false`, `mutation=false`, `persistence=false`, and
-  `providerCall=false` until the approved read-only customer status rollout
-  exists.
-- The customer status runtime rollout plan must remain
-  `approval_required_read_only_customer_status_runtime_rollout` with
-  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+  `/payments/status/by-order-id` readiness probe. The approved read-only
+  customer status runtime is active with `runtimeReadEnabled=true` and
+  `paymentsSnapshotReadEnabled=true`, but live payment creation, callback
+  persistence, local payment status storage, provider-refreshing reads, order
+  creation, Warehouse reservation, and notification sends remain disabled.
+- The passive payment status snapshot-read approval packet must return
+  `approved_passive_payments_snapshot_read`, `runtimeReadEnabled=true`,
+  `approvedRuntimeChange=true`, `mutation=false`, `persistence=false`, and
+  `providerCall=false`.
+- The customer status surface, rollout plan, activation gate, and approval
+  evidence packet must return approved read-only statuses while preserving
   `storageRead=false`, `callbackPersistence=false`, `mutation=false`,
-  `persistence=false`, and `providerCall=false` until ADR-003 is approved.
-- The customer status runtime activation gate must remain
-  `blocked_read_only_customer_status_runtime_activation` with
-  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
-  `storageRead=false`, `callbackPersistence=false`,
-  `wouldReadPaymentsSnapshot=false`, `wouldRenderRuntimeCustomerStatus=false`,
-  `mutation=false`, `persistence=false`, and `providerCall=false` until all
-  read-only runtime approvals and flags exist together.
-- The customer status approval evidence packet must remain
-  `approval_required_customer_status_runtime_evidence_packet` with
-  `baselineGuarded=true`, `runtimeReadEnabled=false`,
-  `paymentsSnapshotReadEnabled=false`, `storageRead=false`,
-  `callbackPersistence=false`, `wouldReadPaymentsSnapshot=false`,
-  `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`,
-  `persistence=false`, and `providerCall=false`. It is evidence for owner
-  approval only and must not enable live status reads.
-- The passive Payments DB snapshot adapter behind `/api/payments/status` must
-  remain inactive by default. `/api/payments/status-runtime-readiness` must
-  return `blocked_payments_snapshot_runtime_read`,
-  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
-  `storageRead=false`, `callbackPersistence=false`, `mutation=false`,
-  `persistence=false`, and `providerCall=false`; `/payments/{paymentId}` remains
-  forbidden for passive status reads.
+  `persistence=false`, and `providerCall=false`.
+- The passive Payments DB snapshot adapter behind `/api/payments/status` may use
+  only `/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}`.
+  It must keep `/payments/{paymentId}` forbidden for passive reads and use
+  customer-safe unknown/temporary-unavailable states when no snapshot can be
+  rendered.
 
 - The product filter readiness gate must remain `approval_required_catalog_product_filter_rule` with `catalogSource=catalog`, `warehouseBackedProductCount>0`, `mutation=false`, `persistence=false`, and `providerCall=false` until an owner-approved Cliplot SKU/filtering rule exists.
 
@@ -126,6 +104,19 @@ ssh alfares 'cd /home/ssf/Documents/Github/cliplot && DOCS_RAG_PREFLIGHT_ONLY=1 
 Do not run the normal publication command until preflight passes and ingestion
 is intentionally approved.
 
+
+## Revenue Closure Packet
+
+`GET /api/checkout/revenue-closure-packet` is the read-only operator packet for
+live revenue closure. It aggregates approval, product scope, order/Warehouse,
+payment, notification, callback, status, and live smoke evidence. Current
+production must return `approval_required_live_revenue_closure`,
+`wouldMutateNow=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`.
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && npm run readiness:revenue-closure -- https://cliplot.alfares.cz'
+```
 
 ## Read-Only Bundle
 

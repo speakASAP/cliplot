@@ -154,6 +154,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_step customer_status_activation npm run readiness:customer-status-activation -- "$BASE_URL"
   run_step customer_status_approval_evidence npm run readiness:customer-status-approval -- "$BASE_URL"
   run_step live_smoke_executor_guard npm run readiness:live-smoke-executor -- "$BASE_URL"
+  run_step revenue_closure_packet npm run readiness:revenue-closure -- "$BASE_URL"
   run_step guarded_checkout_smoke npm run smoke:checkout -- "$BASE_URL"
 else
   echo "READINESS_STEP=guarded_checkout_smoke"

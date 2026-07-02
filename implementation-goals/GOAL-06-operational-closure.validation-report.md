@@ -455,3 +455,36 @@ partialActivationMatrix.order_only_with_all_approvals=blocked,wouldMutate=false
 partialActivationMatrix.order_and_payment_without_notification_flag=blocked,wouldMutate=false
 partialActivationMatrix.all_flags_with_all_approvals=ready_for_approved_live_mutation,wouldMutate=true
 ```
+
+## Revenue Closure Packet Increment
+
+Status: implemented as a read-only operator gate; production validation is
+required after deployment of this increment.
+
+The packet is exposed as `GET /api/checkout/revenue-closure-packet` and
+`npm run readiness:revenue-closure`. It aggregates the live checkout approval
+packet, product filter readiness, order/Warehouse no-mutation readiness, live
+Orders/Warehouse smoke plan, payment status/storage/decision/mapping evidence,
+callback replay policy, and approved read-only customer status evidence.
+
+Expected guarded production state:
+
+```text
+status=approval_required_live_revenue_closure
+wouldMutateNow=false
+mutation=false
+persistence=false
+providerCall=false
+livePreflight=blocked
+catalogSource=catalog
+orderWarehouse=validated_no_mutation
+paymentStatus=ready_for_approved_payment_status_runtime_read
+callbackPolicy=approval_required_callback_replay_policy
+customerStatusActivation=ready_for_approved_read_only_customer_status_runtime
+liveSmokePlan=approval_required
+```
+
+This packet does not call the live smoke executor, does not create orders, does
+not create payments, does not reserve Warehouse stock, does not send
+notifications, does not persist callbacks, does not call payment providers, and
+does not print secret values.

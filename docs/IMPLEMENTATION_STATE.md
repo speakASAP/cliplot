@@ -162,62 +162,43 @@ notification sends, and Docs/RAG ingestion gated.
 - The Cliplot ConfigMap and Vault gate now expose dedicated live-smoke readiness while keeping execution disabled by default: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID=""`, `ORDERS_STATUS_SERVICE_NAME=cliplot`, and `LIVE_SMOKE_SECRET_PRESENCE=blocked` until `ORDERS_STATUS_SERVICE_TOKEN` plus the smoke approval ID are populated. ExternalSecret projection for missing live-smoke Vault properties is intentionally deferred to avoid breaking the currently synced `cliplot-secret`.
 - The guarded payment callback readiness endpoint is wired as `GET /api/payments/callback-readiness` and `npm run readiness:payment-callback`. It validates the configured webhook key through an internal synthetic callback ACK and returns `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing the key or updating payment/order state.
 - The payment callback replay policy gate is wired as `GET /api/payments/callback-replay-policy` and `npm run readiness:payment-callback-policy`. It records the proposed ADR-005 callback persistence/replay policy surface while keeping `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. It does not persist callbacks, replay callbacks, update orders, update payments, or call the payment provider.
-- The guarded payment status storage readiness endpoint is wired as `GET /api/payments/status-readiness` and `npm run readiness:payment-status`. It documents the future provider-refresh-free Payments DB snapshot contract `GET /payments/status/by-order-id?applicationId=cliplot&orderId={orderId}` with `payments:read` scope and explicitly rejects `GET /payments/{paymentId}` for passive Cliplot reads because pending Stripe/card records can refresh provider state there. Cliplot remains blocked at `blocked_pending_provider_backed_status_contract` until owner approval, customer-safe status copy approval, and a runtime rollout plan exist. Current status remains `payment_status_guarded_no_persistence` with `mutation=false`, `persistence=false`, and `providerCall=false`. Guarded callback/status readiness now also exposes a Czech customer-safe payment status mapping for `pending`, `processing`, `completed`, `failed`, `cancelled`, and `refunded` without persistence or provider calls. The dedicated storage ownership readiness endpoint is wired as `GET /api/payments/status-storage-readiness` and `npm run readiness:payment-storage`; it proposes `cliplot.payment_status.v1` fields and uniqueness for future `externalOrderId`/`paymentId` mapping, but returns `blocked_storage_backend_not_approved` with `persistence=false` until ownership and migration are approved. The ownership decision packet is wired as `GET /api/payments/status-persistence-decision` and `npm run readiness:payment-decision`; it records ADR-002 as proposed for owner approval, recommends Payments as the authoritative payment status owner, and leaves runtime at `decision_recorded_approval_required`, `mutation=false`, `persistence=false`, and `providerCall=false` until owner approval, callback replay policy, and live status read/write approvals exist. The passive snapshot-read approval packet is wired as `GET /api/payments/status-snapshot-read-approval-packet` and `npm run readiness:payment-snapshot-read-approval`; it aggregates the approved-read prerequisites while keeping `runtimeReadEnabled=false`.
-- The customer status surface contract is wired as `GET /api/checkout/status-surface-contract` and `npm run readiness:checkout-status-surface`. It binds `/objednavka/stav`, `/checkout/success`, and `/checkout/cancelled` to the current browser-local checkout snapshot and guarded payment status contract while keeping `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`, `storageRead=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
-- The customer status runtime rollout plan is wired as `GET /api/checkout/customer-status-runtime-rollout-plan` and `npm run readiness:customer-status-rollout`. ADR-003 is recorded as proposed for owner approval, and production remains at `approval_required_read_only_customer_status_runtime_rollout` with `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`, `storageRead=false`, `callbackPersistence=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
-- The customer status runtime activation gate is wired as
-  `GET /api/checkout/customer-status-runtime-activation-gate` and
-  `npm run readiness:customer-status-activation`. It is fail-closed until
-  owner approval, `CLIPLOT_STATUS_RUNTIME_APPROVAL_ID`,
-  `ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`, and
-  `ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true` exist together; default production
-  remains `blocked_read_only_customer_status_runtime_activation` with no
-  Payments snapshot read, no runtime status rendering, no mutation, no
-  persistence, and no provider call.
-- The disabled-by-default passive Payments DB snapshot adapter is wired behind
-  `/api/payments/status` and reported by
-  `GET /api/payments/status-runtime-readiness` plus
-  `npm run readiness:customer-status-runtime-read`. Default production remains
-  `blocked_payments_snapshot_runtime_read` and
-  `payment_status_guarded_no_persistence`: `runtimeReadEnabled=false`,
-  `paymentsSnapshotReadEnabled=false`, `storageRead=false`, `mutation=false`,
-  `persistence=false`, `providerCall=false`, and `/payments/{paymentId}` is
-  still forbidden for passive Cliplot status reads.
-- The customer status approval evidence packet is wired as
-  `GET /api/checkout/customer-status-approval-evidence-packet` and
-  `npm run readiness:customer-status-approval`. It aggregates the guarded
-  surface, rollout plan, activation gate, passive snapshot approval packet, and
-  disabled runtime adapter while keeping production at
-  `approval_required_customer_status_runtime_evidence_packet` with
-  `baselineGuarded=true`, `runtimeReadEnabled=false`,
-  `paymentsSnapshotReadEnabled=false`, `storageRead=false`,
-  `callbackPersistence=false`, `wouldReadPaymentsSnapshot=false`,
-  `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`,
-  `persistence=false`, and `providerCall=false`. It is approval evidence only;
-  it does not enable live reads, live writes, provider calls, or persistence.
-- The read-only customer status runtime is approved for activation through
+- The read-only customer status runtime is approved and deployed through
   `ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`,
   `ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true`, and
   `CLIPLOT_STATUS_RUNTIME_APPROVAL_ID=owner-approved-2026-07-02-read-only-customer-status`.
-  The runtime path uses only Payments DB-only by-order-id snapshots, keeps
-  `/payments/{paymentId}` forbidden, and still keeps live order creation, live
-  payment creation, Warehouse reservation, callback persistence, local payment
-  status storage, and notification sends disabled.
-  `GET /api/payments/status-mapping-ownership` and
-  `npm run readiness:payment-mapping`. It records ADR-006 as proposed for
-  owner approval, assigns future order lifecycle ownership to Orders, future
-  payment status ownership to Payments, and keeps Cliplot as a non-authoritative
-  customer-safe renderer. It keeps runtime reads, local storage, callback
-  persistence, mutation, provider calls, order creation, Warehouse reservation,
-  payment creation, and notification sends disabled.
-- The customer status page now has a guarded frontend payment-status read path:
+  Current production validation returns `approved_passive_payments_snapshot_read`,
+  `approved_read_only_customer_status_surface_contract`,
+  `approved_read_only_customer_status_runtime_rollout`,
+  `ready_for_approved_read_only_customer_status_runtime`,
+  `ready_for_approved_payments_snapshot_runtime_read`, and
+  `approved_customer_status_runtime_evidence_packet` with `runtimeReadEnabled=true`,
+  `paymentsSnapshotReadEnabled=true`, `storageRead=false`,
+  `callbackPersistence=false`, `mutation=false`, `persistence=false`, and
+  `providerCall=false`.
+- `/api/payments/status` now uses only the Payments DB-only by-order-id snapshot
+  route for approved read-only customer status. It keeps `/payments/{paymentId}`
+  forbidden for passive Cliplot reads and returns customer-safe unknown states
+  such as `payment_status_snapshot_not_available` or
+  `payment_status_snapshot_temporarily_unavailable` when no snapshot is
+  available or the upstream snapshot route is temporarily rate-limited. It does
+  not create orders, create payments, reserve Warehouse stock, persist callback
+  state, update local payment status storage, call payment providers, or send
+  notifications.
+- Payment status storage and ownership remain approval-gated even though the
+  read-only customer status runtime is active. `GET /api/payments/status-storage-readiness`
+  still returns `blocked_storage_backend_not_approved`; `GET /api/payments/status-persistence-decision`
+  still returns `decision_recorded_approval_required`; `GET /api/payments/status-mapping-ownership`
+  still returns `approval_required_order_payment_status_mapping_ownership`.
+  ADR-006 keeps Orders authoritative for order lifecycle, Payments authoritative
+  for payment status, and Cliplot non-authoritative.
+- The customer status page has a guarded frontend payment-status read path:
   `/objednavka/stav`, `/checkout/success`, and `/checkout/cancelled` render the
   browser-local checkout snapshot first, then fetch `/api/payments/status` by
-  `externalOrderId`. In default production the result remains
-  `payment_status_guarded_no_persistence`, so the UI still says payment and
-  reservation are not confirmed.
+  `externalOrderId`. The UI still must not claim paid, confirmed, reserved,
+  shipped, invoiced, or completed unless shared-service evidence proves it.
 - The product filter readiness gate is wired as `GET /api/products/filter-readiness` and `npm run readiness:product-filter`. It proves the current Catalog-backed product scope and Warehouse-backed sample product without mutating Catalog, Warehouse, Orders, Payments, or Notifications. Production remains at `approval_required_catalog_product_filter_rule` with `catalogSource=catalog`, `warehouseBackedProductCount>0`, `approvedCliplotSkuScope=false`, `mutation=false`, `persistence=false`, and `providerCall=false` until the owner approves the final Cliplot SKU/filtering rule. The evidence is also embedded in order/Warehouse readiness and avoids raw configured product ID output.
 - The post-rename order/Warehouse readiness report is wired as `GET /api/checkout/order-warehouse-readiness` and `npm run readiness:order-warehouse`. It proves, without live mutation, that `service=cliplot` can use a Catalog-backed product with `warehouseId`, validate `orders.create.v1` through Orders `/api/orders/validate-create`, and verify Warehouse availability through `/api/stock/availability/batch` while returning `mutation=false`, `providerCall=false`, and `persistence=false`.
+- The live revenue closure packet is wired as `GET /api/checkout/revenue-closure-packet` and `npm run readiness:revenue-closure`. It aggregates live checkout approval, product-filter scope, order/Warehouse readiness, live smoke plan, payment status/storage/decision/mapping evidence, callback replay policy, and approved read-only customer status evidence while keeping `mutation=false`, `persistence=false`, `providerCall=false`, and `wouldMutateNow=false`. It reports `approval_required_live_revenue_closure` until the live approval IDs, product scope, live Orders/Warehouse smoke, payment, and notification evidence blockers are closed.
 - The live activation gate now blocks partial future live configurations. `npm run readiness:activation -- https://cliplot.alfares.cz` proves order-only and order-plus-payment scenarios remain `blocked` with `wouldMutate=false`; a fully approved simulated configuration becomes `ready_for_approved_live_mutation` with order, Warehouse reservation, payment, and notification mutation plan booleans true.
 - The Kubernetes readiness monitor lane is endpoint-only and read-only. It
   checks `/health`, `/api/checkout/live-preflight`,
