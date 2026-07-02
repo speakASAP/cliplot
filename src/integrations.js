@@ -1316,6 +1316,138 @@ export function paymentStatusStorageReadiness() {
   };
 }
 
+
+export function paymentStatusPersistenceDecisionPacket() {
+  const paymentReadiness = paymentStatusReadiness();
+  const storageReadiness = paymentStatusStorageReadiness();
+  const decisionOptions = [
+    {
+      id: 'shared-payments-source-of-truth',
+      label: 'Payments-owned payment status read model',
+      recommendation: 'preferred_pending_contract_gap_closure',
+      rationale: [
+        'Payments already owns paymentId, orderId, amount, currency, method, provider transaction, and payment status semantics.',
+        'Cliplot must avoid creating a parallel business truth for payment status.',
+        'Cliplot should store or cache only customer-facing checkout intent state after explicit approval, not provider-backed status truth.',
+      ],
+      requiredBeforeApproval: [
+        '[MISSING: Payments DB-only status read endpoint or provider-refresh-free mode]',
+        '[MISSING: Payments read-by-orderId or approved Cliplot paymentId persistence mapping]',
+        '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+        '[MISSING: customer-safe status copy reviewed for pending/processing/failed/cancelled/refunded states]',
+      ],
+      cliplotRuntimeChange: 'Proxy or render approved read model only after provider-refresh-free read and mapping contract exist.',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    {
+      id: 'cliplot-local-status-cache',
+      label: 'Cliplot-local payment status cache',
+      recommendation: 'defer_requires_architecture_decision',
+      rationale: [
+        'Current Cliplot guardrails prohibit inventing local payment/order truth without a goal-approved persistence decision.',
+        'A local cache can diverge from Payments unless callback delivery, replay, retention, and reconciliation are approved.',
+      ],
+      requiredBeforeApproval: [
+        '[MISSING: approved Cliplot-local database or managed storage resource]',
+        '[MISSING: approved migration for cliplot.payment_status.v1]',
+        '[MISSING: callback replay and reconciliation plan]',
+        '[MISSING: retention and deletion policy]',
+      ],
+      cliplotRuntimeChange: 'Persist callback-derived status only after explicit storage ownership approval.',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    {
+      id: 'orders-owned-customer-status',
+      label: 'Orders-owned customer order/payment status projection',
+      recommendation: 'candidate_for_order_journey_only',
+      rationale: [
+        'Orders owns order lifecycle and Warehouse reservation side effects.',
+        'Orders should not become authoritative for provider payment status unless Payments publishes an approved event/read model.',
+      ],
+      requiredBeforeApproval: [
+        '[MISSING: Orders customer-status projection contract]',
+        '[MISSING: Payments-to-Orders status propagation contract]',
+        '[MISSING: clear boundary between order status and payment provider status]',
+      ],
+      cliplotRuntimeChange: 'Use only for customer order journey copy, not provider payment truth.',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+  ];
+
+  return {
+    success: true,
+    status: 'decision_required',
+    mode: 'guarded_payment_status_persistence_decision_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    recommendedOption: 'shared-payments-source-of-truth',
+    decisionOptions,
+    evidence: {
+      paymentsAuthoritativeState: [
+        'payments-microservice stores payment id, orderId, amount, currency, method, provider transaction, and status',
+        'payments-microservice indexes orderId but currently exposes public status read by paymentId only',
+        'payments-microservice GET /payments/{paymentId} can refresh pending/processing Stripe/card provider state',
+      ],
+      ordersBoundary: [
+        'orders-microservice owns order lifecycle and externalOrderId idempotency',
+        'orders-microservice may store bounded payment references but must not become provider payment truth',
+      ],
+      cliplotBoundary: [
+        'Cliplot current payment status is guarded_no_persistence',
+        'Cliplot must not create local payment status truth before ownership approval',
+      ],
+    },
+    currentReadiness: {
+      paymentStatus: paymentReadiness.status,
+      paymentStorage: storageReadiness.status,
+      currentStatusPersistence: storageReadiness.readContract.currentPersistence,
+      callbackPersistence: storageReadiness.callbackContract.currentPersistence,
+      providerRefreshRisk: storageReadiness.readContract.providerRefreshRisk,
+    },
+    approvalPacket: {
+      requiredDecisionRecord: 'ADR-payment-status-persistence-ownership',
+      requiredRuntimeEvidence: [
+        'payment-status-readiness pass with mutation=false persistence=false providerCall=false',
+        'payment-storage-readiness pass with mutation=false persistence=false providerCall=false',
+        'provider-refresh-free Payments read evidence before any live status reads',
+        'approved owner decision before any storage writes',
+      ],
+      mustRemainFalseBeforeApproval: [
+        'ENABLE_LIVE_PAYMENT_CREATE unless full live checkout approval exists',
+        'callback persistence',
+        'provider-backed status reads',
+        'Cliplot-local storage writes',
+      ],
+    },
+    blockers: [
+      '[MISSING: ADR-payment-status-persistence-ownership]',
+      '[MISSING: provider-refresh-free Payments status read contract]',
+      '[MISSING: read-by-orderId or approved paymentId persistence mapping]',
+      '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      '[MISSING: approved callback persistence/replay plan]',
+      '[MISSING: owner approval before live status reads or writes]',
+    ],
+    sensitiveDataPolicy: [
+      'no payment API key value',
+      'no webhook key value',
+      'no provider call',
+      'no storage write',
+      'no storage read',
+      'decision metadata only',
+    ],
+    next: 'Record ADR-payment-status-persistence-ownership before implementing any live status persistence or provider-backed reads.',
+  };
+}
+
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
     .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)

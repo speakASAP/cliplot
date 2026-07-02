@@ -14,6 +14,7 @@ import {
   paymentCallbackReadiness,
   paymentStatusReadiness,
   paymentStatusStorageReadiness,
+  paymentStatusPersistenceDecisionPacket,
   paymentStatus,
   serviceReadiness,
   runLiveOrderWarehouseSmoke,
@@ -259,6 +260,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/status-storage-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-persistence-decision' && req.method === 'GET') {
+      sendJson(res, 200, paymentStatusPersistenceDecisionPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-persistence-decision') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

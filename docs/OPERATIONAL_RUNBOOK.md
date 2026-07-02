@@ -256,6 +256,17 @@ Cliplot-local storage or an approved shared commerce service.
 npm run readiness:payment-storage -- https://cliplot.alfares.cz
 ```
 
+`GET /api/payments/status-persistence-decision` is the read-only ownership
+approval packet. It compares Payments-owned, Cliplot-local, and Orders-owned
+options and currently recommends `shared-payments-source-of-truth`. It must
+return `decision_required`, `mutation=false`, `persistence=false`, and
+`providerCall=false` until `07_decisions/ADR-002-payment-status-persistence-ownership.md`
+is approved and the Payments read-contract gaps are closed.
+
+```bash
+npm run readiness:payment-decision -- https://cliplot.alfares.cz
+```
+
 
 ## Operator Readiness Bundle
 

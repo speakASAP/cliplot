@@ -98,6 +98,12 @@ async function main() {
   assertFalse(paymentStatusStorage.body?.persistence, 'payment_status_storage_readiness_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
   assertFalse(paymentStatusStorage.body?.providerCall, 'payment_status_storage_readiness_provider_call_enabled', { paymentStatusStorage: paymentStatusStorage.body });
 
+  const paymentDecision = await getJson('/api/payments/status-persistence-decision');
+  assertEqual(paymentDecision.body?.status, 'decision_required', 'payment_status_persistence_decision_unexpected', { paymentDecision: paymentDecision.body });
+  assertFalse(paymentDecision.body?.mutation, 'payment_status_persistence_decision_mutation_enabled', { paymentDecision: paymentDecision.body });
+  assertFalse(paymentDecision.body?.persistence, 'payment_status_persistence_decision_persistence_enabled', { paymentDecision: paymentDecision.body });
+  assertFalse(paymentDecision.body?.providerCall, 'payment_status_persistence_decision_provider_call_enabled', { paymentDecision: paymentDecision.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -111,6 +117,7 @@ async function main() {
     paymentCallbackReadiness: paymentCallback.body.status,
     paymentStatusReadiness: paymentStatusReadiness.body.status,
     paymentStatusStorageReadiness: paymentStatusStorage.body.status,
+    paymentStatusPersistenceDecision: paymentDecision.body.status,
   }, null, 2));
 }
 
