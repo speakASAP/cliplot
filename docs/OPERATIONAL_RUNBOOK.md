@@ -349,6 +349,18 @@ IDs, customer PII, and secret values out of the packet.
 npm run readiness:payment-callback-storage-proposal -- https://cliplot.alfares.cz
 ```
 
+`GET /api/payments/callback-replay-execution-rollout-proposal-packet` is the read-only
+approval packet for a future callback replay execution window. It records the
+bounded execution-window proposal, synthetic dry-run plan, rollback plan, and
+guard evidence while keeping replay execution, callback persistence, live status
+writes, provider calls, notification sends, storage writes, real order/payment
+IDs, callback payloads, provider transaction IDs, customer PII, and secret values
+out of the packet.
+
+```bash
+npm run readiness:payment-callback-replay-rollout -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the
