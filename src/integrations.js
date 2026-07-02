@@ -3790,7 +3790,9 @@ export function serviceReadiness() {
         ? (serviceConfig.paymentApiKey ? 'enabled_no_mutation' : 'missing_payment_api_key')
         : 'disabled',
       paymentCallback: serviceConfig.paymentWebhookApiKey ? 'identity_ready_guarded_ack' : 'token_missing',
-      paymentStatus: 'guarded_no_persistence',
+      paymentStatus: serviceConfig.customerStatusRuntimeRead && serviceConfig.paymentStatusSnapshotRead && isApprovalPresent(serviceConfig.statusRuntimeApprovalId)
+        ? 'approved_read_only_snapshot'
+        : 'guarded_no_persistence',
       auth: 'public_links_contract_unverified',
     },
     missing: checkoutMissingFacts(),
