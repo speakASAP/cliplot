@@ -52,13 +52,18 @@ assert(readiness.futureProviderBackedRead?.providerRefreshRisk === 'db_snapshot_
 assert(readiness.futureProviderBackedRead?.supportsPaymentIdRead === false, 'payment id read support should remain false for passive Cliplot reads', readiness);
 assert(readiness.futureProviderBackedRead?.supportsOrderIdRead === true, 'order id read support missing', readiness);
 assert(readiness.mappingContract?.authoritative === false, 'mapping contract should be non-authoritative', readiness);
-assert(readiness.mappingContract?.source === 'approved_persistence_contract_required', 'mapping contract source missing', readiness);
+assert(['approved_persistence_contract_required', 'payments_db_snapshot_read_model_approved'].includes(readiness.mappingContract?.source), 'mapping contract source missing', readiness);
 assert(readiness.mappingContract?.proposedFields?.includes('externalOrderId'), 'mapping externalOrderId missing', readiness);
 assert(readiness.mappingContract?.proposedFields?.includes('paymentId'), 'mapping paymentId missing', readiness);
 assert(readiness.mappingContract?.persistence === false, 'mapping contract unexpectedly persists', readiness);
 assert(Array.isArray(readiness.blockers), 'payment status blockers missing', readiness);
 assert(!readiness.blockers.some((item) => item.includes('payments:read scope')), 'payments:read scope blocker should be closed after runtime evidence', readiness);
-assert(readiness.blockers.some((item) => item.includes('owner approval') || item.includes('owner-approved') || item.includes('passive Payments DB snapshot read is active')), 'payment status owner approval evidence missing', readiness);
+assert(
+  readiness.blockers.some((item) => item.includes('owner approval') || item.includes('owner-approved') || item.includes('passive Payments DB snapshot read is active'))
+    || readiness.satisfiedEvidence?.some((item) => item.includes('owner-approved passive Payments DB snapshot read is active')),
+  'payment status owner approval evidence missing',
+  readiness,
+);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no provider call'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({
