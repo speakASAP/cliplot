@@ -131,10 +131,12 @@ async function main() {
 
   const paymentMapping = await getJson('/api/payments/status-mapping-ownership');
   assertEqual(paymentMapping.body?.status, 'approved_order_payment_status_mapping_ownership', 'payment_status_mapping_ownership_unexpected', { paymentMapping: paymentMapping.body });
-  assertEqual(paymentMapping.body?.decisionRecord, 'ADR-006-order-payment-status-mapping-ownership', 'payment_status_mapping_decision_record_missing', { paymentMapping: paymentMapping.body });
-  assertEqual(paymentMapping.body?.orderOwner, 'orders-microservice', 'payment_status_mapping_orders_owner_missing', { paymentMapping: paymentMapping.body });
-  assertEqual(paymentMapping.body?.paymentOwner, 'payments-microservice', 'payment_status_mapping_payments_owner_missing', { paymentMapping: paymentMapping.body });
-  assertEqual(paymentMapping.body?.cliplotAuthoritative, false, 'payment_status_mapping_cliplot_authoritative', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.decisionRecord?.id, 'ADR-006-order-payment-status-mapping-ownership', 'payment_status_mapping_decision_record_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.orders?.owner, 'orders-microservice', 'payment_status_mapping_orders_owner_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.orders?.authoritative, true, 'payment_status_mapping_orders_authoritative_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.payments?.owner, 'payments-microservice', 'payment_status_mapping_payments_owner_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.payments?.authoritative, true, 'payment_status_mapping_payments_authoritative_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.cliplot?.authoritative, false, 'payment_status_mapping_cliplot_authoritative', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.runtimeReadEnabled, true, 'payment_status_mapping_runtime_not_enabled', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.paymentsSnapshotReadEnabled, true, 'payment_status_mapping_snapshot_not_enabled', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.storageRead, false, 'payment_status_mapping_storage_read_enabled', { paymentMapping: paymentMapping.body });
