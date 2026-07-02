@@ -195,7 +195,14 @@ notification sends, and Docs/RAG ingestion gated.
   `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`,
   `persistence=false`, and `providerCall=false`. It is approval evidence only;
   it does not enable live reads, live writes, provider calls, or persistence.
-- The order/payment status mapping ownership packet is wired as
+- The read-only customer status runtime is approved for activation through
+  `ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`,
+  `ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true`, and
+  `CLIPLOT_STATUS_RUNTIME_APPROVAL_ID=owner-approved-2026-07-02-read-only-customer-status`.
+  The runtime path uses only Payments DB-only by-order-id snapshots, keeps
+  `/payments/{paymentId}` forbidden, and still keeps live order creation, live
+  payment creation, Warehouse reservation, callback persistence, local payment
+  status storage, and notification sends disabled.
   `GET /api/payments/status-mapping-ownership` and
   `npm run readiness:payment-mapping`. It records ADR-006 as proposed for
   owner approval, assigns future order lifecycle ownership to Orders, future

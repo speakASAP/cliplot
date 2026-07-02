@@ -79,16 +79,15 @@ async function main() {
   assertEqual(integrations.orderValidation, 'enabled_no_mutation', 'order_validation_not_guarded', { readiness });
   assertEqual(integrations.paymentValidation, 'enabled_no_mutation', 'payment_validation_not_guarded', { readiness });
   assertEqual(integrations.notificationValidation, 'enabled_no_send', 'notification_validation_not_guarded', { readiness });
-  assertEqual(integrations.paymentStatus, 'guarded_no_persistence', 'payment_status_not_guarded', { readiness });
+  assertEqual(integrations.paymentStatus, 'approved_read_only_snapshot', 'payment_status_not_approved_read_only', { readiness });
 
   const paymentStatus = await getJson('/api/payments/status?orderId=cliplot-readiness-monitor');
-  assertEqual(paymentStatus.body?.status, 'payment_status_guarded_no_persistence', 'payment_status_endpoint_not_guarded', { paymentStatus: paymentStatus.body });
+  assertEqual(paymentStatus.body?.status, 'payment_status_snapshot_not_available', 'payment_status_endpoint_not_approved_read_only', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.mutation, 'payment_status_mutation_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.persistence, 'payment_status_persistence_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.providerCall, 'payment_status_provider_call_enabled', { paymentStatus: paymentStatus.body });
-  assertEqual(paymentStatus.body?.runtimeReadEnabled, false, 'payment_status_runtime_read_enabled', { paymentStatus: paymentStatus.body });
-  assertEqual(paymentStatus.body?.paymentsSnapshotReadEnabled, false, 'payment_status_snapshot_read_enabled', { paymentStatus: paymentStatus.body });
-  assertEqual(paymentStatus.body?.passiveSnapshotAdapter?.active, false, 'payment_status_snapshot_adapter_active', { paymentStatus: paymentStatus.body });
+  assertEqual(paymentStatus.body?.runtimeReadEnabled, true, 'payment_status_runtime_read_not_enabled', { paymentStatus: paymentStatus.body });
+  assertEqual(paymentStatus.body?.paymentsSnapshotReadEnabled, true, 'payment_status_snapshot_read_not_enabled', { paymentStatus: paymentStatus.body });
 
   const paymentCallback = await getJson('/api/payments/callback-readiness');
   assertEqual(paymentCallback.body?.status, 'validated_guarded_ack_no_persistence', 'payment_callback_readiness_not_validated', { paymentCallback: paymentCallback.body });
@@ -105,7 +104,7 @@ async function main() {
   assertFalse(callbackPolicy.body?.providerCall, 'payment_callback_policy_provider_call_enabled', { callbackPolicy: callbackPolicy.body });
 
   const paymentStatusReadiness = await getJson('/api/payments/status-readiness');
-  assertEqual(paymentStatusReadiness.body?.status, 'blocked_pending_provider_backed_status_contract', 'payment_status_readiness_unexpected', { paymentStatusReadiness: paymentStatusReadiness.body });
+  assertEqual(paymentStatusReadiness.body?.status, 'ready_for_approved_payment_status_runtime_read', 'payment_status_readiness_unexpected', { paymentStatusReadiness: paymentStatusReadiness.body });
   assertFalse(paymentStatusReadiness.body?.mutation, 'payment_status_readiness_mutation_enabled', { paymentStatusReadiness: paymentStatusReadiness.body });
   assertFalse(paymentStatusReadiness.body?.persistence, 'payment_status_readiness_persistence_enabled', { paymentStatusReadiness: paymentStatusReadiness.body });
   assertFalse(paymentStatusReadiness.body?.providerCall, 'payment_status_readiness_provider_call_enabled', { paymentStatusReadiness: paymentStatusReadiness.body });
@@ -140,17 +139,17 @@ async function main() {
   assertFalse(paymentMapping.body?.providerCall, 'payment_status_mapping_provider_call_enabled', { paymentMapping: paymentMapping.body });
 
   const snapshotReadApproval = await getJson('/api/payments/status-snapshot-read-approval-packet');
-  assertEqual(snapshotReadApproval.body?.status, 'approval_required_passive_payments_snapshot_read', 'payment_status_snapshot_read_approval_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
-  assertEqual(snapshotReadApproval.body?.runtimeReadEnabled, false, 'payment_status_snapshot_read_runtime_enabled', { snapshotReadApproval: snapshotReadApproval.body });
+  assertEqual(snapshotReadApproval.body?.status, 'approved_passive_payments_snapshot_read', 'payment_status_snapshot_read_approval_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
+  assertEqual(snapshotReadApproval.body?.runtimeReadEnabled, true, 'payment_status_snapshot_read_runtime_not_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertEqual(snapshotReadApproval.body?.readContract?.endpoint, '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'payment_status_snapshot_read_endpoint_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.mutation, 'payment_status_snapshot_read_approval_mutation_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.persistence, 'payment_status_snapshot_read_approval_persistence_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.providerCall, 'payment_status_snapshot_read_approval_provider_call_enabled', { snapshotReadApproval: snapshotReadApproval.body });
 
   const statusRuntimeReadiness = await getJson('/api/payments/status-runtime-readiness');
-  assertEqual(statusRuntimeReadiness.body?.status, 'blocked_payments_snapshot_runtime_read', 'payment_status_runtime_readiness_unexpected', { statusRuntimeReadiness: statusRuntimeReadiness.body });
-  assertEqual(statusRuntimeReadiness.body?.runtimeReadEnabled, false, 'payment_status_runtime_readiness_runtime_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
-  assertEqual(statusRuntimeReadiness.body?.paymentsSnapshotReadEnabled, false, 'payment_status_runtime_readiness_snapshot_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.status, 'ready_for_approved_payments_snapshot_runtime_read', 'payment_status_runtime_readiness_unexpected', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.runtimeReadEnabled, true, 'payment_status_runtime_readiness_runtime_not_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.paymentsSnapshotReadEnabled, true, 'payment_status_runtime_readiness_snapshot_not_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
   assertEqual(statusRuntimeReadiness.body?.storageRead, false, 'payment_status_runtime_readiness_storage_read_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
   assertEqual(statusRuntimeReadiness.body?.callbackPersistence, false, 'payment_status_runtime_readiness_callback_persistence_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
   assertFalse(statusRuntimeReadiness.body?.mutation, 'payment_status_runtime_readiness_mutation_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
@@ -159,45 +158,45 @@ async function main() {
   assertEqual(statusRuntimeReadiness.body?.readContract?.forbiddenEndpoint, '/payments/{paymentId}', 'payment_status_runtime_readiness_forbidden_endpoint_missing', { statusRuntimeReadiness: statusRuntimeReadiness.body });
 
   const checkoutStatusSurface = await getJson('/api/checkout/status-surface-contract');
-  assertEqual(checkoutStatusSurface.body?.status, 'guarded_customer_status_surface_contract', 'checkout_status_surface_unexpected', { checkoutStatusSurface: checkoutStatusSurface.body });
-  assertEqual(checkoutStatusSurface.body?.runtimeReadEnabled, false, 'checkout_status_surface_runtime_read_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
-  assertEqual(checkoutStatusSurface.body?.paymentsSnapshotReadEnabled, false, 'checkout_status_surface_snapshot_read_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertEqual(checkoutStatusSurface.body?.status, 'approved_read_only_customer_status_surface_contract', 'checkout_status_surface_unexpected', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertEqual(checkoutStatusSurface.body?.runtimeReadEnabled, true, 'checkout_status_surface_runtime_read_not_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertEqual(checkoutStatusSurface.body?.paymentsSnapshotReadEnabled, true, 'checkout_status_surface_snapshot_read_not_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
   assertEqual(checkoutStatusSurface.body?.storageRead, false, 'checkout_status_surface_storage_read_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
   assertFalse(checkoutStatusSurface.body?.mutation, 'checkout_status_surface_mutation_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
   assertFalse(checkoutStatusSurface.body?.persistence, 'checkout_status_surface_persistence_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
   assertFalse(checkoutStatusSurface.body?.providerCall, 'checkout_status_surface_provider_call_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
 
   const customerStatusRollout = await getJson('/api/checkout/customer-status-runtime-rollout-plan');
-  assertEqual(customerStatusRollout.body?.status, 'approval_required_read_only_customer_status_runtime_rollout', 'customer_status_rollout_unexpected', { customerStatusRollout: customerStatusRollout.body });
-  assertEqual(customerStatusRollout.body?.runtimeReadEnabled, false, 'customer_status_rollout_runtime_read_enabled', { customerStatusRollout: customerStatusRollout.body });
-  assertEqual(customerStatusRollout.body?.paymentsSnapshotReadEnabled, false, 'customer_status_rollout_snapshot_read_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertEqual(customerStatusRollout.body?.status, 'approved_read_only_customer_status_runtime_rollout', 'customer_status_rollout_unexpected', { customerStatusRollout: customerStatusRollout.body });
+  assertEqual(customerStatusRollout.body?.runtimeReadEnabled, true, 'customer_status_rollout_runtime_read_not_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertEqual(customerStatusRollout.body?.paymentsSnapshotReadEnabled, true, 'customer_status_rollout_snapshot_read_not_enabled', { customerStatusRollout: customerStatusRollout.body });
   assertEqual(customerStatusRollout.body?.storageRead, false, 'customer_status_rollout_storage_read_enabled', { customerStatusRollout: customerStatusRollout.body });
   assertFalse(customerStatusRollout.body?.mutation, 'customer_status_rollout_mutation_enabled', { customerStatusRollout: customerStatusRollout.body });
   assertFalse(customerStatusRollout.body?.persistence, 'customer_status_rollout_persistence_enabled', { customerStatusRollout: customerStatusRollout.body });
   assertFalse(customerStatusRollout.body?.providerCall, 'customer_status_rollout_provider_call_enabled', { customerStatusRollout: customerStatusRollout.body });
 
   const customerStatusActivation = await getJson('/api/checkout/customer-status-runtime-activation-gate');
-  assertEqual(customerStatusActivation.body?.status, 'blocked_read_only_customer_status_runtime_activation', 'customer_status_activation_unexpected', { customerStatusActivation: customerStatusActivation.body });
-  assertEqual(customerStatusActivation.body?.runtimeReadEnabled, false, 'customer_status_activation_runtime_read_enabled', { customerStatusActivation: customerStatusActivation.body });
-  assertEqual(customerStatusActivation.body?.paymentsSnapshotReadEnabled, false, 'customer_status_activation_snapshot_read_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.status, 'ready_for_approved_read_only_customer_status_runtime', 'customer_status_activation_unexpected', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.runtimeReadEnabled, true, 'customer_status_activation_runtime_read_not_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.paymentsSnapshotReadEnabled, true, 'customer_status_activation_snapshot_read_not_enabled', { customerStatusActivation: customerStatusActivation.body });
   assertEqual(customerStatusActivation.body?.storageRead, false, 'customer_status_activation_storage_read_enabled', { customerStatusActivation: customerStatusActivation.body });
   assertEqual(customerStatusActivation.body?.callbackPersistence, false, 'customer_status_activation_callback_persistence_enabled', { customerStatusActivation: customerStatusActivation.body });
-  assertEqual(customerStatusActivation.body?.wouldReadPaymentsSnapshot, false, 'customer_status_activation_would_read_snapshot', { customerStatusActivation: customerStatusActivation.body });
-  assertEqual(customerStatusActivation.body?.wouldRenderRuntimeCustomerStatus, false, 'customer_status_activation_would_render_runtime_status', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.wouldReadPaymentsSnapshot, true, 'customer_status_activation_would_not_read_snapshot', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.wouldRenderRuntimeCustomerStatus, true, 'customer_status_activation_would_not_render_runtime_status', { customerStatusActivation: customerStatusActivation.body });
   assertFalse(customerStatusActivation.body?.wouldMutate, 'customer_status_activation_mutation_enabled', { customerStatusActivation: customerStatusActivation.body });
   assertFalse(customerStatusActivation.body?.persistence, 'customer_status_activation_persistence_enabled', { customerStatusActivation: customerStatusActivation.body });
   assertFalse(customerStatusActivation.body?.providerCall, 'customer_status_activation_provider_call_enabled', { customerStatusActivation: customerStatusActivation.body });
   assertEqual(customerStatusActivation.body?.approvedReadContract?.forbiddenEndpoint, '/payments/{paymentId}', 'customer_status_activation_forbidden_endpoint_missing', { customerStatusActivation: customerStatusActivation.body });
 
   const customerStatusApproval = await getJson('/api/checkout/customer-status-approval-evidence-packet');
-  assertEqual(customerStatusApproval.body?.status, 'approval_required_customer_status_runtime_evidence_packet', 'customer_status_approval_evidence_unexpected', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.status, 'approved_customer_status_runtime_evidence_packet', 'customer_status_approval_evidence_unexpected', { customerStatusApproval: customerStatusApproval.body });
   assertEqual(customerStatusApproval.body?.baselineGuarded, true, 'customer_status_approval_baseline_not_guarded', { customerStatusApproval: customerStatusApproval.body });
-  assertEqual(customerStatusApproval.body?.runtimeReadEnabled, false, 'customer_status_approval_runtime_read_enabled', { customerStatusApproval: customerStatusApproval.body });
-  assertEqual(customerStatusApproval.body?.paymentsSnapshotReadEnabled, false, 'customer_status_approval_snapshot_read_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.runtimeReadEnabled, true, 'customer_status_approval_runtime_read_not_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.paymentsSnapshotReadEnabled, true, 'customer_status_approval_snapshot_read_not_enabled', { customerStatusApproval: customerStatusApproval.body });
   assertEqual(customerStatusApproval.body?.storageRead, false, 'customer_status_approval_storage_read_enabled', { customerStatusApproval: customerStatusApproval.body });
   assertEqual(customerStatusApproval.body?.callbackPersistence, false, 'customer_status_approval_callback_persistence_enabled', { customerStatusApproval: customerStatusApproval.body });
-  assertEqual(customerStatusApproval.body?.wouldReadPaymentsSnapshot, false, 'customer_status_approval_would_read_snapshot', { customerStatusApproval: customerStatusApproval.body });
-  assertEqual(customerStatusApproval.body?.wouldRenderRuntimeCustomerStatus, false, 'customer_status_approval_would_render_runtime_status', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.wouldReadPaymentsSnapshot, true, 'customer_status_approval_would_not_read_snapshot', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.wouldRenderRuntimeCustomerStatus, true, 'customer_status_approval_would_not_render_runtime_status', { customerStatusApproval: customerStatusApproval.body });
   assertFalse(customerStatusApproval.body?.mutation, 'customer_status_approval_mutation_enabled', { customerStatusApproval: customerStatusApproval.body });
   assertFalse(customerStatusApproval.body?.persistence, 'customer_status_approval_persistence_enabled', { customerStatusApproval: customerStatusApproval.body });
   assertFalse(customerStatusApproval.body?.providerCall, 'customer_status_approval_provider_call_enabled', { customerStatusApproval: customerStatusApproval.body });

@@ -24,29 +24,21 @@ assert(response.status === 200 && gate.success, 'customer status runtime activat
   httpStatus: response.status,
   status: gate.status,
 });
-assert(gate.status === 'blocked_read_only_customer_status_runtime_activation', 'customer status runtime activation should remain blocked before approval', gate);
+const approved = gate.status === 'ready_for_approved_read_only_customer_status_runtime';
+assert(approved || gate.status === 'blocked_read_only_customer_status_runtime_activation', 'customer status runtime activation status unexpected', gate);
 assert(gate.mutation === false, 'activation gate reported mutation', gate);
 assert(gate.persistence === false, 'activation gate reported persistence', gate);
 assert(gate.providerCall === false, 'activation gate reported provider call', gate);
-assert(gate.runtimeReadEnabled === false, 'runtime read unexpectedly enabled', gate);
-assert(gate.paymentsSnapshotReadEnabled === false, 'payments snapshot read unexpectedly enabled', gate);
 assert(gate.storageRead === false, 'storage read unexpectedly enabled', gate);
 assert(gate.callbackPersistence === false, 'callback persistence unexpectedly enabled', gate);
-assert(gate.approvedRuntimeChange === false, 'runtime change unexpectedly approved', gate);
-assert(gate.wouldReadPaymentsSnapshot === false, 'activation gate would read Payments snapshot before approval', gate);
-assert(gate.wouldRenderRuntimeCustomerStatus === false, 'activation gate would render runtime customer status before approval', gate);
 assert(gate.wouldMutate === false, 'activation gate would mutate', gate);
-assert(gate.partialEnablement === false, 'default guarded deployment should not be partially enabled', gate);
-assert(gate.runtimeFlags?.customerStatusRuntimeRead === false, 'customer status runtime flag unexpectedly enabled', gate);
-assert(gate.runtimeFlags?.paymentStatusSnapshotRead === false, 'payment snapshot read flag unexpectedly enabled', gate);
-assert(gate.runtimeFlags?.statusRuntimeApprovalPresent === false, 'status runtime approval unexpectedly present', gate);
 assert(gate.liveMutationGuards?.requested === false, 'live mutation requested during status activation readiness', gate);
 assert(gate.liveMutationGuards?.liveOrderSubmit === false, 'live order submit unexpectedly enabled', gate);
 assert(gate.liveMutationGuards?.livePaymentCreate === false, 'live payment create unexpectedly enabled', gate);
 assert(gate.liveMutationGuards?.liveNotifications === false, 'live notifications unexpectedly enabled', gate);
-assert(gate.currentBaseline?.rollout === 'approval_required_read_only_customer_status_runtime_rollout', 'rollout baseline missing', gate);
-assert(gate.currentBaseline?.surface === 'guarded_customer_status_surface_contract', 'status surface baseline missing', gate);
-assert(gate.currentBaseline?.snapshotReadApproval === 'approval_required_passive_payments_snapshot_read', 'snapshot read approval baseline missing', gate);
+assert(['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(gate.currentBaseline?.rollout), 'rollout baseline missing', gate);
+assert(['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(gate.currentBaseline?.surface), 'status surface baseline missing', gate);
+assert(['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(gate.currentBaseline?.snapshotReadApproval), 'snapshot read approval baseline missing', gate);
 assert(gate.currentBaseline?.paymentReadScope === 'validated_payments_read_scope_no_mutation', 'payment read scope baseline missing', gate);
 assert(gate.approvedReadContract?.endpoint === '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'approved read contract endpoint changed', gate);
 assert(gate.approvedReadContract?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider-refresh endpoint missing', gate);
@@ -55,8 +47,24 @@ assert(Array.isArray(gate.requiredRuntimeFlags) && gate.requiredRuntimeFlags.inc
 assert(gate.requiredRuntimeFlags.includes('ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true'), 'payment snapshot runtime flag requirement missing', gate);
 assert(Array.isArray(gate.requiredApprovalIds) && gate.requiredApprovalIds.includes('CLIPLOT_STATUS_RUNTIME_APPROVAL_ID'), 'status runtime approval id requirement missing', gate);
 assert(Array.isArray(gate.mustRemainFalseBeforeActivation) && gate.mustRemainFalseBeforeActivation.includes('provider-backed /payments/{paymentId} reads'), 'provider-refresh guard missing', gate);
-assert(Array.isArray(gate.blockers) && gate.blockers.some((item) => item.includes('CLIPLOT_STATUS_RUNTIME_APPROVAL_ID')), 'approval id blocker missing', gate);
-assert(gate.blockers.some((item) => item.includes('owner approval')), 'owner approval blocker missing', gate);
+if (approved) {
+  assert(gate.runtimeReadEnabled === true, 'approved runtime read not enabled', gate);
+  assert(gate.paymentsSnapshotReadEnabled === true, 'approved snapshot read not enabled', gate);
+  assert(gate.approvedRuntimeChange === true, 'approved runtime change missing', gate);
+  assert(gate.wouldReadPaymentsSnapshot === true, 'approved activation would not read snapshot', gate);
+  assert(gate.wouldRenderRuntimeCustomerStatus === true, 'approved activation would not render runtime status', gate);
+  assert(gate.runtimeFlags?.customerStatusRuntimeRead === true, 'approved customer status flag missing', gate);
+  assert(gate.runtimeFlags?.paymentStatusSnapshotRead === true, 'approved snapshot flag missing', gate);
+  assert(gate.runtimeFlags?.statusRuntimeApprovalPresent === true, 'approved status runtime approval missing', gate);
+  assert(Array.isArray(gate.blockers) && gate.blockers.length === 0, 'approved activation still has blockers', gate);
+} else {
+  assert(gate.runtimeReadEnabled === false, 'blocked runtime read unexpectedly enabled', gate);
+  assert(gate.paymentsSnapshotReadEnabled === false, 'blocked snapshot read unexpectedly enabled', gate);
+  assert(gate.approvedRuntimeChange === false, 'blocked runtime change unexpectedly approved', gate);
+  assert(gate.wouldReadPaymentsSnapshot === false, 'blocked activation would read Payments snapshot', gate);
+  assert(gate.wouldRenderRuntimeCustomerStatus === false, 'blocked activation would render runtime customer status', gate);
+  assert(Array.isArray(gate.blockers) && gate.blockers.length > 0, 'blocked activation missing blockers', gate);
+}
 
 console.log(JSON.stringify({
   ok: true,

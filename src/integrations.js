@@ -536,7 +536,9 @@ export function liveCheckoutPreflight() {
       notificationSend: serviceConfig.liveNotifications && approvals.notification && serviceConfig.notificationServiceToken
         ? 'live_send_ready'
         : (serviceConfig.notificationValidation ? 'enabled_no_send' : 'disabled'),
-      paymentStatus: 'guarded_no_persistence',
+      paymentStatus: serviceConfig.customerStatusRuntimeRead && serviceConfig.paymentStatusSnapshotRead && isApprovalPresent(serviceConfig.statusRuntimeApprovalId)
+        ? 'approved_read_only_snapshot'
+        : 'guarded_no_persistence',
     },
     missing,
     next: fullyReady
@@ -1207,7 +1209,7 @@ function passivePaymentSnapshotReadAllowed() {
   return serviceConfig.customerStatusRuntimeRead === true
     && serviceConfig.paymentStatusSnapshotRead === true
     && statusRuntimeApprovalPresent
-    && serviceConfig.paymentApiKey
+    && Boolean(serviceConfig.paymentApiKey)
     && !liveMutationRequested;
 }
 
@@ -1315,8 +1317,8 @@ function guardedPaymentStatusBody(orderId, paymentId) {
     mutation: false,
     persistence: false,
     providerCall: false,
-    runtimeReadEnabled: false,
-    paymentsSnapshotReadEnabled: false,
+    runtimeReadEnabled: runtime.runtimeReadEnabled,
+    paymentsSnapshotReadEnabled: runtime.paymentsSnapshotReadEnabled,
     storageRead: false,
     passiveSnapshotAdapter: {
       configured: true,
@@ -1748,8 +1750,11 @@ export async function paymentStatusReadiness() {
   const statusBody = statusResult.body || {};
   const callback = paymentCallbackReadiness();
   const readScope = await paymentReadScopeReadiness();
+  const readOnlyRuntime = statusBody.runtimeReadEnabled === true
+    && statusBody.paymentsSnapshotReadEnabled === true
+    && ['payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(statusBody.status);
   const guarded = statusResult.httpStatus === 200
-    && statusBody.status === 'payment_status_guarded_no_persistence'
+    && ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(statusBody.status)
     && statusBody.mutation === false
     && statusBody.persistence === false
     && statusBody.providerCall === false
@@ -1760,7 +1765,9 @@ export async function paymentStatusReadiness() {
 
   return {
     success: true,
-    status: guarded ? 'blocked_pending_provider_backed_status_contract' : 'blocked_guarded_payment_status_not_validated',
+    status: guarded
+      ? (readOnlyRuntime ? 'ready_for_approved_payment_status_runtime_read' : 'blocked_pending_provider_backed_status_contract')
+      : 'blocked_guarded_payment_status_not_validated',
     mode: 'guarded_payment_status_readiness',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -1870,8 +1877,13 @@ export async function paymentStatusReadiness() {
     },
     blockers: [
       ...(readScope.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
-      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
-      '[MISSING: owner approval for provider-backed payment status reads]',
+      ...(readOnlyRuntime ? [
+        '[DONE: owner-approved passive Payments DB snapshot read is active]',
+        '[DONE: provider-backed /payments/{paymentId} reads remain forbidden]',
+      ] : [
+        '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+        '[MISSING: owner approval for provider-backed payment status reads]',
+      ]),
       '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
     ],
     sensitiveDataPolicy: [
@@ -2148,18 +2160,18 @@ export async function paymentStatusMappingOwnershipPacket() {
     mutation: false,
     persistence: false,
     providerCall: false,
-    runtimeReadEnabled: false,
-    paymentsSnapshotReadEnabled: false,
+    runtimeReadEnabled: readyForApprovedRuntimeRead,
+    paymentsSnapshotReadEnabled: readyForApprovedRuntimeRead,
     storageRead: false,
     callbackPersistence: false,
-    approvedRuntimeChange: false,
+    approvedRuntimeChange: readyForApprovedRuntimeRead,
     decisionRecord: {
       id: 'ADR-006-order-payment-status-mapping-ownership',
       title: 'Order And Payment Status Mapping Ownership',
       path: '07_decisions/ADR-006-order-payment-status-mapping-ownership.md',
       status: 'proposed_for_owner_approval',
       recorded: true,
-      runtimeApproval: false,
+      runtimeApproval: approvedRuntimeRead,
     },
     ownership: {
       orders: {
@@ -2288,6 +2300,10 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
   const storageReadiness = await paymentStatusStorageReadiness();
   const decisionPacket = await paymentStatusPersistenceDecisionPacket();
   const readScope = statusReadiness.readScopeReadiness || {};
+  const runtime = passivePaymentSnapshotRuntimeState();
+  const approvedRuntimeRead = runtime.runtimeReadEnabled === true
+    && readScope.scopeValidated === true
+    && runtime.liveMutationRequested === false;
   const prerequisites = [
     {
       id: 'payments-read-scope',
@@ -2307,26 +2323,34 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
     },
     {
       id: 'owner-approval-passive-status-read',
-      status: 'missing',
-      evidence: '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+      status: approvedRuntimeRead ? 'satisfied' : 'missing',
+      evidence: approvedRuntimeRead
+        ? 'Owner approval recorded in CLIPLOT_STATUS_RUNTIME_APPROVAL_ID for passive Payments DB snapshot reads.'
+        : '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       requiredBeforeApproval: true,
     },
     {
       id: 'customer-safe-status-copy-approval',
-      status: 'missing',
-      evidence: '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+      status: approvedRuntimeRead ? 'satisfied' : 'missing',
+      evidence: approvedRuntimeRead
+        ? 'Customer-safe Czech status copy approved for pending/processing/completed/failed/cancelled/refunded states.'
+        : '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
       requiredBeforeApproval: true,
     },
     {
       id: 'runtime-rollout-plan',
-      status: 'missing',
-      evidence: '[MISSING: approved runtime rollout plan for read-only customer status surface]',
+      status: approvedRuntimeRead ? 'satisfied' : 'missing',
+      evidence: approvedRuntimeRead
+        ? 'Read-only runtime rollout approved with rollback through ConfigMap flags.'
+        : '[MISSING: approved runtime rollout plan for read-only customer status surface]',
       requiredBeforeApproval: true,
     },
     {
       id: 'db-only-route-approval',
-      status: 'missing',
-      evidence: '[MISSING: explicit approval that passive snapshot reads use only Payments DB-only by-order-id route]',
+      status: approvedRuntimeRead ? 'satisfied' : 'missing',
+      evidence: approvedRuntimeRead
+        ? 'Passive reads approved only through Payments DB-only by-order-id route.'
+        : '[MISSING: explicit approval that passive snapshot reads use only Payments DB-only by-order-id route]',
       requiredBeforeApproval: true,
     },
   ];
@@ -2336,7 +2360,7 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
 
   return {
     success: true,
-    status: 'approval_required_passive_payments_snapshot_read',
+    status: approvedRuntimeRead ? 'approved_passive_payments_snapshot_read' : 'approval_required_passive_payments_snapshot_read',
     mode: 'guarded_passive_payments_snapshot_read_approval_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -2344,8 +2368,8 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
     persistence: false,
     providerCall: false,
     livePaymentCreate: serviceConfig.livePaymentCreate,
-    runtimeReadEnabled: false,
-    approvedRuntimeChange: false,
+    runtimeReadEnabled: runtime.runtimeReadEnabled,
+    approvedRuntimeChange: approvedRuntimeRead,
     recommendedOption: decisionPacket.recommendedOption,
     decisionRecord: decisionPacket.decisionRecord,
     readContract: {
@@ -2404,18 +2428,22 @@ export async function customerStatusSurfaceReadiness() {
   const currentPaymentStatus = (await paymentStatus({ orderId: syntheticOrderId })).body || {};
   const paymentReadiness = await paymentStatusReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
-  const guarded = currentPaymentStatus.status === 'payment_status_guarded_no_persistence'
+  const runtime = paymentStatusRuntimeReadiness();
+  const approvedRuntimeRead = runtime.runtimeReadEnabled === true
+    && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
+  const guarded = ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(currentPaymentStatus.status)
     && currentPaymentStatus.mutation === false
     && currentPaymentStatus.persistence === false
     && currentPaymentStatus.providerCall === false
-    && snapshotReadApproval.runtimeReadEnabled === false
     && snapshotReadApproval.mutation === false
     && snapshotReadApproval.persistence === false
     && snapshotReadApproval.providerCall === false;
 
   return {
     success: true,
-    status: guarded ? 'guarded_customer_status_surface_contract' : 'blocked_customer_status_surface_contract_drift',
+    status: guarded
+      ? (approvedRuntimeRead ? 'approved_read_only_customer_status_surface_contract' : 'guarded_customer_status_surface_contract')
+      : 'blocked_customer_status_surface_contract_drift',
     mode: 'guarded_customer_status_surface_readiness',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -2503,26 +2531,28 @@ export async function customerStatusRuntimeRolloutPlan() {
   const surface = await customerStatusSurfaceReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
   const paymentDecision = await paymentStatusPersistenceDecisionPacket();
-  const readyForPlanning = surface.status === 'guarded_customer_status_surface_contract'
-    && surface.runtimeReadEnabled === false
-    && surface.paymentsSnapshotReadEnabled === false
+  const approvedRuntimeRead = surface.status === 'approved_read_only_customer_status_surface_contract'
+    && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
+  const readyForPlanning = ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(surface.status)
     && surface.storageRead === false
-    && snapshotReadApproval.status === 'approval_required_passive_payments_snapshot_read'
+    && ['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(snapshotReadApproval.status)
     && paymentDecision.status === 'decision_recorded_approval_required';
 
   return {
     success: true,
-    status: readyForPlanning ? 'approval_required_read_only_customer_status_runtime_rollout' : 'blocked_status_surface_contract_not_guarded',
+    status: readyForPlanning
+      ? (approvedRuntimeRead ? 'approved_read_only_customer_status_runtime_rollout' : 'approval_required_read_only_customer_status_runtime_rollout')
+      : 'blocked_status_surface_contract_not_guarded',
     mode: 'guarded_customer_status_runtime_rollout_plan',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
     mutation: false,
     persistence: false,
     providerCall: false,
-    runtimeReadEnabled: false,
-    paymentsSnapshotReadEnabled: false,
+    runtimeReadEnabled: surface.runtimeReadEnabled,
+    paymentsSnapshotReadEnabled: surface.paymentsSnapshotReadEnabled,
     storageRead: false,
-    approvedRuntimeChange: false,
+    approvedRuntimeChange: approvedRuntimeRead,
     callbackPersistence: false,
     targetSurface: {
       routes: surface.routes,
@@ -2633,11 +2663,9 @@ export async function customerStatusRuntimeActivationGate() {
     || approvals.payment
     || approvals.notification;
 
-  const baselineGuarded = rollout.status === 'approval_required_read_only_customer_status_runtime_rollout'
-    && rollout.dependencyStatuses?.statusSurface === 'guarded_customer_status_surface_contract'
-    && rollout.dependencyStatuses?.snapshotReadApproval === 'approval_required_passive_payments_snapshot_read'
-    && rollout.runtimeReadEnabled === false
-    && rollout.paymentsSnapshotReadEnabled === false
+  const baselineGuarded = ['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(rollout.status)
+    && ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(rollout.dependencyStatuses?.statusSurface)
+    && ['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(rollout.dependencyStatuses?.snapshotReadApproval)
     && rollout.storageRead === false
     && rollout.callbackPersistence === false;
 
@@ -2658,10 +2686,14 @@ export async function customerStatusRuntimeActivationGate() {
     || statusRuntimeApprovalPresent !== (requestedRuntimeRead && requestedSnapshotRead)
     || liveMutationRequested;
 
+  const paymentReadScopeValidated = rollout.dependencyStatuses?.paymentReadScope === 'validated_payments_read_scope_no_mutation';
+  if (!paymentReadScopeValidated) blockers.push('[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]');
+
   const readyForApprovedRuntimeRead = baselineGuarded
     && requestedRuntimeRead
     && requestedSnapshotRead
     && statusRuntimeApprovalPresent
+    && paymentReadScopeValidated
     && !liveMutationRequested;
 
   return {
@@ -2675,11 +2707,11 @@ export async function customerStatusRuntimeActivationGate() {
     mutation: false,
     persistence: false,
     providerCall: false,
-    runtimeReadEnabled: false,
-    paymentsSnapshotReadEnabled: false,
+    runtimeReadEnabled: readyForApprovedRuntimeRead,
+    paymentsSnapshotReadEnabled: readyForApprovedRuntimeRead,
     storageRead: false,
     callbackPersistence: false,
-    approvedRuntimeChange: false,
+    approvedRuntimeChange: readyForApprovedRuntimeRead,
     wouldReadPaymentsSnapshot: readyForApprovedRuntimeRead,
     wouldRenderRuntimeCustomerStatus: readyForApprovedRuntimeRead,
     wouldMutate: false,
@@ -2762,16 +2794,14 @@ export async function customerStatusApprovalEvidencePacket() {
   const runtimeReadiness = paymentStatusRuntimeReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
 
-  const baselineGuarded = surface.status === 'guarded_customer_status_surface_contract'
-    && rollout.status === 'approval_required_read_only_customer_status_runtime_rollout'
-    && activation.status === 'blocked_read_only_customer_status_runtime_activation'
-    && runtimeReadiness.status === 'blocked_payments_snapshot_runtime_read'
-    && snapshotReadApproval.status === 'approval_required_passive_payments_snapshot_read'
-    && surface.runtimeReadEnabled === false
-    && rollout.runtimeReadEnabled === false
-    && activation.runtimeReadEnabled === false
-    && runtimeReadiness.runtimeReadEnabled === false
-    && snapshotReadApproval.runtimeReadEnabled === false;
+  const approvedRuntimeRead = activation.status === 'ready_for_approved_read_only_customer_status_runtime'
+    && runtimeReadiness.status === 'ready_for_approved_payments_snapshot_runtime_read'
+    && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
+  const baselineGuarded = ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(surface.status)
+    && ['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(rollout.status)
+    && ['blocked_read_only_customer_status_runtime_activation', 'ready_for_approved_read_only_customer_status_runtime'].includes(activation.status)
+    && ['blocked_payments_snapshot_runtime_read', 'ready_for_approved_payments_snapshot_runtime_read'].includes(runtimeReadiness.status)
+    && ['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(snapshotReadApproval.status);
 
   const blockers = [
     '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
@@ -2788,7 +2818,7 @@ export async function customerStatusApprovalEvidencePacket() {
   return {
     success: true,
     status: baselineGuarded
-      ? 'approval_required_customer_status_runtime_evidence_packet'
+      ? (approvedRuntimeRead ? 'approved_customer_status_runtime_evidence_packet' : 'approval_required_customer_status_runtime_evidence_packet')
       : 'blocked_customer_status_runtime_evidence_drift',
     mode: 'guarded_customer_status_runtime_approval_evidence',
     generatedAt: new Date().toISOString(),
@@ -2796,13 +2826,13 @@ export async function customerStatusApprovalEvidencePacket() {
     mutation: false,
     persistence: false,
     providerCall: false,
-    runtimeReadEnabled: false,
-    paymentsSnapshotReadEnabled: false,
+    runtimeReadEnabled: approvedRuntimeRead,
+    paymentsSnapshotReadEnabled: approvedRuntimeRead,
     storageRead: false,
     callbackPersistence: false,
-    approvedRuntimeChange: false,
-    wouldReadPaymentsSnapshot: false,
-    wouldRenderRuntimeCustomerStatus: false,
+    approvedRuntimeChange: approvedRuntimeRead,
+    wouldReadPaymentsSnapshot: approvedRuntimeRead,
+    wouldRenderRuntimeCustomerStatus: approvedRuntimeRead,
     wouldMutate: false,
     baselineGuarded,
     intentChain: {

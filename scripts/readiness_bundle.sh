@@ -109,7 +109,7 @@ process.stdin.on("end", () => {
     && integrations.paymentValidation === "enabled_no_mutation"
     && integrations.notificationValidation === "enabled_no_send"
     && validation.warehouseReservation === "readiness_check_available"
-    && integrations.paymentStatus === "guarded_no_persistence";
+    && integrations.paymentStatus === "approved_read_only_snapshot";
   if (!guarded) process.exit(1);
 });
 '

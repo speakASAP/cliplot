@@ -401,6 +401,18 @@ or read payment rows.
 npm run readiness:payment-mapping -- https://cliplot.alfares.cz
 ```
 
+## Approved Read-Only Customer Status Runtime
+
+Production may run the customer status surface in approved read-only mode with
+`ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`,
+`ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true`, and
+`CLIPLOT_STATUS_RUNTIME_APPROVAL_ID=owner-approved-2026-07-02-read-only-customer-status`.
+This mode allows only `GET /payments/status/by-order-id?applicationId=cliplot&orderId={orderId}`
+through Payments and must continue returning `mutation=false`,
+`persistence=false`, `providerCall=false`, `storageRead=false`, and
+`callbackPersistence=false`. `GET /payments/{paymentId}` remains forbidden for
+Cliplot passive customer status.
+
 ## Operator Readiness Bundle
 
 Run the read-only bundle before handoff or live-mutation approval reviews:

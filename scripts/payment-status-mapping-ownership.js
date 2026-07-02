@@ -44,8 +44,8 @@ assert(packet.ownership?.cliplot?.owner === 'cliplot', 'Cliplot role missing', p
 assert(packet.ownership?.cliplot?.authoritative === false, 'Cliplot must remain non-authoritative', packet);
 assert(packet.currentEvidence?.paymentDecision === 'decision_recorded_approval_required', 'payment decision evidence missing', packet);
 assert(packet.currentEvidence?.callbackReplayPolicy === 'approval_required_callback_replay_policy', 'callback replay policy evidence missing', packet);
-assert(packet.currentEvidence?.snapshotReadApproval === 'approval_required_passive_payments_snapshot_read', 'snapshot-read evidence missing', packet);
-assert(packet.currentEvidence?.runtimeReadiness === 'blocked_payments_snapshot_runtime_read', 'runtime readiness evidence missing', packet);
+assert(['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(packet.currentEvidence?.snapshotReadApproval), 'snapshot-read evidence missing', packet);
+assert(['blocked_payments_snapshot_runtime_read', 'ready_for_approved_payments_snapshot_runtime_read'].includes(packet.currentEvidence?.runtimeReadiness), 'runtime readiness evidence missing', packet);
 assert(packet.currentEvidence?.currentStatusPersistence === false, 'current status persistence unexpectedly enabled', packet);
 assert(packet.currentEvidence?.callbackPersistence === false, 'callback persistence evidence missing', packet);
 assert(packet.currentEvidence?.storageRead === false, 'storage read evidence missing', packet);
