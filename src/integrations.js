@@ -345,17 +345,26 @@ export function liveCheckoutPreflight() {
     notification: serviceConfig.liveNotifications,
   };
   const missing = checkoutMissingFacts();
-  const ready = liveFlags.order
+  const fullyReady = liveFlags.order
     && liveFlags.payment
     && liveFlags.notification
     && approvals.order
     && approvals.payment
     && approvals.notification
     && missing.length === 0;
+  const wouldCreateOrder = liveFlags.order && missing.length === 0;
+  const wouldCreatePayment = wouldCreateOrder && liveFlags.payment && approvals.payment;
+  const wouldSendNotification = false;
+  const wouldMutate = wouldCreateOrder || wouldCreatePayment || wouldSendNotification;
 
   return {
-    status: ready ? 'ready_for_approved_live_mutation' : 'blocked',
-    wouldMutate: ready,
+    status: fullyReady ? 'ready_for_approved_live_mutation' : 'blocked',
+    wouldMutate,
+    mutationPlan: {
+      wouldCreateOrder,
+      wouldCreatePayment,
+      wouldSendNotification,
+    },
     liveFlags,
     approvals,
     validation: {
@@ -366,7 +375,7 @@ export function liveCheckoutPreflight() {
       paymentStatus: 'guarded_no_persistence',
     },
     missing,
-    next: ready
+    next: fullyReady
       ? 'Live checkout can be enabled only through the approved live mutation path.'
       : 'Keep checkout guarded until all live flags, approval IDs, service tokens, and no-mutation/no-send validation evidence are present.',
   };

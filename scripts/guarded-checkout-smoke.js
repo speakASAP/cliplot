@@ -51,6 +51,9 @@ assert(preflightResponse.status === 200 && preflightPayload.success, 'live prefl
   httpStatus: preflightResponse.status,
 });
 assert(preflightPayload.liveCheckoutPreflight?.status === 'blocked' && preflightPayload.liveCheckoutPreflight?.wouldMutate === false, 'live preflight endpoint is not guarded', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, 'live preflight endpoint would create an order', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'live preflight endpoint would create a payment', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'live preflight endpoint would send a notification', preflightPayload.liveCheckoutPreflight || {});
 assert(Array.isArray(preflightPayload.liveCheckoutPreflight?.missing) && preflightPayload.liveCheckoutPreflight.missing.length >= 3, 'live preflight endpoint blockers are missing', preflightPayload.liveCheckoutPreflight || {});
 
 const externalOrderId = `cliplot-smoke-${Date.now()}`;
@@ -123,6 +126,9 @@ assert(checkout.liveMutationApprovals?.order === false, 'order approval unexpect
 assert(checkout.liveMutationApprovals?.payment === false, 'payment approval unexpectedly enabled', checkout.liveMutationApprovals || {});
 assert(checkout.liveMutationApprovals?.notification === false, 'notification approval unexpectedly enabled', checkout.liveMutationApprovals || {});
 assert(checkout.liveCheckoutPreflight?.status === 'blocked' && checkout.liveCheckoutPreflight?.wouldMutate === false, 'checkout live preflight is not blocked', checkout.liveCheckoutPreflight || {});
+assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, 'checkout live preflight would create an order', checkout.liveCheckoutPreflight || {});
+assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'checkout live preflight would create a payment', checkout.liveCheckoutPreflight || {});
+assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'checkout live preflight would send a notification', checkout.liveCheckoutPreflight || {});
 assert(Array.isArray(checkout.liveCheckoutPreflight?.missing) && checkout.liveCheckoutPreflight.missing.length >= 3, 'checkout live preflight blockers are missing', checkout.liveCheckoutPreflight || {});
 assert(checkout.orderValidation?.status === 'validated_no_mutation', 'order validation is not no-mutation', checkout.orderValidation || {});
 assert(checkout.paymentValidation?.status === 'validated_no_mutation', 'payment validation is not no-mutation', checkout.paymentValidation || {});
@@ -179,6 +185,7 @@ console.log(JSON.stringify({
   liveCheckoutPreflight: checkout.liveCheckoutPreflight.status,
   livePreflightEndpoint: preflightPayload.liveCheckoutPreflight.status,
   wouldMutate: checkout.liveCheckoutPreflight.wouldMutate,
+  mutationPlan: checkout.liveCheckoutPreflight.mutationPlan,
   warehouseId: product.warehouseId,
   checkoutHttpStatus: checkoutResponse.status,
   checkoutStatus: checkout.status,
