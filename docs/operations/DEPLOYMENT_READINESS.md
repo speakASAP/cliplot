@@ -38,6 +38,7 @@ present.
 - `ENABLE_LIVE_PAYMENT_CREATE` remains `false`.
 - `ENABLE_LIVE_NOTIFICATIONS` remains `false`.
 - `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` remains `false`.
+- The live Orders/Warehouse smoke execution checklist must return `approval_required_live_order_warehouse_smoke_execution`, keep `liveExecutionAllowed=false`, `mutation=false`, `persistence=false`, and `providerCall=false`, and list `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true` plus `CREATE_REPLAY_CANCEL` request-body blockers before any bounded smoke run.
 - `cliplot-secret` is mounted as optional.
 - `k8s/external-secret.yaml` maps planned keys from
   `secret/prod/cliplot`.

@@ -15,6 +15,7 @@ import {
   liveCheckoutApprovalPacket,
   liveCheckoutPreflight,
   liveOrderWarehouseSmokePlan,
+  liveOrderWarehouseSmokeExecutionChecklistPacket,
   orderWarehouseReadinessReport,
   revenueClosurePacket,
   paymentCallbackReadiness,
@@ -267,6 +268,36 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/revenue-closure-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-create-replay-cancel-contract-packet' && req.method === 'GET') {
+      sendJson(res, 200, await liveOrderWarehouseSmokeExecutionChecklistPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-create-replay-cancel-contract-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-smoke-execution-checklist-packet' && req.method === 'GET') {
+      sendJson(res, 200, await liveOrderWarehouseSmokeExecutionChecklistPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-smoke-execution-checklist-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

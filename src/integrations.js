@@ -4673,6 +4673,180 @@ export async function liveOrderWarehouseSmokePlan() {
   };
 }
 
+
+export async function liveOrderWarehouseSmokeExecutionChecklistPacket() {
+  const plan = await liveOrderWarehouseSmokePlan();
+  const defaultExecutorBlockers = liveOrderWarehouseSmokeExecutionBlockers({
+    confirm: 'PLAN_ONLY',
+    approvalId: '',
+    approvedBy: '',
+    reasonCode: '',
+  }, plan);
+  const readyForBoundedWindow = plan.status === 'approved_live_order_warehouse_smoke_metadata_execution_disabled'
+    && plan.readiness?.status === 'validated_no_mutation'
+    && plan.approvals?.orderWarehouseSmoke === true
+    && plan.approvals?.orderWarehouseSmokeCleanup === true
+    && plan.approvals?.orderWarehouseSmokeWindow === true
+    && plan.approvals?.orderWarehouseSmokeRollbackOwner === true
+    && plan.approvals?.orderWarehouseSmokeValidationOwner === true
+    && !defaultExecutorBlockers.includes('missing_ORDERS_SERVICE_TOKEN')
+    && !defaultExecutorBlockers.includes('missing_ORDERS_STATUS_SERVICE_TOKEN')
+    && !defaultExecutorBlockers.includes('missing_WAREHOUSE_SERVICE_TOKEN');
+  const requiredRuntimeBody = {
+    confirm: 'CREATE_REPLAY_CANCEL',
+    approvalId: 'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID value',
+    approvedBy: '<operator id>',
+    reasonCode: 'CLIPLOT_OWNER_CREATE_REPLAY_CANCEL_SMOKE',
+    externalOrderId: 'optional owner-approved cliplot-live-smoke-* id',
+  };
+  const executionBlockers = [
+    ...(readyForBoundedWindow ? [] : ['[MISSING: live Orders/Warehouse smoke metadata and service-token readiness]']),
+    '[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]',
+    '[MISSING: executor request body confirm=CREATE_REPLAY_CANCEL]',
+    '[MISSING: executor request approvalId matches CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID]',
+    '[MISSING: executor request approvedBy operator id]',
+    '[MISSING: executor request reasonCode]',
+  ];
+
+  return {
+    success: true,
+    status: 'approval_required_live_order_warehouse_smoke_execution',
+    mode: 'read_only_live_order_warehouse_smoke_execution_checklist_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    liveExecutionAllowed: false,
+    liveOrderWarehouseSmokeFlag: serviceConfig.liveOrderWarehouseSmoke,
+    readyForBoundedWindow,
+    planStatus: plan.status,
+    metadataApprovals: {
+      orderWarehouseSmoke: plan.approvals?.orderWarehouseSmoke === true,
+      cleanup: plan.approvals?.orderWarehouseSmokeCleanup === true,
+      window: plan.approvals?.orderWarehouseSmokeWindow === true,
+      rollbackOwner: plan.approvals?.orderWarehouseSmokeRollbackOwner === true,
+      validationOwner: plan.approvals?.orderWarehouseSmokeValidationOwner === true,
+    },
+    serviceTokenReadiness: {
+      ordersServiceTokenPresent: !defaultExecutorBlockers.includes('missing_ORDERS_SERVICE_TOKEN'),
+      ordersStatusServiceTokenPresent: !defaultExecutorBlockers.includes('missing_ORDERS_STATUS_SERVICE_TOKEN'),
+      warehouseServiceTokenPresent: !defaultExecutorBlockers.includes('missing_WAREHOUSE_SERVICE_TOKEN'),
+      secretValuesPrinted: false,
+    },
+    runtimeEnablement: {
+      requiredFlag: 'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+      currentRuntimeFlagEnabled: serviceConfig.liveOrderWarehouseSmoke,
+      requiresApprovedWindow: true,
+      currentPacketEnablesRuntime: false,
+      liveExecutionAllowedNow: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    createReplayCancelContract: {
+      status: 'create_replay_cancel_contract_recorded_execution_disabled',
+      mode: 'metadata_only_no_executor_call',
+      requiredBodyFields: ['confirm=CREATE_REPLAY_CANCEL', 'approvalId', 'approvedBy', 'reasonCode', 'externalOrderId optional'],
+      requiredRuntimeState: 'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false now; true only during the owner-approved smoke window',
+      idempotencyPolicy: 'same idempotency key must return the same order; changed payload conflict must stop and require cleanup owner review',
+      cleanupContract: 'cancel only through /api/orders/{orderId}/status',
+      reservationVerification: [
+        'before Warehouse availability snapshot',
+        'reservation readback after create',
+        'availability unchanged after idempotent replay',
+        'order readback after cancel',
+        'reservation readback after cancel',
+        'after-cancel Warehouse availability restored',
+      ],
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      liveExecutionAllowed: false,
+    },
+    executorRequestChecklist: {
+      endpoint: 'POST /api/checkout/live-order-warehouse-smoke-executor',
+      requiredBody: requiredRuntimeBody,
+      confirmationValue: 'CREATE_REPLAY_CANCEL',
+      currentChecklistSendsBody: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    expectedExecutionScopeAfterApproval: {
+      objective: plan.plan?.objective,
+      createEndpoint: plan.plan?.endpoints?.createOrder,
+      replayEndpoint: plan.plan?.endpoints?.replayOrder,
+      cleanupEndpoint: plan.plan?.endpoints?.cancelOrderThroughOrders,
+      warehouseReadbackEndpoint: plan.plan?.endpoints?.warehouseReservationReadback,
+      orderReadbackEndpoint: plan.plan?.endpoints?.orderReadback,
+      stepCount: Array.isArray(plan.plan?.steps) ? plan.plan.steps.length : 0,
+      paymentCreateAllowed: false,
+      notificationSendAllowed: false,
+      callbackPersistenceAllowed: false,
+      mutationOnlyAfterApproval: true,
+    },
+    rollbackAndStopConditions: {
+      rollbackOwner: plan.plan?.rollbackOwner,
+      validationOwner: plan.plan?.validationOwner,
+      stopConditions: plan.plan?.stopConditions || [],
+      cleanupThroughOrdersOnly: true,
+      directWarehouseMutationAllowed: false,
+      requiredPostCleanupEvidence: plan.plan?.afterCancelEvidenceChecklist || [],
+    },
+    planEvidence: {
+      productId: plan.plan?.scopeEvidence?.productId || null,
+      warehouseId: plan.plan?.scopeEvidence?.warehouseId || null,
+      payloadFingerprint: plan.plan?.payloadPreview?.fingerprintSha256 || null,
+      allowedMutationWindow: plan.plan?.allowedMutationWindow || null,
+      readiness: plan.readiness?.status || null,
+      livePreflight: plan.liveCheckoutPreflight?.status || null,
+      wouldReserveWarehouseNow: plan.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === true,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    noPaymentNotificationBoundary: plan.noPaymentNotificationBoundary,
+    defaultExecutorBlockers,
+    executionBlockers: [...new Set(executionBlockers)],
+    mustRemainFalseBeforeApprovedWindow: [
+      'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+      'ENABLE_LIVE_ORDER_SUBMIT',
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'ENABLE_LIVE_NOTIFICATIONS',
+      'payment creation',
+      'notification send',
+      'callback persistence',
+      'callback replay execution',
+      'live status writes',
+      'provider-backed /payments/{paymentId} reads',
+    ],
+    forbiddenOperations: [
+      'create order',
+      'reserve Warehouse stock',
+      'replay order create',
+      'cancel order',
+      'create payment',
+      'send notification',
+      'persist callback state',
+      'write payment status',
+      'call payment provider',
+      'print API keys or service tokens',
+      'return raw provider payloads, payment rows, customer PII, or secret values',
+    ],
+    sensitiveDataPolicy: [
+      'metadata only',
+      'no service token values',
+      'no approval id value',
+      'no real customer data',
+      'synthetic external order id pattern only',
+      'payload fingerprint only',
+    ],
+    next: 'Open ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE only inside the approved window and call the executor with CREATE_REPLAY_CANCEL confirmation after operator approval; this checklist packet itself remains read-only.',
+  };
+}
+
+
 function liveOrderWarehouseSmokeExecutionBlockers(input, plan) {
   const blockers = [];
   if (!serviceConfig.liveOrderWarehouseSmoke) blockers.push('live_order_warehouse_smoke_flag_disabled');
@@ -5236,6 +5410,7 @@ export async function revenueClosurePacket() {
       'callback persistence rollout plan',
       'callback replay dry-run procedure',
       'live status write approval packet',
+      'live Orders/Warehouse smoke execution checklist',
       'operator rollback procedure for persisted callback/status writes',
       'validation owner checklist',
     ],

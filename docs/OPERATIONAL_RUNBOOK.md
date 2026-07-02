@@ -152,8 +152,12 @@ Before requesting owner approval for live order mutation, generate the read-only
 
 ```bash
 npm run readiness:live-smoke-plan -- https://cliplot.alfares.cz
+npm run readiness:live-smoke-execution-checklist -- https://cliplot.alfares.cz
+npm run readiness:live-smoke-contract -- https://cliplot.alfares.cz
 npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-smoke-plan
+curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-smoke-execution-checklist-packet
+curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-create-replay-cancel-contract-packet
 ```
 
 The plan must report `liveExecutionAllowed=false`, list any remaining execution blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It may return `approved_live_order_warehouse_smoke_metadata_execution_disabled` after owner metadata is recorded, but that is not permission to execute the live smoke while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
