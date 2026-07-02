@@ -80,6 +80,18 @@ export const serviceConfig = {
   paymentStatusSnapshotRead: process.env.ENABLE_PAYMENT_STATUS_SNAPSHOT_READ === 'true',
   statusRuntimeApprovalId: process.env.CLIPLOT_STATUS_RUNTIME_APPROVAL_ID || '',
   callbackReplayPolicyApprovalId: process.env.CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID || '',
+  callbackPersistenceStorageApprovalId: process.env.CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID || '',
+  callbackPersistenceRolloutApprovalId: process.env.CLIPLOT_CALLBACK_PERSISTENCE_ROLLOUT_APPROVAL_ID || '',
+  callbackReplayExecutionApprovalId: process.env.CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID || '',
+  callbackReplayExecutionWindow: process.env.CLIPLOT_CALLBACK_REPLAY_EXECUTION_WINDOW || '',
+  callbackReplayRollbackOwner: process.env.CLIPLOT_CALLBACK_REPLAY_ROLLBACK_OWNER || 'cliplot-operator',
+  callbackReplayValidationOwner: process.env.CLIPLOT_CALLBACK_REPLAY_VALIDATION_OWNER || 'cliplot-validation-owner',
+  liveStatusWriteApprovalId: process.env.CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID || '',
+  liveStatusWriteWindow: process.env.CLIPLOT_LIVE_STATUS_WRITE_WINDOW || '',
+  liveStatusWriteRollbackOwner: process.env.CLIPLOT_LIVE_STATUS_WRITE_ROLLBACK_OWNER || 'cliplot-operator',
+  liveStatusWriteValidationOwner: process.env.CLIPLOT_LIVE_STATUS_WRITE_VALIDATION_OWNER || 'cliplot-validation-owner',
+  callbackRetentionApprovalId: process.env.CLIPLOT_CALLBACK_RETENTION_APPROVAL_ID || '',
+  callbackUniquenessApprovalId: process.env.CLIPLOT_CALLBACK_UNIQUENESS_APPROVAL_ID || '',
   paymentStorageOwnershipApprovalId: process.env.CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID || '',
   statusMappingOwnershipApprovalId: process.env.CLIPLOT_STATUS_MAPPING_OWNERSHIP_APPROVAL_ID || '',
   statusMappingRollbackOwner: process.env.CLIPLOT_STATUS_MAPPING_ROLLBACK_OWNER || 'cliplot-operator',
@@ -1929,19 +1941,38 @@ export async function paymentCallbackPersistenceApprovalPacket() {
     && callbackPolicy.callbackReplayEnabled === false;
   const sharedPaymentsOwnershipApproved = storageReadiness.storage?.ownershipApproved === true
     && decisionPacket.decisionRecord?.status === 'owner_approved_shared_payments_source_of_truth';
+  const storageBackendApproved = isApprovalPresent(serviceConfig.callbackPersistenceStorageApprovalId);
+  const rolloutApproved = isApprovalPresent(serviceConfig.callbackPersistenceRolloutApprovalId);
+  const replayExecutionApproved = isApprovalPresent(serviceConfig.callbackReplayExecutionApprovalId);
+  const liveStatusWriteApproved = isApprovalPresent(serviceConfig.liveStatusWriteApprovalId);
+  const retentionApproved = isApprovalPresent(serviceConfig.callbackRetentionApprovalId);
+  const uniquenessApproved = isApprovalPresent(serviceConfig.callbackUniquenessApprovalId);
+  const callbackPersistenceMetadataApproved = guardedCallback
+    && metadataApproved
+    && sharedPaymentsOwnershipApproved
+    && storageBackendApproved
+    && rolloutApproved
+    && retentionApproved
+    && uniquenessApproved;
   const satisfiedEvidence = [
     ...(guardedCallback ? ['[DONE: guarded callback ACK validates without persistence]'] : []),
     ...(metadataApproved ? ['[DONE: callback replay/persistence metadata policy approved with execution disabled]'] : []),
     ...(sharedPaymentsOwnershipApproved ? ['[DONE: Payments-owned status storage is approved for passive DB snapshot reads]'] : []),
+    ...(storageBackendApproved ? ['[DONE: callback persistence storage backend approval metadata recorded]'] : []),
+    ...(rolloutApproved ? ['[DONE: callback persistence rollout approval metadata recorded]'] : []),
+    ...(retentionApproved ? ['[DONE: callback event retention/deletion policy approval metadata recorded]'] : []),
+    ...(uniquenessApproved ? ['[DONE: callback storage uniqueness and conflict contract approval metadata recorded]'] : []),
+    ...(replayExecutionApproved ? ['[DONE: callback replay execution rollout approval metadata recorded with execution disabled]'] : []),
+    ...(liveStatusWriteApproved ? ['[DONE: live status write approval metadata recorded with writes disabled]'] : []),
     ...(storageReadiness.satisfiedEvidence || []),
   ];
   const blockers = [
     ...(guardedCallback ? [] : ['[MISSING: guarded callback ACK no-persistence evidence]']),
     ...(metadataApproved ? [] : ['[MISSING: CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID for callback persistence/replay policy metadata]']),
-    '[MISSING: approved callback persistence storage backend approval]',
-    '[MISSING: approved callback persistence rollout plan]',
-    '[MISSING: owner approval before enabling live status writes]',
-    '[MISSING: callback replay execution rollout approval]',
+    ...(storageBackendApproved ? [] : ['[MISSING: approved callback persistence storage backend approval]']),
+    ...(rolloutApproved ? [] : ['[MISSING: approved callback persistence rollout plan]']),
+    ...(liveStatusWriteApproved ? [] : ['[MISSING: owner approval before enabling live status writes]']),
+    ...(replayExecutionApproved ? [] : ['[MISSING: callback replay execution rollout approval]']),
   ];
 
   const storageBackendProposal = {
@@ -1952,6 +1983,8 @@ export async function paymentCallbackPersistenceApprovalPacket() {
     currentApprovedReadModel: 'payments_db_snapshot_read_model',
     cliplotRole: 'non_authoritative_renderer_and_guarded_callback_ack',
     approvalIdPlaceholder: 'CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID',
+    approvalIdPresent: storageBackendApproved,
+    approvalIdFingerprint: storageBackendApproved ? stableFingerprint(serviceConfig.callbackPersistenceStorageApprovalId) : null,
     proposedRuntimeFlag: 'ENABLE_PAYMENT_CALLBACK_PERSISTENCE',
     currentRuntimeFlagEnabled: false,
     storageConfiguredNow: false,
@@ -1977,9 +2010,11 @@ export async function paymentCallbackPersistenceApprovalPacket() {
   };
 
   const rolloutPlan = {
-    status: 'proposal_metadata_recorded_approval_required',
+    status: rolloutApproved ? 'approved_callback_persistence_rollout_metadata_execution_disabled' : 'proposal_metadata_recorded_approval_required',
     mode: 'dry_run_plan_only',
     approvalIdPlaceholder: 'CLIPLOT_CALLBACK_PERSISTENCE_ROLLOUT_APPROVAL_ID',
+    approvalIdPresent: rolloutApproved,
+    approvalIdFingerprint: rolloutApproved ? stableFingerprint(serviceConfig.callbackPersistenceRolloutApprovalId) : null,
     rollbackOwner: callbackPolicy.proposedReplayPolicy?.rollbackOwner,
     validationOwner: callbackPolicy.proposedReplayPolicy?.validationOwner,
     dryRunOnlyNow: true,
@@ -2047,7 +2082,7 @@ export async function paymentCallbackPersistenceApprovalPacket() {
 
   return {
     success: true,
-    status: 'approval_required_callback_persistence_storage_backend',
+    status: callbackPersistenceMetadataApproved ? 'approved_callback_persistence_metadata_execution_disabled' : 'approval_required_callback_persistence_storage_backend',
     mode: 'read_only_callback_persistence_approval_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -2107,6 +2142,8 @@ export async function paymentCallbackPersistenceApprovalPacket() {
       conflictHandling: callbackPolicy.proposedReplayPolicy?.conflictHandling,
       orderingPolicy: callbackPolicy.proposedReplayPolicy?.orderingPolicy,
       retentionPolicy: callbackPolicy.proposedReplayPolicy?.retentionPolicy,
+      retentionApprovalPresent: retentionApproved,
+      uniquenessApprovalPresent: uniquenessApproved,
       rollbackOwner: callbackPolicy.proposedReplayPolicy?.rollbackOwner,
       validationOwner: callbackPolicy.proposedReplayPolicy?.validationOwner,
       currentPersistence: false,
@@ -2230,7 +2267,7 @@ export async function paymentCallbackPersistenceStorageContractPacket() {
     liveStatusWritesNow: false,
     livePaymentCreate: approvalPacket.livePaymentCreate,
     storageContract: {
-      status: 'proposal_metadata_recorded_approval_required',
+      status: approvalPacket.storageBackendProposal?.approvalIdPresent === true ? 'approved_callback_persistence_storage_contract_metadata_execution_disabled' : 'proposal_metadata_recorded_approval_required',
       owner: 'payments-microservice',
       model: 'payments_owned_callback_event_projection',
       schemaVersion: approvalPacket.futureCallbackPersistenceContract?.schemaVersion || 'cliplot.payment_status.v1',
@@ -2270,6 +2307,7 @@ export async function paymentCallbackPersistenceStorageContractPacket() {
     },
     retentionAndAudit: {
       retentionPolicy: approvalPacket.futureCallbackPersistenceContract?.retentionPolicy || 'approved_metadata_only_90_days_minimum_until_storage_backend_approval',
+      retentionApprovalPresent: approvalPacket.futureCallbackPersistenceContract?.retentionApprovalPresent === true,
       rawPayloadStorageAllowed: false,
       providerTransactionStorageAllowedInCliplot: false,
       customerPiiStorageAllowedInCliplot: false,
@@ -2302,6 +2340,8 @@ export async function paymentCallbackPersistenceStorageContractPacket() {
       ],
       rollbackOwner: approvalPacket.futureCallbackPersistenceContract?.rollbackOwner || '[MISSING: rollback owner]',
       validationOwner: approvalPacket.futureCallbackPersistenceContract?.validationOwner || '[MISSING: validation owner]',
+      storageApprovalRecorded: approvalPacket.storageBackendProposal?.approvalIdPresent === true,
+      rolloutApprovalRecorded: approvalPacket.rolloutPlan?.approvalIdPresent === true,
     },
     currentGuards: {
       storageConfigured: storageProposal.currentGuards?.storageConfigured,
@@ -2333,8 +2373,8 @@ export async function paymentCallbackPersistenceStorageContractPacket() {
     forbiddenOperations: approvalPacket.forbiddenOperations,
     blockers: [...new Set([
       ...(approvalPacket.blockers || []),
-      '[MISSING: approved callback event retention/deletion policy]',
-      '[MISSING: approved callback storage uniqueness and conflict contract]',
+      ...(approvalPacket.futureCallbackPersistenceContract?.retentionApprovalPresent === true ? [] : ['[MISSING: approved callback event retention/deletion policy]']),
+      ...(approvalPacket.futureCallbackPersistenceContract?.uniquenessApprovalPresent === true ? [] : ['[MISSING: approved callback storage uniqueness and conflict contract]']),
     ])],
     satisfiedEvidence: approvalPacket.satisfiedEvidence,
     sensitiveDataPolicy: [
@@ -2356,18 +2396,21 @@ export async function paymentCallbackReplayExecutionRolloutProposalPacket() {
   const persistence = await paymentCallbackPersistenceApprovalPacket();
   const storageProposal = await paymentCallbackStorageBackendProposalPacket();
 
+  const replayExecutionApprovalPresent = isApprovalPresent(serviceConfig.callbackReplayExecutionApprovalId);
+  const replayWindowPresent = isApprovalPresent(serviceConfig.callbackReplayExecutionWindow);
+  const replayOwnersPresent = isApprovalPresent(serviceConfig.callbackReplayRollbackOwner) && isApprovalPresent(serviceConfig.callbackReplayValidationOwner);
   const blockers = [
     ...(policy.callbackPolicyApproved === true ? [] : ['[MISSING: approved callback replay/persistence policy metadata]']),
-    '[MISSING: approved callback persistence storage backend approval]',
-    '[MISSING: approved callback persistence rollout plan]',
-    '[MISSING: callback replay execution rollout approval]',
-    '[MISSING: bounded callback replay execution window]',
-    '[MISSING: replay execution rollback and validation owner confirmation]',
+    ...(persistence.storageBackendProposal?.approvalIdPresent === true ? [] : ['[MISSING: approved callback persistence storage backend approval]']),
+    ...(persistence.rolloutPlan?.approvalIdPresent === true ? [] : ['[MISSING: approved callback persistence rollout plan]']),
+    ...(replayExecutionApprovalPresent ? [] : ['[MISSING: callback replay execution rollout approval]']),
+    ...(replayWindowPresent ? [] : ['[MISSING: bounded callback replay execution window]']),
+    ...(replayOwnersPresent ? [] : ['[MISSING: replay execution rollback and validation owner confirmation]']),
   ];
 
   return {
     success: true,
-    status: 'proposal_metadata_recorded_approval_required',
+    status: blockers.length === 0 ? 'approved_callback_replay_execution_metadata_execution_disabled' : 'proposal_metadata_recorded_approval_required',
     mode: 'read_only_callback_replay_execution_rollout_proposal_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -2406,9 +2449,14 @@ export async function paymentCallbackReplayExecutionRolloutProposalPacket() {
       providerCall: false,
     },
     executionWindowProposal: {
-      status: 'proposal_metadata_recorded_approval_required',
+      status: replayExecutionApprovalPresent && replayWindowPresent && replayOwnersPresent ? 'approved_callback_replay_execution_window_metadata_execution_disabled' : 'proposal_metadata_recorded_approval_required',
       mode: 'bounded_window_proposal_only',
       approvalIdPlaceholder: 'CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID',
+      approvalIdPresent: replayExecutionApprovalPresent,
+      approvalIdFingerprint: replayExecutionApprovalPresent ? stableFingerprint(serviceConfig.callbackReplayExecutionApprovalId) : null,
+      boundedWindow: replayWindowPresent ? serviceConfig.callbackReplayExecutionWindow : '[MISSING: bounded callback replay execution window]',
+      rollbackOwner: replayOwnersPresent ? serviceConfig.callbackReplayRollbackOwner : '[MISSING: replay rollback owner]',
+      validationOwner: replayOwnersPresent ? serviceConfig.callbackReplayValidationOwner : '[MISSING: replay validation owner]',
       proposedRuntimeFlag: 'ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION',
       currentRuntimeFlagEnabled: false,
       replayExecutionNow: false,
@@ -2556,21 +2604,27 @@ export async function paymentLiveStatusWriteApprovalPacket() {
       '[DONE: provider-backed payment status reads remain forbidden]',
     ] : []),
   ];
+  const liveStatusWriteApprovalPresent = isApprovalPresent(serviceConfig.liveStatusWriteApprovalId);
+  const liveStatusWriteWindowPresent = isApprovalPresent(serviceConfig.liveStatusWriteWindow);
+  const liveStatusWriteOwnersPresent = isApprovalPresent(serviceConfig.liveStatusWriteRollbackOwner) && isApprovalPresent(serviceConfig.liveStatusWriteValidationOwner);
+  const callbackPersistenceStorageApproved = callbackPersistence.storageBackendProposal?.approvalIdPresent === true;
+  const callbackPersistenceRolloutApproved = callbackPersistence.rolloutPlan?.approvalIdPresent === true;
+  const callbackReplayExecutionApproved = replayRollout.executionWindowProposal?.approvalIdPresent === true;
   const blockers = [
     ...(passiveSnapshotApproved ? [] : ['[MISSING: approved passive Payments DB snapshot read and mapping evidence]']),
     ...(writeGuardsIntact ? [] : ['[MISSING: current no-write/no-replay guard evidence]']),
-    '[MISSING: owner approval before enabling live status writes]',
-    '[MISSING: approved callback persistence storage backend approval]',
-    '[MISSING: approved callback persistence rollout plan]',
-    '[MISSING: callback replay execution rollout approval]',
-    '[MISSING: bounded live status write window]',
-    '[MISSING: validation owner checklist for live status writes]',
-    '[MISSING: rollback owner procedure for live status writes]',
+    ...(liveStatusWriteApprovalPresent ? [] : ['[MISSING: owner approval before enabling live status writes]']),
+    ...(callbackPersistenceStorageApproved ? [] : ['[MISSING: approved callback persistence storage backend approval]']),
+    ...(callbackPersistenceRolloutApproved ? [] : ['[MISSING: approved callback persistence rollout plan]']),
+    ...(callbackReplayExecutionApproved ? [] : ['[MISSING: callback replay execution rollout approval]']),
+    ...(liveStatusWriteWindowPresent ? [] : ['[MISSING: bounded live status write window]']),
+    ...(liveStatusWriteOwnersPresent ? [] : ['[MISSING: validation owner checklist for live status writes]']),
+    ...(liveStatusWriteOwnersPresent ? [] : ['[MISSING: rollback owner procedure for live status writes]']),
   ];
 
   return {
     success: true,
-    status: 'approval_required_live_status_write',
+    status: blockers.length === 0 ? 'approved_live_status_write_metadata_execution_disabled' : 'approval_required_live_status_write',
     mode: 'read_only_live_status_write_approval_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -2632,9 +2686,11 @@ export async function paymentLiveStatusWriteApprovalPacket() {
       providerCall: false,
     },
     approvalProposal: {
-      status: 'proposal_metadata_recorded_approval_required',
+      status: liveStatusWriteApprovalPresent && liveStatusWriteWindowPresent && liveStatusWriteOwnersPresent ? 'approved_live_status_write_window_metadata_execution_disabled' : 'proposal_metadata_recorded_approval_required',
       mode: 'bounded_live_status_write_window_proposal_only',
       approvalIdPlaceholder: 'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID',
+      approvalIdPresent: liveStatusWriteApprovalPresent,
+      approvalIdFingerprint: liveStatusWriteApprovalPresent ? stableFingerprint(serviceConfig.liveStatusWriteApprovalId) : null,
       proposedRuntimeFlag: 'ENABLE_PAYMENT_LIVE_STATUS_WRITE',
       currentRuntimeFlagEnabled: false,
       writeOwner: 'payments-microservice',
@@ -2694,9 +2750,9 @@ export async function paymentLiveStatusWriteApprovalPacket() {
       ENABLE_PAYMENT_CALLBACK_PERSISTENCE: false,
       ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION: false,
     },
-    rollbackOwner: '[MISSING: rollback owner procedure for live status writes]',
-    validationOwner: '[MISSING: validation owner checklist for live status writes]',
-    boundedWriteWindow: '[MISSING: approved live status write window]',
+    rollbackOwner: liveStatusWriteOwnersPresent ? serviceConfig.liveStatusWriteRollbackOwner : '[MISSING: rollback owner procedure for live status writes]',
+    validationOwner: liveStatusWriteOwnersPresent ? serviceConfig.liveStatusWriteValidationOwner : '[MISSING: validation owner checklist for live status writes]',
+    boundedWriteWindow: liveStatusWriteWindowPresent ? serviceConfig.liveStatusWriteWindow : '[MISSING: approved live status write window]',
     rollbackPlan: [
       'set ENABLE_PAYMENT_LIVE_STATUS_WRITE=false',
       'set ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION=false',
