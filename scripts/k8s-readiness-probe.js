@@ -96,7 +96,9 @@ async function main() {
   assertFalse(paymentCallback.body?.providerCall, 'payment_callback_readiness_provider_call_enabled', { paymentCallback: paymentCallback.body });
 
   const callbackPolicy = await getJson('/api/payments/callback-replay-policy');
-  assertEqual(callbackPolicy.body?.status, 'approval_required_callback_replay_policy', 'payment_callback_replay_policy_unexpected', { callbackPolicy: callbackPolicy.body });
+  if (!['approval_required_callback_replay_policy', 'approved_callback_replay_policy_metadata_execution_disabled'].includes(callbackPolicy.body?.status)) {
+    fail('payment_callback_replay_policy_unexpected', { callbackPolicy: callbackPolicy.body });
+  }
   assertEqual(callbackPolicy.body?.callbackPersistence, false, 'payment_callback_policy_persistence_enabled', { callbackPolicy: callbackPolicy.body });
   assertEqual(callbackPolicy.body?.callbackReplayEnabled, false, 'payment_callback_policy_replay_enabled', { callbackPolicy: callbackPolicy.body });
   assertFalse(callbackPolicy.body?.mutation, 'payment_callback_policy_mutation_enabled', { callbackPolicy: callbackPolicy.body });

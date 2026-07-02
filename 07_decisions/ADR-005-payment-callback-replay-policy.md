@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for owner approval. Runtime remains guarded.
+Approved for metadata policy only. Runtime persistence and replay execution remain guarded.
 
 ## Context
 
@@ -22,8 +22,15 @@ callback storage.
 
 For read-only customer status activation, Cliplot keeps callback persistence
 and replay disabled. Payments remains the callback/status owner, and Cliplot
-may only render customer-safe status after owner approval for the DB-only
+may only render customer-safe status through the approved DB-only
 `/payments/status/by-order-id` read path.
+
+Owner approval is recorded by
+`CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID=owner-approved-2026-07-02-callback-replay-policy-metadata`.
+This approval covers callback event ownership, idempotency key definition,
+duplicate/conflict handling, terminal status ordering, retention metadata, and
+operator replay procedure ownership. It does not approve callback storage writes
+or replay execution.
 
 A future Cliplot callback persistence or replay implementation requires a
 separate owner approval covering:
@@ -36,6 +43,12 @@ separate owner approval covering:
 - retention window;
 - operator replay procedure;
 - rollback owner and validation owner.
+
+The approved metadata-only baseline uses the composite idempotency keys
+`paymentId`, `orderId`, `event`, and `paymentStatus`; requires manual review for
+incompatible terminal-status conflicts; keeps a 90-day minimum metadata retention
+requirement for any future storage backend; assigns `cliplot-operator` as rollback
+owner; and assigns `cliplot-validation-owner` as validation owner.
 
 ## Guardrails
 
@@ -55,9 +68,10 @@ Before that separate approval, all of the following remain false:
 - `npm run readiness:payment-callback -- https://cliplot.alfares.cz` returns
   `validated_guarded_ack_no_persistence`.
 - `npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz`
-  returns `approval_required_callback_replay_policy` with
+  returns `approved_callback_replay_policy_metadata_execution_disabled` with
   `callbackPersistence=false`, `callbackReplayEnabled=false`,
-  `mutation=false`, `persistence=false`, and `providerCall=false`.
+  `mutation=false`, `persistence=false`, and `providerCall=false` when the
+  metadata approval ID is configured.
 - `npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz`
   keeps runtime status reads disabled until owner approval and flags exist
   together.

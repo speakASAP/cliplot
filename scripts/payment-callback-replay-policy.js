@@ -24,7 +24,7 @@ assert(response.status === 200 && policy.success, 'callback replay policy reques
   httpStatus: response.status,
   status: policy.status,
 });
-assert(policy.status === 'approval_required_callback_replay_policy', 'callback replay policy should remain approval-required', policy);
+assert(['approval_required_callback_replay_policy', 'approved_callback_replay_policy_metadata_execution_disabled'].includes(policy.status), 'callback replay policy status unexpected', policy);
 assert(policy.mode === 'guarded_payment_callback_replay_policy_readiness', 'callback replay policy mode changed', policy);
 assert(policy.mutation === false, 'callback replay policy reported mutation', policy);
 assert(policy.persistence === false, 'callback replay policy reported persistence', policy);
@@ -38,10 +38,17 @@ assert(policy.currentCallbackContract?.currentPersistence === false, 'current ca
 assert(policy.currentCallbackContract?.currentOrderMutation === false, 'current callback contract mutates order', policy);
 assert(policy.currentCallbackContract?.currentPaymentMutation === false, 'current callback contract mutates payment', policy);
 assert(policy.proposedReplayPolicy?.decisionRecord === 'ADR-005-payment-callback-replay-policy', 'callback replay decision record missing', policy);
-assert(policy.proposedReplayPolicy?.status === 'proposed_for_owner_approval', 'callback replay decision status changed', policy);
+assert(['proposed_for_owner_approval', 'owner_approved_metadata_execution_disabled'].includes(policy.proposedReplayPolicy?.status), 'callback replay decision status changed', policy);
 assert(Array.isArray(policy.proposedReplayPolicy?.idempotencyKeys) && policy.proposedReplayPolicy.idempotencyKeys.includes('paymentId'), 'callback idempotency keys missing', policy);
 assert(policy.approvalRequest?.requiredDecision === 'approved callback persistence/replay policy', 'approval request missing', policy);
-assert(policy.approvalRequest?.requiredBeforeRuntimeStatusReads === true, 'runtime status dependency missing', policy);
+if (policy.callbackPolicyApproved === true) {
+  assert(policy.approvalRequest?.requiredApprovalId === 'CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID', 'callback policy approval id requirement missing', policy);
+  assert(policy.proposedReplayPolicy?.approvalIdPresent === true, 'callback policy approval evidence missing', policy);
+  assert(policy.proposedReplayPolicy?.approvalIdFingerprint, 'callback policy approval fingerprint missing', policy);
+  assert(!policy.blockers.some((item) => item.includes('callback event ownership decision')), 'approved callback ownership still reported missing', policy);
+  assert(policy.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'storage backend blocker missing after metadata approval', policy);
+}
+assert(typeof policy.approvalRequest?.requiredBeforeRuntimeStatusReads === 'boolean', 'runtime status dependency missing', policy);
 assert(Array.isArray(policy.mustRemainFalseBeforeApproval) && policy.mustRemainFalseBeforeApproval.includes('callbackPersistence'), 'callback persistence guard missing', policy);
 assert(policy.mustRemainFalseBeforeApproval.includes('provider-backed /payments/{paymentId} reads'), 'provider-refresh guard missing', policy);
 assert(Array.isArray(policy.forbiddenOperations) && policy.forbiddenOperations.includes('persist callback state'), 'callback persistence forbidden operation missing', policy);
