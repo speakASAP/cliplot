@@ -61,6 +61,7 @@ no-send notification payload validation.
 | Notification validation lane | done | main orchestrator | Cliplot checkout notification code and notifications validate endpoint | checkout returned `notificationValidation.status=validated_no_send` |
 | Guarded checkout intent and smoke lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke preserves `externalOrderId` and proves no-mutation/no-send statuses |
 | Checkout review totals lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke proves subtotal, shipping cost, payment fee, total, and no-mutation preview compatibility |
+| Guarded checkout status surface lane | done | main orchestrator | Cliplot status frontend, payment status endpoint, callback ACK evidence, smoke script | public smoke proves status shell, unauthorized callback, guarded payment status, and no live objects |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
@@ -116,3 +117,17 @@ recalculates the same breakdown before building Orders and Payments previews.
 This lane does not enable live order, payment, warehouse, or notification
 mutation. It reduces hidden-fee and duplicate-total risk before the
 approval-gated live checkout lane.
+
+
+## Guarded Checkout Status Surface Lane
+
+Status: deployed and validated in guarded mode.
+
+Successful guarded checkout stores a local customer-safe summary and navigates
+to `/objednavka/stav`. The page shows reference, status `Čeká na kontrolu`,
+items, shipping/payment labels, and total without claiming payment success,
+order confirmation, stock reservation, invoice, tracking, or provider status.
+
+Payments status is exposed only as `guarded_no_persistence`: it does not call
+the provider, does not persist callback state, and does not create or update an
+order/payment record.

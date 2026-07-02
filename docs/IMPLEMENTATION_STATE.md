@@ -119,6 +119,18 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `notificationValidation=validated_no_send`, and
   `warehouseReservationReadiness=validated_no_mutation`.
 
+- GOAL-05 guarded checkout status surface deployed as
+  `localhost:5000/cliplot-service:cb00ffd`. Successful guarded checkout now
+  stores a customer-safe local status summary and navigates to
+  `/objednavka/stav`; `/checkout/success` and `/checkout/cancelled` render the
+  same safe shell without claiming payment success. Payments status now exposes
+  `GET /api/payments/status` as a guarded no-persistence contract returning
+  `payment_status_guarded_no_persistence`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`. Public smoke returned
+  `statusPage=200`, `callbackUnauthorizedStatus=401`,
+  `paymentStatusContract=payment_status_guarded_no_persistence`, and preserved
+  no-mutation/no-send checkout validations.
+
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
 ### Objective

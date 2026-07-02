@@ -130,3 +130,15 @@ The smoke also verifies checkout totals: item subtotal plus delivery cost plus
 payment fee must equal the guarded checkout total, Orders preview total, and
 Payments preview amount. If this fails, do not enable live order/payment
 mutation.
+
+
+## Guarded Checkout Status Surface
+
+`/objednavka/stav`, `/checkout/success`, and `/checkout/cancelled` are
+customer-safe guarded status surfaces. They must not say paid, confirmed,
+reserved, shipped, invoiced, or completed until live order/payment/Warehouse
+evidence and approval IDs exist.
+
+`GET /api/payments/status` is intentionally non-authoritative while GOAL-05 is
+guarded. It must return `payment_status_guarded_no_persistence`,
+`mutation=false`, `persistence=false`, and `providerCall=false`.
