@@ -31,8 +31,8 @@ assert(packet.providerCall === false, 'decision packet reported provider call', 
 assert(packet.recommendedOption === 'shared-payments-source-of-truth', 'recommended option changed', packet);
 assert(packet.decisionRecord?.id === 'ADR-002-payment-status-persistence-ownership', 'decision record id missing', packet);
 assert(packet.decisionRecord?.recorded === true, 'decision record should be marked recorded', packet);
-assert(packet.decisionRecord?.status === 'proposed_for_owner_approval', 'decision record should remain proposed for owner approval', packet);
-assert(packet.decisionRecord?.runtimeApproval === false, 'decision record unexpectedly approves runtime changes', packet);
+assert(['proposed_for_owner_approval', 'owner_approved_shared_payments_source_of_truth'].includes(packet.decisionRecord?.status), 'decision record status unexpected', packet);
+assert(typeof packet.decisionRecord?.runtimeApproval === 'boolean', 'decision runtime approval flag missing', packet);
 assert(Array.isArray(packet.decisionOptions) && packet.decisionOptions.length === 3, 'decision options missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'shared-payments-source-of-truth'), 'shared payments option missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'cliplot-local-status-cache'), 'cliplot-local option missing', packet);
@@ -49,7 +49,7 @@ assert(packet.evidence?.cliplotBoundary?.some((item) => item.includes('guarded_n
 assert(packet.evidence?.decisionRecord?.some((item) => item.includes('ADR-002-payment-status-persistence-ownership')), 'decision record evidence missing', packet);
 assert(packet.approvalPacket?.requiredDecisionRecord === 'ADR-002-payment-status-persistence-ownership', 'required ADR missing', packet);
 assert(packet.approvalPacket?.decisionRecorded === true, 'approval packet should mark ADR recorded', packet);
-assert(packet.approvalPacket?.requiredDecisionRecordStatus === 'proposed_for_owner_approval', 'ADR approval status missing', packet);
+assert(['proposed_for_owner_approval', 'owner_approved_shared_payments_source_of_truth'].includes(packet.approvalPacket?.requiredDecisionRecordStatus), 'ADR approval status missing', packet);
 assert(packet.approvalPacket?.mustRemainFalseBeforeApproval?.includes('provider-backed status reads'), 'approval guard missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.some((item) => item.includes('[DONE: ADR-002-payment-status-persistence-ownership')), 'ADR recorded blocker/evidence missing', packet);
 const passiveSnapshotApproved = packet.currentReadiness?.passiveSnapshotReadApproved === true;

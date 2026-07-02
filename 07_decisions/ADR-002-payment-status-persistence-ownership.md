@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for owner approval. Runtime remains guarded.
+Approved for shared Payments source-of-truth passive reads. Runtime writes remain guarded.
 
 ## Context
 
@@ -26,7 +26,10 @@ ownership decision and migration are approved.
 ## Decision
 
 Prefer shared commerce ownership with **Payments as the authoritative payment
-status owner**.
+status owner**. Owner approval is recorded by
+`CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID=owner-approved-2026-07-02-shared-payments-status-storage-ownership`.
+This approval covers passive status storage ownership in Payments and does not
+approve Cliplot-local status writes, callback persistence, or live payment writes.
 
 Cliplot may render customer-safe status only after one of these approved paths
 exists:
@@ -55,8 +58,8 @@ Before approval, all of the following must remain true:
 
 ## Owner Approval Checklist
 
-This ADR is recorded but not accepted for runtime enablement. Owner approval
-must explicitly confirm:
+This ADR is accepted for the shared Payments source-of-truth passive read path.
+Owner approval confirms:
 
 - Payments remains the authoritative payment status owner for Cliplot;
 - Cliplot may use only the provider-refresh-free
@@ -85,8 +88,9 @@ Recording this ADR does not approve:
 - `npm run readiness:payment-storage -- https://cliplot.alfares.cz` passes with
   `blocked_storage_backend_not_approved` until storage ownership is approved.
 - `npm run readiness:payment-decision -- https://cliplot.alfares.cz` returns
-  `decision_recorded_approval_required` and recommends
-  `shared-payments-source-of-truth`.
+  `decision_recorded_approval_required`, recommends
+  `shared-payments-source-of-truth`, and records the owner-approved shared
+  Payments source-of-truth decision when the approval ID is configured.
 - Payments provides provider-refresh-free status read evidence or read-by-orderId
   contract evidence.
 - Cliplot `PAYMENT_API_KEY` has confirmed `payments:read` runtime scope without

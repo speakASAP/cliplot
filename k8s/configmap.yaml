@@ -37,6 +37,7 @@ data:
   ENABLE_PAYMENT_STATUS_SNAPSHOT_READ: "true"
   CLIPLOT_STATUS_RUNTIME_APPROVAL_ID: "owner-approved-2026-07-02-read-only-customer-status"
   CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID: "owner-approved-2026-07-02-callback-replay-policy-metadata"
+  CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID: "owner-approved-2026-07-02-shared-payments-status-storage-ownership"
   AUTH_PUBLIC_URL: "https://auth.alfares.cz"
   AUTH_CLIENT_ID: "cliplot"
   AUTH_RETURN_URL: "https://cliplot.alfares.cz/auth/callback"

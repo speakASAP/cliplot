@@ -29,9 +29,12 @@ assert(readiness.mutation === false, 'storage readiness reported mutation', read
 assert(readiness.persistence === false, 'storage readiness reported persistence', readiness);
 assert(readiness.providerCall === false, 'storage readiness reported provider call', readiness);
 assert(readiness.storage?.configured === false, 'storage backend unexpectedly configured', readiness);
+if ('cliplotLocalStorageApproved' in (readiness.storage || {})) {
+  assert(readiness.storage.cliplotLocalStorageApproved === false, 'Cliplot-local storage unexpectedly approved', readiness);
+}
 assert(readiness.storage?.liveWritesEnabled === false, 'storage writes unexpectedly enabled', readiness);
 assert(readiness.storage?.liveReadsEnabled === false, 'storage reads unexpectedly enabled', readiness);
-assert(readiness.mappingContract?.source === 'approved_persistence_contract_required', 'mapping contract source missing', readiness);
+assert(['approved_persistence_contract_required', 'payments_db_snapshot_read_model_approved'].includes(readiness.mappingContract?.source), 'mapping contract source missing', readiness);
 assert(readiness.mappingContract?.proposedFields?.includes('paymentCreateIdempotencyKey'), 'payment idempotency mapping missing', readiness);
 assert(readiness.mappingContract?.persistence === false, 'mapping contract unexpectedly persists', readiness);
 assert(readiness.schemaContract?.schemaVersion === 'cliplot.payment_status.v1', 'storage schema version missing', readiness);
@@ -48,7 +51,14 @@ assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_sc
 assert(readiness.readContract?.scopeValidated === true, 'payment read scope is not validated in storage contract', readiness);
 assert(Array.isArray(readiness.blockers), 'storage blockers missing', readiness);
 assert(!readiness.blockers.some((item) => item.includes('payments:read scope')), 'payments:read scope blocker should be closed after runtime evidence', readiness);
-assert(readiness.blockers.some((item) => item.includes('approved migration')), 'storage migration blocker missing', readiness);
+if (readiness.storage?.ownershipApproved === true) {
+  assert(readiness.storage?.ownershipApprovalIdFingerprint, 'storage ownership approval fingerprint missing', readiness);
+  assert(readiness.blockers.some((item) => item.includes('approved storage ownership decision selects Payments DB snapshot read model')), 'approved storage ownership evidence missing', readiness);
+  assert(readiness.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'callback storage backend blocker missing', readiness);
+  assert(!readiness.blockers.some((item) => item.includes('decision whether persistence belongs')), 'stale storage ownership decision blocker present', readiness);
+} else {
+  assert(readiness.blockers.some((item) => item.includes('CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID') || item.includes('decision whether persistence belongs')), 'storage ownership blocker missing', readiness);
+}
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no storage write'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({
@@ -56,6 +66,7 @@ console.log(JSON.stringify({
   baseUrl,
   status: readiness.status,
   storageConfigured: readiness.storage.configured,
+  storageOwnershipApproved: readiness.storage.ownershipApproved,
   schemaVersion: readiness.schemaContract.schemaVersion,
   mappingFields: readiness.mappingContract.proposedFields,
   uniqueKeys: readiness.schemaContract.uniqueKeys,
