@@ -349,6 +349,21 @@ IDs, customer PII, and secret values out of the packet.
 npm run readiness:payment-callback-storage-proposal -- https://cliplot.alfares.cz
 ```
 
+
+`GET /api/payments/callback-persistence-storage-contract-packet` and
+`GET /api/payments/callback-persistence-storage-approval-checklist-packet` are
+the read-only storage contract/checklist packets for future callback persistence. It narrows
+the ADR-007 storage backend proposal into identity, idempotency, uniqueness,
+retention/deletion, rollback, validation, and approval-flag requirements while
+keeping `callbackPersistence=false`, `callbackReplayEnabled=false`,
+`liveStatusWritesNow=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`.
+
+```bash
+npm run readiness:payment-callback-storage-contract -- https://cliplot.alfares.cz
+npm run readiness:payment-callback-storage-approval-checklist -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/callback-replay-execution-rollout-proposal-packet` is the read-only
 approval packet for a future callback replay execution window. It records the
 bounded execution-window proposal, synthetic dry-run plan, rollback plan, and

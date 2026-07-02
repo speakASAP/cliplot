@@ -21,6 +21,7 @@ import {
   paymentCallbackReplayPolicyReadiness,
   paymentCallbackPersistenceApprovalPacket,
   paymentCallbackStorageBackendProposalPacket,
+  paymentCallbackPersistenceStorageContractPacket,
   paymentCallbackReplayExecutionRolloutProposalPacket,
   paymentLiveStatusWriteApprovalPacket,
   paymentStatusReadiness,
@@ -362,6 +363,36 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/payments/callback-storage-backend-proposal-packet' && req.method === 'GET') {
       sendJson(res, 200, await paymentCallbackStorageBackendProposalPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-persistence-storage-approval-checklist-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentCallbackPersistenceStorageContractPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-persistence-storage-approval-checklist-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-persistence-storage-contract-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentCallbackPersistenceStorageContractPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-persistence-storage-contract-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 

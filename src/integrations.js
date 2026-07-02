@@ -2205,6 +2205,146 @@ export async function paymentCallbackStorageBackendProposalPacket() {
   };
 }
 
+
+export async function paymentCallbackPersistenceStorageContractPacket() {
+  const approvalPacket = await paymentCallbackPersistenceApprovalPacket();
+  const storageProposal = await paymentCallbackStorageBackendProposalPacket();
+
+  return {
+    success: true,
+    status: 'proposal_metadata_recorded_approval_required',
+    mode: 'read_only_callback_persistence_storage_contract_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    callbackPersistence: false,
+    callbackReplayEnabled: false,
+    liveStatusWritesNow: false,
+    livePaymentCreate: approvalPacket.livePaymentCreate,
+    storageContract: {
+      status: 'proposal_metadata_recorded_approval_required',
+      owner: 'payments-microservice',
+      model: 'payments_owned_callback_event_projection',
+      schemaVersion: approvalPacket.futureCallbackPersistenceContract?.schemaVersion || 'cliplot.payment_status.v1',
+      writeAuthority: 'payments-microservice',
+      cliplotRole: 'guarded_callback_ack_and_non_authoritative_renderer',
+      currentRuntimeFlagEnabled: false,
+      storageConfiguredNow: false,
+      callbackPersistenceNow: false,
+      callbackReplayEnabledNow: false,
+      liveStatusWritesNow: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    eventIdentity: {
+      requiredKeys: ['applicationId', 'externalOrderId', 'orderId', 'paymentId', 'event', 'paymentStatus'],
+      idempotencyKeys: approvalPacket.futureCallbackPersistenceContract?.idempotencyKeys || ['paymentId', 'orderId', 'event', 'paymentStatus'],
+      uniqueness: approvalPacket.futureCallbackPersistenceContract?.uniqueKeys || ['externalOrderId', 'paymentId'],
+      duplicateHandling: approvalPacket.futureCallbackPersistenceContract?.duplicateHandling,
+      conflictHandling: approvalPacket.futureCallbackPersistenceContract?.conflictHandling,
+      orderingPolicy: approvalPacket.futureCallbackPersistenceContract?.orderingPolicy,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    statusContract: {
+      allowedPaymentStatuses: approvalPacket.futureCallbackPersistenceContract?.allowedPaymentStatuses || Object.keys(customerSafePaymentStatusMap).filter((statusName) => statusName !== 'unknown'),
+      customerSafeStatusSource: 'static_customer_safe_mapping_until_approved_payments_projection_write',
+      terminalStatuses: ['completed', 'failed', 'cancelled', 'refunded'],
+      manualReviewRequiredForConflicts: true,
+      cliplotAuthoritative: false,
+      paymentsAuthoritative: true,
+      ordersAuthoritative: true,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    retentionAndAudit: {
+      retentionPolicy: approvalPacket.futureCallbackPersistenceContract?.retentionPolicy || 'approved_metadata_only_90_days_minimum_until_storage_backend_approval',
+      rawPayloadStorageAllowed: false,
+      providerTransactionStorageAllowedInCliplot: false,
+      customerPiiStorageAllowedInCliplot: false,
+      auditFields: ['eventReceivedAt', 'source', 'idempotencyKey', 'semanticStatus', 'manualReviewReason'],
+      deletionPolicyRequired: true,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    rolloutPrerequisites: {
+      approvalIds: [
+        'CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID',
+        'CLIPLOT_CALLBACK_PERSISTENCE_ROLLOUT_APPROVAL_ID',
+        'CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID',
+        'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID',
+      ],
+      runtimeFlags: {
+        ENABLE_PAYMENT_CALLBACK_PERSISTENCE: false,
+        ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION: false,
+        ENABLE_PAYMENT_LIVE_STATUS_WRITE: false,
+      },
+      requiredBeforeRuntimeUse: [
+        'approved callback persistence storage backend approval',
+        'approved callback persistence rollout plan',
+        'approved callback event retention/deletion policy',
+        'approved callback replay execution rollout approval',
+        'approved live status write window before status writes',
+        'operator rollback owner present',
+        'validation owner checklist present',
+      ],
+      rollbackOwner: approvalPacket.futureCallbackPersistenceContract?.rollbackOwner || '[MISSING: rollback owner]',
+      validationOwner: approvalPacket.futureCallbackPersistenceContract?.validationOwner || '[MISSING: validation owner]',
+    },
+    currentGuards: {
+      storageConfigured: storageProposal.currentGuards?.storageConfigured,
+      cliplotLocalStorageApproved: storageProposal.currentGuards?.cliplotLocalStorageApproved,
+      liveWritesEnabled: storageProposal.currentGuards?.liveWritesEnabled,
+      liveReadsEnabled: storageProposal.currentGuards?.liveReadsEnabled,
+      callbackPersistence: storageProposal.currentGuards?.callbackPersistence,
+      callbackReplayEnabled: storageProposal.currentGuards?.callbackReplayEnabled,
+      livePaymentCreate: approvalPacket.livePaymentCreate,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    approvedPassiveReadContract: approvalPacket.approvedPassiveReadContract,
+    storageBackendProposal: approvalPacket.storageBackendProposal,
+    rolloutPlan: approvalPacket.rolloutPlan,
+    replayDryRunContract: approvalPacket.replayDryRunContract,
+    requiredApprovalsBeforeEnablement: [
+      ...approvalPacket.requiredApprovalsBeforeEnablement,
+      'approved callback event retention/deletion policy',
+      'approved callback storage uniqueness and conflict contract',
+    ],
+    mustRemainFalseBeforeApproval: [
+      ...approvalPacket.mustRemainFalseBeforeApproval,
+      'ENABLE_PAYMENT_CALLBACK_PERSISTENCE',
+      'ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION',
+      'ENABLE_PAYMENT_LIVE_STATUS_WRITE',
+    ],
+    forbiddenOperations: approvalPacket.forbiddenOperations,
+    blockers: [...new Set([
+      ...(approvalPacket.blockers || []),
+      '[MISSING: approved callback event retention/deletion policy]',
+      '[MISSING: approved callback storage uniqueness and conflict contract]',
+    ])],
+    satisfiedEvidence: approvalPacket.satisfiedEvidence,
+    sensitiveDataPolicy: [
+      ...approvalPacket.sensitiveDataPolicy,
+      'storage contract packet only',
+      'no real order id',
+      'no real payment id',
+      'no callback payload body',
+      'no raw provider payload',
+      'no provider transaction id',
+      'no customer PII',
+    ],
+    next: 'Review the metadata-only callback persistence storage contract; separate owner approval is still required before storage writes, callback replay execution, live status writes, provider-backed reads, or notifications are enabled.',
+  };
+}
+
 export async function paymentCallbackReplayExecutionRolloutProposalPacket() {
   const policy = paymentCallbackReplayPolicyReadiness();
   const persistence = await paymentCallbackPersistenceApprovalPacket();
@@ -5092,6 +5232,7 @@ export async function revenueClosurePacket() {
     mode: 'read_only_blocker_classification',
     metadataPacketEligible: [
       'callback persistence storage backend proposal',
+      'callback persistence storage contract packet',
       'callback persistence rollout plan',
       'callback replay dry-run procedure',
       'live status write approval packet',
