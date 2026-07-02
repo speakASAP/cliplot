@@ -17,7 +17,7 @@ connecting shared Alfares services without duplicating FlipFlop internals.
 ## Guardrails
 
 - Preserve Intent Preservation chain.
-- Keep source of truth in `/home/ssf/Documents/Github/cliplot-service`.
+- Keep source of truth in `/home/ssf/Documents/Github/cliplot`.
 - Do not save project source under `/Users/Sergej.Stasok/Documents`.
 - Use `ssh alfares` and `./scripts/deploy.sh`.
 - Store secrets only through Vault/ExternalSecret; never hardcode them.

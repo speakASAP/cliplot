@@ -26,7 +26,7 @@ Forbidden:
 
 ## Acceptance Criteria
 
-- Remote folder exists at `/home/ssf/Documents/Github/cliplot-service`.
+- Remote folder exists at `/home/ssf/Documents/Github/cliplot`.
 - `git init` has been run.
 - Required docs exist.
 - Gate scripts exist and run.

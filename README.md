@@ -1,4 +1,4 @@
-# cliplot-service
+# cliplot
 
 Cliplot is a Czech-first e-commerce storefront planned for:
 
@@ -11,7 +11,7 @@ not allowed until the goal-driven planning and pre-coding gates pass.
 
 ## Current Status
 
-- Remote repository: `/home/ssf/Documents/Github/cliplot-service`
+- Remote repository: `/home/ssf/Documents/Github/cliplot`
 - Deployment target: Kubernetes namespace `statex-apps`
 - Runtime host: `cliplot.alfares.cz`
 - Source mode: remote-first on `alfares`

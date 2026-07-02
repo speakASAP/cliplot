@@ -2,7 +2,7 @@
 
 Implement guarded checkout validation lanes without enabling live mutation.
 
-Use the remote repository `/home/ssf/Documents/Github/cliplot-service` as the
+Use the remote repository `/home/ssf/Documents/Github/cliplot` as the
 source of truth. Do not save project source under local
 `/Users/Sergej.Stasok/Documents`.
 

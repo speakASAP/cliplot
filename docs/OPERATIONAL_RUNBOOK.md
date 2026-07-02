@@ -63,9 +63,9 @@ Do not print secret values.
 Run the non-mutating preflight first:
 
 ```bash
-DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service
+DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot
 # or
-./scripts/publish_docs_rag.sh --preflight cliplot-service
+./scripts/publish_docs_rag.sh --preflight cliplot
 ```
 
 The preflight checks docs-rag pod discovery, JWT token presence, read-only
@@ -76,11 +76,12 @@ Only after preflight passes and publication is intentionally approved, run the
 mutating ingestion step:
 
 ```bash
-./scripts/publish_docs_rag.sh cliplot-service
+./scripts/publish_docs_rag.sh cliplot
 ```
 
-Known current blocker: docs-rag ingestion/preflight may fail while
-`OLLAMA_URL=http://192.168.88.53:11434` refuses connections.
+Current evidence: docs-rag preflight reaches
+`OLLAMA_URL=http://192.168.88.53:11435` and returns
+`DOCS_RAG_PREFLIGHT=pass` for repoName `cliplot`.
 
 ## Checkout Contract Status
 

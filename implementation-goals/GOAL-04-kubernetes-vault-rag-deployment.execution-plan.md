@@ -52,7 +52,7 @@ Forbidden:
 3. `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues`.
 4. `python3 scripts/deployment_readiness_gate.py --root .`.
 5. `python3 scripts/vault_secret_presence_gate.py --allow-missing`.
-6. `./scripts/publish_docs_rag.sh cliplot-service` and record pass/fail.
+6. `./scripts/publish_docs_rag.sh cliplot` and record pass/fail.
 7. Kubernetes dry-run for changed manifests.
 8. Temporary runtime smoke for guarded checkout payload.
 9. Commit and deploy only if Cliplot gates pass.

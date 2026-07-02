@@ -4,7 +4,7 @@ set -euo pipefail
 NAMESPACE="${NAMESPACE:-statex-apps}"
 APP_LABEL="${DOCS_RAG_APP_LABEL:-app=docs-rag-microservice}"
 PREFLIGHT_ONLY="${DOCS_RAG_PREFLIGHT_ONLY:-0}"
-REPO_NAME="cliplot-service"
+REPO_NAME="cliplot"
 
 for arg in "$@"; do
   case "$arg" in

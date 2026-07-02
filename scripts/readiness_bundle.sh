@@ -4,7 +4,7 @@ set -u
 BASE_URL="${CLIPLOT_BASE_URL:-https://cliplot.alfares.cz}"
 NAMESPACE="${NAMESPACE:-statex-apps}"
 DEPLOYMENT="${CLIPLOT_DEPLOYMENT:-cliplot-service}"
-REPO_NAME="${DOCS_RAG_REPO_NAME:-cliplot-service}"
+REPO_NAME="${DOCS_RAG_REPO_NAME:-cliplot}"
 
 overall=0
 critical_failed=0

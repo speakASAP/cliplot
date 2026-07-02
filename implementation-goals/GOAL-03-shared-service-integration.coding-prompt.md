@@ -1,7 +1,7 @@
 # GOAL-03 Coding Prompt
 
 Implement the Cliplot shared-service integration foundation in
-`/home/ssf/Documents/Github/cliplot-service`.
+`/home/ssf/Documents/Github/cliplot`.
 
 ## Objective
 

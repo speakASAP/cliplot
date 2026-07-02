@@ -1,11 +1,11 @@
-# Agents: cliplot-service
+# Agents: cliplot
 
 ## Remote Source Of Truth
 
 The source of truth is the remote repository:
 
 ```text
-/home/ssf/Documents/Github/cliplot-service
+/home/ssf/Documents/Github/cliplot
 ```
 
 Do not create or maintain a project copy under `/Users/Sergej.Stasok/Documents`.
@@ -21,7 +21,7 @@ CLIPLOT ORCHESTRATOR: continue implementation
 or:
 
 ```text
-Continue implementation of cliplot-service.
+Continue implementation of cliplot.
 ```
 
 act as the Cliplot implementation orchestrator. Do not ask which goal is next.
@@ -126,7 +126,7 @@ The orchestrator owns integration, shared files, final validation, and
 Deploy only from the remote repo after validation:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && ./scripts/deploy.sh'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && ./scripts/deploy.sh'
 ```
 
 The deploy script must remain guarded. It must not create or mutate production

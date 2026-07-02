@@ -5,7 +5,7 @@
 Remote source of truth:
 
 ```text
-/home/ssf/Documents/Github/cliplot-service
+/home/ssf/Documents/Github/cliplot
 ```
 
 ## Current Evidence

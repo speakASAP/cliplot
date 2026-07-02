@@ -15,7 +15,7 @@ Done.
 - `python3 scripts/deployment_readiness_gate.py --root .` passed.
 - `python3 scripts/vault_secret_presence_gate.py --allow-missing` returned
   `VAULT_SECRET_PRESENCE=blocked` for `secret/prod/cliplot-service`.
-- `./scripts/publish_docs_rag.sh cliplot-service` triggered job
+- `./scripts/publish_docs_rag.sh cliplot` triggered job
   `4a7c1c98-26b9-4f3b-b694-827587ac1473` and returned
   `DOCS_RAG_PUBLICATION=fail` with `error=fetch failed`.
 - Temporary checkout smoke returned `service_identity_required` and included a
@@ -67,7 +67,7 @@ Done.
 - `npm run smoke:checkout -- https://cliplot.alfares.cz` passed with guarded
   checkout still returning `service_identity_required`, `mutation=false`,
   `liveCheckoutPreflight=blocked`, and all mutation-plan booleans false.
-- `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service`
+- `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot`
   returned the expected non-mutating blocker:
 
 ```text

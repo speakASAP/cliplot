@@ -5,7 +5,7 @@ import sys
 
 
 REQUIRED_HEADINGS = {
-    "README.md": ["# cliplot-service", "## Intent"],
+    "README.md": ["# cliplot", "## Intent"],
     "PLAN.md": ["# Implementation Plan", "## Parallel Execution Section"],
     "docs/DESIGN_CONTRACT.md": ["# Design Contract", "## Anti-AI Rules"],
     "docs/IMPLEMENTATION_ORCHESTRATOR.md": ["# Cliplot Implementation Orchestrator", "## Intent Preservation Chain"],

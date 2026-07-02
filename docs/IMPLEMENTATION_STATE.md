@@ -21,7 +21,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 ## Completed In This Setup
 
 - Design direction created and preserved as `docs/DESIGN_CONTRACT.md`.
-- Remote repository path selected: `/home/ssf/Documents/Github/cliplot-service`.
+- Remote repository path selected: `/home/ssf/Documents/Github/cliplot`.
 - Goal-driven structure defined.
 - Guardrails modeled after RunLayer and FlipFlop patterns.
 - Initial gate scripts and guarded deploy script planned.

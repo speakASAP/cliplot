@@ -14,7 +14,7 @@ creation is treated as production-ready.
 
 ## System
 
-- Cliplot storefront: `/home/ssf/Documents/Github/cliplot-service`.
+- Cliplot storefront: `/home/ssf/Documents/Github/cliplot`.
 - Catalog authority: `catalog-microservice`.
 - Orders authority: `orders-microservice`.
 - Payments authority: `payments-microservice`.

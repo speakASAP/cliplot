@@ -70,7 +70,7 @@ Docs/RAG ingestion is a two-phase operation. Run the non-mutating preflight
 before publication:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/cliplot && DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot'
 ```
 
 Do not run the normal publication command until preflight passes and ingestion

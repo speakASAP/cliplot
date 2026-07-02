@@ -2,7 +2,7 @@
 
 ## Repository
 
-`/home/ssf/Documents/Github/cliplot-service`
+`/home/ssf/Documents/Github/cliplot`
 
 ## Read Before Work
 

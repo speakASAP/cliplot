@@ -20,7 +20,7 @@ Alfares shared commerce ecosystem rather than duplicating business truth.
 Cliplot starts as a separate remote repository:
 
 ```text
-/home/ssf/Documents/Github/cliplot-service
+/home/ssf/Documents/Github/cliplot
 ```
 
 This does not yet decide whether runtime architecture is a fully separate app,

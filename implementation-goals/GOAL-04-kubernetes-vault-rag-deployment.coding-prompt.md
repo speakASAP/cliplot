@@ -1,7 +1,7 @@
 # GOAL-04 Coding Prompt
 
 Implement Cliplot platform hardening in
-`/home/ssf/Documents/Github/cliplot-service`.
+`/home/ssf/Documents/Github/cliplot`.
 
 ## Objective
 
@@ -52,5 +52,5 @@ python3 scripts/pre_coding_gate.py --root .
 python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues
 python3 scripts/deployment_readiness_gate.py --root .
 python3 scripts/vault_secret_presence_gate.py --allow-missing
-./scripts/publish_docs_rag.sh cliplot-service
+./scripts/publish_docs_rag.sh cliplot
 ```
