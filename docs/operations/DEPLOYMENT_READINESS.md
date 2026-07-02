@@ -85,6 +85,8 @@ present.
   `persistence=false`, and `providerCall=false`; `/payments/{paymentId}` remains
   forbidden for passive status reads.
 
+- The product filter readiness gate must remain `approval_required_catalog_product_filter_rule` with `catalogSource=catalog`, `warehouseBackedProductCount>0`, `mutation=false`, `persistence=false`, and `providerCall=false` until an owner-approved Cliplot SKU/filtering rule exists.
+
 ## Deploy Command
 
 ```bash

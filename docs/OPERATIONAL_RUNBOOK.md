@@ -184,6 +184,14 @@ The packet must report `mutation=false`, `providerCall=false`,
 product, blocked live preflight, and the exact approval ID names still missing.
 It must never print secret values.
 
+## Product Filter Readiness
+
+`GET /api/products/filter-readiness` is the read-only approval gate for the Cliplot product SKU/filtering rule. It proves that the storefront is using authenticated Catalog data, that at least one Catalog product has Warehouse availability evidence, and that the current filter mode is either `active_catalog_products` or `explicit_product_ids`. It must return `approval_required_catalog_product_filter_rule`, `catalogSource=catalog`, `warehouseBackedProductCount>0`, `mutation=false`, `persistence=false`, and `providerCall=false` until the owner approves the final Cliplot SKU/filtering rule.
+
+```bash
+npm run readiness:product-filter -- https://cliplot.alfares.cz
+```
+
 ## Guarded Checkout Smoke
 
 After a Cliplot checkout deploy, run:

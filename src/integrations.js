@@ -335,6 +335,95 @@ async function fetchWarehouseAvailability(productIds, warehouseIds = []) {
   return new Map();
 }
 
+
+export async function catalogProductFilterReadiness() {
+  const products = await fetchCatalogProducts();
+  const catalogSource = productCatalogSource(products);
+  const warehouseBackedProducts = products.filter((item) => item?.productSource === 'catalog' && item?.warehouseId);
+  const configuredProductIds = serviceConfig.productIds;
+  const filterMode = configuredProductIds.length > 0 ? 'explicit_product_ids' : 'active_catalog_products';
+  const catalogGuarded = catalogSource === 'catalog'
+    && products.length > 0
+    && warehouseBackedProducts.length > 0;
+
+  return {
+    success: true,
+    status: catalogGuarded
+      ? 'approval_required_catalog_product_filter_rule'
+      : 'blocked_catalog_product_filter_evidence_missing',
+    mode: 'guarded_catalog_product_filter_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    catalogSource,
+    productCount: products.length,
+    warehouseBackedProductCount: warehouseBackedProducts.length,
+    filterMode,
+    configuredProductIds,
+    configuredProductIdsPresent: configuredProductIds.length > 0,
+    currentQueryContract: configuredProductIds.length > 0
+      ? {
+          source: 'CLIPLOT_PRODUCT_IDS',
+          maxProducts: 8,
+          endpoint: '/api/products/{productId}',
+          requiresOwnerApproval: true,
+        }
+      : {
+          source: 'active_catalog_products',
+          endpoint: '/api/products?limit=8&isActive=true&lifecycle=active',
+          requiresOwnerApproval: true,
+        },
+    sampleProducts: warehouseBackedProducts.slice(0, 4).map((product) => ({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      currency: product.currency,
+      warehouseId: product.warehouseId,
+      warehouseType: product.warehouseType,
+      stockStatus: product.stockStatus,
+      productSource: product.productSource,
+    })),
+    approvalRequest: {
+      requiredDecision: 'approved Cliplot product SKU list/filtering rule',
+      recommendedDecisionPath: '07_decisions/ADR-004-cliplot-product-filter-scope.md',
+      acceptableOptions: [
+        'explicit CLIPLOT_PRODUCT_IDS list approved by owner',
+        'approved Catalog collection/tag/marketplace rule for Cliplot',
+        'approved active Catalog product rule with documented owner scope',
+      ],
+      mustProve: [
+        'products belong to Cliplot sales scope',
+        'products are active in Catalog',
+        'each checkout-enabled product has Warehouse availability evidence',
+        'fallback products are not used for live checkout readiness',
+      ],
+    },
+    forbiddenOperations: [
+      'create product',
+      'update Catalog product',
+      'reserve Warehouse stock',
+      'create order',
+      'create payment',
+      'send notification',
+      'print service token values',
+    ],
+    blockers: [
+      '[MISSING: approved Cliplot product SKU list/filtering rule]',
+      '[MISSING: owner decision whether Cliplot uses explicit CLIPLOT_PRODUCT_IDS or a Catalog-side collection/tag rule]',
+    ],
+    sensitiveDataPolicy: [
+      'no Catalog token value',
+      'no Warehouse token value',
+      'no customer PII',
+      'sample product metadata only',
+    ],
+    next: 'Record the approved Cliplot SKU/filtering rule before live checkout mutation is enabled.',
+  };
+}
+
 export function authLinks() {
   const login = new URL('/login', serviceConfig.authPublicUrl);
   login.searchParams.set('client_id', serviceConfig.authClientId);

@@ -55,6 +55,7 @@ no-send notification payload validation.
 | Workstream | Status | Owner | Files | Validation |
 | --- | --- | --- | --- | --- |
 | Catalog product read lane | ready now | main orchestrator | Cliplot integration and ExternalSecret files | build, docs gates, deploy, public product smoke |
+| Product SKU/filter approval gate | ready now | main orchestrator | product filter readiness endpoint/script/docs | `npm run readiness:product-filter -- https://cliplot.alfares.cz` |
 | Payment API key/scope lane | done | payments/platform lane | Payments Vault/K8s identity maps | invalid-body smoke returned 400 VALIDATION_ERROR |
 | Order validation lane | done | main orchestrator | Orders validate endpoint and Cliplot checkout order validation | checkout returned `orderValidation.status=validated_no_mutation` with Warehouse `warehouseId` in `orderPreview.items[0]` |
 | Payment validation lane | done | main orchestrator | Cliplot checkout/payment code and payments validate endpoint | checkout returned `paymentValidation.status=validated_no_mutation` |

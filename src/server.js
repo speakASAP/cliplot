@@ -10,6 +10,7 @@ import {
   customerStatusApprovalEvidencePacket,
   fetchCatalogProducts,
   productCatalogSource,
+  catalogProductFilterReadiness,
   handlePaymentCallback,
   liveCheckoutApprovalPacket,
   liveCheckoutPreflight,
@@ -116,6 +117,21 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/api/products') {
       const products = await fetchCatalogProducts();
       sendJson(res, 200, { success: true, catalogSource: productCatalogSource(products), items: products });
+      return;
+    }
+
+    if (url.pathname === '/api/products/filter-readiness' && req.method === 'GET') {
+      sendJson(res, 200, await catalogProductFilterReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/products/filter-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 

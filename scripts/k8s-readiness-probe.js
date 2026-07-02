@@ -59,6 +59,13 @@ async function main() {
   assertFalse(preflight?.mutationPlan?.wouldCreatePayment, 'live_preflight_would_create_payment', { preflight: preflightResponse.body });
   assertFalse(preflight?.mutationPlan?.wouldSendNotification, 'live_preflight_would_send_notification', { preflight: preflightResponse.body });
 
+  const productFilter = await getJson('/api/products/filter-readiness');
+  assertEqual(productFilter.body?.status, 'approval_required_catalog_product_filter_rule', 'product_filter_readiness_unexpected', { productFilter: productFilter.body });
+  assertEqual(productFilter.body?.catalogSource, 'catalog', 'product_filter_catalog_source_unexpected', { productFilter: productFilter.body });
+  assertFalse(productFilter.body?.mutation, 'product_filter_mutation_enabled', { productFilter: productFilter.body });
+  assertFalse(productFilter.body?.persistence, 'product_filter_persistence_enabled', { productFilter: productFilter.body });
+  assertFalse(productFilter.body?.providerCall, 'product_filter_provider_call_enabled', { productFilter: productFilter.body });
+
   const readinessResponse = await getJson('/api/integrations/readiness');
   const readiness = readinessResponse.body;
   const approvals = readiness?.liveMutationApprovals || readiness?.approval || {};
@@ -179,6 +186,7 @@ async function main() {
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
     baseUrl,
+    productFilterReadiness: productFilter.body.status,
     livePreflightStatus: preflight.status,
     wouldMutate: preflight.wouldMutate,
     liveOrderSubmit: readiness.liveOrderSubmit,

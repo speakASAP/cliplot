@@ -137,6 +137,7 @@ run_step vault_presence python3 scripts/vault_secret_presence_gate.py --allow-mi
 run_step docs_rag_preflight docs_rag_preflight
 
 if [ "$critical_failed" -eq 0 ]; then
+  run_step product_filter_readiness npm run readiness:product-filter -- "$BASE_URL"
   run_critical_step order_warehouse_readiness npm run readiness:order-warehouse -- "$BASE_URL"
   run_step checkout_status_surface npm run readiness:checkout-status-surface -- "$BASE_URL"
   run_step customer_status_rollout npm run readiness:customer-status-rollout -- "$BASE_URL"
