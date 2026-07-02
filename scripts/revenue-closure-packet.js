@@ -62,9 +62,13 @@ assert(packet.blockerClassification?.classificationOnly === true, 'blocker class
 assert(packet.blockerClassification?.currentPacketMayMutate === false, 'blocker classification would mutate', packet.blockerClassification || {});
 assert(packet.blockerClassification?.currentPacketMayPersist === false, 'blocker classification would persist', packet.blockerClassification || {});
 assert(packet.blockerClassification?.currentPacketMayCallProvider === false, 'blocker classification would call provider', packet.blockerClassification || {});
+assert(packet.blockerClassification?.currentPacketMaySendNotification === false, 'blocker classification would send notification', packet.blockerClassification || {});
 assert(packet.blockerClassification?.metadataPacketEligible?.includes('callback persistence storage backend proposal'), 'metadata-eligible callback storage proposal missing', packet.blockerClassification || {});
 assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('ENABLE_LIVE_ORDER_SUBMIT=true'), 'live order mutation approval classifier missing', packet.blockerClassification || {});
 assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('CREATE_REPLAY_CANCEL live smoke executor run'), 'live smoke execution classifier missing', packet.blockerClassification || {});
+assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('callback persistence enablement'), 'callback persistence enablement classifier missing', packet.blockerClassification || {});
+assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('callback replay execution enablement'), 'callback replay execution classifier missing', packet.blockerClassification || {});
+assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('live order/payment status writes'), 'live status write classifier missing', packet.blockerClassification || {});
 assert(Array.isArray(packet.forbiddenOperations) && packet.forbiddenOperations.includes('create payment'), 'forbidden payment operation missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length > 0, 'revenue closure blockers missing', packet);
 

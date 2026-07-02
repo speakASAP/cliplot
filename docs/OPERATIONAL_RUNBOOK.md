@@ -331,10 +331,22 @@ npm run readiness:payment-callback -- https://cliplot.alfares.cz
 npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz
 ```
 
-`GET /api/payments/callback-persistence-approval-packet` is the read-only approval packet for the future callback persistence storage backend. It aggregates guarded callback ACK evidence, ADR-005 policy metadata, Payments-owned passive status storage, idempotency keys, duplicate/conflict handling, retention metadata, rollback owner, validation owner, and exact storage/replay blockers. It must return `approval_required_callback_persistence_storage_backend` with `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
+`GET /api/payments/callback-persistence-approval-packet` is the read-only approval packet for the future callback persistence storage backend. It aggregates guarded callback ACK evidence, ADR-005 policy metadata, Payments-owned passive status storage, idempotency keys, duplicate/conflict handling, retention metadata, rollback owner, validation owner, exact storage/replay blockers, a metadata-only storage backend proposal, a dry-run rollout plan, and a replay dry-run contract. The proposal names the Payments-owned callback event projection as the candidate backend and keeps Cliplot non-authoritative. It must return `approval_required_callback_persistence_storage_backend` with `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`; the proposal fields are not approval to persist callbacks, replay callbacks, update statuses, or call a provider.
 
 ```bash
 npm run readiness:payment-callback-persistence -- https://cliplot.alfares.cz
+```
+
+For a narrower review surface, `GET /api/payments/callback-storage-backend-proposal-packet`
+returns only the metadata-only storage backend proposal, rollout plan, replay
+dry-run contract, and guard evidence. It must return
+`proposal_metadata_recorded_approval_required` and keep runtime enablement,
+callback persistence, replay execution, live status writes, provider calls,
+storage writes, real order/payment IDs, callback payloads, provider transaction
+IDs, customer PII, and secret values out of the packet.
+
+```bash
+npm run readiness:payment-callback-storage-proposal -- https://cliplot.alfares.cz
 ```
 
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime

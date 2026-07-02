@@ -55,6 +55,37 @@ assert(packet.futureCallbackPersistenceContract?.rollbackOwner === 'cliplot-oper
 assert(packet.futureCallbackPersistenceContract?.validationOwner === 'cliplot-validation-owner', 'validation owner missing', packet);
 assert(packet.futureCallbackPersistenceContract?.currentPersistence === false, 'future contract reports current persistence', packet);
 assert(packet.futureCallbackPersistenceContract?.replayExecution === false, 'future contract reports replay execution', packet);
+assert(packet.storageBackendProposal?.status === 'proposal_metadata_recorded_approval_required', 'storage backend proposal metadata missing', packet);
+assert(packet.storageBackendProposal?.mode === 'metadata_only_no_runtime_enablement', 'storage backend proposal mode changed', packet);
+assert(packet.storageBackendProposal?.proposedOwner === 'payments-microservice', 'storage backend proposal owner missing', packet);
+assert(packet.storageBackendProposal?.currentRuntimeFlagEnabled === false, 'storage backend proposal runtime flag enabled', packet);
+assert(packet.storageBackendProposal?.storageConfiguredNow === false, 'storage backend proposal configured storage', packet);
+assert(packet.storageBackendProposal?.callbackPersistenceNow === false, 'storage backend proposal enabled callback persistence', packet);
+assert(packet.storageBackendProposal?.callbackReplayEnabledNow === false, 'storage backend proposal enabled callback replay', packet);
+assert(packet.storageBackendProposal?.liveStatusWritesNow === false, 'storage backend proposal enabled live status writes', packet);
+assert(packet.storageBackendProposal?.mutation === false, 'storage backend proposal reports mutation', packet);
+assert(packet.storageBackendProposal?.persistence === false, 'storage backend proposal reports persistence', packet);
+assert(packet.storageBackendProposal?.providerCall === false, 'storage backend proposal reports provider call', packet);
+assert(packet.storageBackendProposal?.approvalIdPlaceholder === 'CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID', 'storage approval placeholder missing', packet);
+assert(packet.storageBackendProposal?.dataBoundary?.includes('do not make Cliplot authoritative for payment status'), 'storage proposal authority boundary missing', packet);
+assert(packet.rolloutPlan?.status === 'proposal_metadata_recorded_approval_required', 'callback persistence rollout proposal missing', packet);
+assert(packet.rolloutPlan?.mode === 'dry_run_plan_only', 'callback persistence rollout mode changed', packet);
+assert(packet.rolloutPlan?.dryRunOnlyNow === true, 'callback persistence rollout is not dry-run-only', packet);
+assert(packet.rolloutPlan?.runtimeEnablementNow === false, 'callback persistence rollout enabled runtime', packet);
+assert(packet.rolloutPlan?.callbackPersistenceNow === false, 'callback persistence rollout enabled persistence', packet);
+assert(packet.rolloutPlan?.callbackReplayEnabledNow === false, 'callback persistence rollout enabled replay', packet);
+assert(packet.rolloutPlan?.liveStatusWritesNow === false, 'callback persistence rollout enabled status writes', packet);
+assert(packet.rolloutPlan?.phases?.some((phase) => phase.name === 'shadow_dry_run' && phase.runtimeMutation === false), 'shadow dry-run phase missing', packet);
+assert(packet.rolloutPlan?.phases?.some((phase) => phase.name === 'approved_write_window' && phase.runtimeMutation === true), 'approved write window phase missing', packet);
+assert(packet.rolloutPlan?.rollbackPlan?.includes('set ENABLE_PAYMENT_CALLBACK_PERSISTENCE=false'), 'callback persistence rollback flag missing', packet);
+assert(packet.replayDryRunContract?.mode === 'dry_run_only_no_replay_execution', 'replay dry-run contract mode changed', packet);
+assert(packet.replayDryRunContract?.syntheticOnlyNow === true, 'replay dry-run is not synthetic-only', packet);
+assert(packet.replayDryRunContract?.replayExecutionNow === false, 'replay dry-run enabled replay execution', packet);
+assert(packet.replayDryRunContract?.callbackPersistenceNow === false, 'replay dry-run enabled persistence', packet);
+assert(packet.replayDryRunContract?.liveStatusWritesNow === false, 'replay dry-run enabled status writes', packet);
+assert(packet.replayDryRunContract?.mutation === false, 'replay dry-run reports mutation', packet);
+assert(packet.replayDryRunContract?.persistence === false, 'replay dry-run reports persistence', packet);
+assert(packet.replayDryRunContract?.providerCall === false, 'replay dry-run reports provider call', packet);
 assert(packet.requiredApprovalsBeforeEnablement?.includes('callback persistence storage backend approval'), 'storage backend approval requirement missing', packet);
 assert(packet.requiredApprovalsBeforeEnablement?.includes('callback replay execution rollout approval'), 'replay rollout approval requirement missing', packet);
 assert(packet.mustRemainFalseBeforeApproval?.includes('callbackPersistence'), 'callback persistence guard missing', packet);
@@ -79,6 +110,9 @@ console.log(JSON.stringify({
   callbackPersistence: packet.callbackPersistence,
   callbackReplayEnabled: packet.callbackReplayEnabled,
   blockerCount: packet.blockers.length,
+  storageBackendProposal: packet.storageBackendProposal.status,
+  rolloutPlan: packet.rolloutPlan.status,
+  replayDryRunContract: packet.replayDryRunContract.mode,
   mutation: packet.mutation,
   persistence: packet.persistence,
   providerCall: packet.providerCall,

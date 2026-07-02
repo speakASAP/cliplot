@@ -20,6 +20,7 @@ import {
   paymentCallbackReadiness,
   paymentCallbackReplayPolicyReadiness,
   paymentCallbackPersistenceApprovalPacket,
+  paymentCallbackStorageBackendProposalPacket,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
@@ -354,6 +355,21 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/payments/callback-persistence-approval-packet' && req.method === 'GET') {
       sendJson(res, 200, await paymentCallbackPersistenceApprovalPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-storage-backend-proposal-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentCallbackStorageBackendProposalPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-storage-backend-proposal-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 
