@@ -90,7 +90,7 @@ const { response: homeResponse, text: homeHtml } = await getText('/');
 assert(homeResponse.status === 200 && homeHtml.includes('data-drawer-status'), 'cart drawer status live region is missing', {
   httpStatus: homeResponse.status,
 });
-const { response: appResponse, text: appJs } = await getText('/app.js');
+const { response: appResponse, text: appJs } = await getText('/app.js?v=20260702-status-fetch');
 assert(
   appResponse.status === 200
     && appJs.includes('setDrawer(true)')

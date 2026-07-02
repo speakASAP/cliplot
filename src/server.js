@@ -72,9 +72,10 @@ async function serveStatic(req, res) {
   try {
     const data = await readFile(filePath);
     const ext = extname(filePath);
+    const cacheControl = ['.html', '.js', '.css'].includes(ext) ? 'no-store' : 'public, max-age=3600';
     res.writeHead(200, {
       'content-type': mimeTypes[ext] || 'application/octet-stream',
-      'cache-control': ext === '.html' ? 'no-store' : 'public, max-age=3600',
+      'cache-control': cacheControl,
     });
     res.end(data);
   } catch {

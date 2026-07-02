@@ -72,7 +72,7 @@ for (const route of statusRoutes) {
   });
 }
 
-const { response: appResponse, text: appJs } = await getText('/app.js');
+const { response: appResponse, text: appJs } = await getText('/app.js?v=20260702-status-fetch');
 assert(appResponse.status === 200, 'app.js unavailable', { httpStatus: appResponse.status });
 assert(appJs.includes('Čeká na kontrolu'), 'guarded status label missing from frontend', {});
 assert(appJs.includes('Platba se zatím nespustila'), 'guarded payment copy missing from frontend', {});
