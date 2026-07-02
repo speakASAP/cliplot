@@ -1359,10 +1359,7 @@ function passivePaymentSnapshotReadAllowed() {
   const statusRuntimeApprovalPresent = isApprovalPresent(serviceConfig.statusRuntimeApprovalId);
   const liveMutationRequested = serviceConfig.liveOrderSubmit
     || serviceConfig.livePaymentCreate
-    || serviceConfig.liveNotifications
-    || approvals.order
-    || approvals.payment
-    || approvals.notification;
+    || serviceConfig.liveNotifications;
 
   return serviceConfig.customerStatusRuntimeRead === true
     && serviceConfig.paymentStatusSnapshotRead === true
@@ -1376,10 +1373,7 @@ function passivePaymentSnapshotRuntimeState() {
   const statusRuntimeApprovalPresent = isApprovalPresent(serviceConfig.statusRuntimeApprovalId);
   const liveMutationRequested = serviceConfig.liveOrderSubmit
     || serviceConfig.livePaymentCreate
-    || serviceConfig.liveNotifications
-    || approvals.order
-    || approvals.payment
-    || approvals.notification;
+    || serviceConfig.liveNotifications;
   const blockers = [];
   if (!serviceConfig.customerStatusRuntimeRead) blockers.push('[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true after owner approval]');
   if (!serviceConfig.paymentStatusSnapshotRead) blockers.push('[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true after owner approval]');
@@ -3921,10 +3915,7 @@ export async function customerStatusRuntimeActivationGate() {
   const requestedSnapshotRead = serviceConfig.paymentStatusSnapshotRead === true;
   const liveMutationRequested = serviceConfig.liveOrderSubmit
     || serviceConfig.livePaymentCreate
-    || serviceConfig.liveNotifications
-    || approvals.order
-    || approvals.payment
-    || approvals.notification;
+    || serviceConfig.liveNotifications;
 
   const baselineGuarded = ['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(rollout.status)
     && ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(rollout.dependencyStatuses?.statusSurface)
@@ -5345,6 +5336,7 @@ export async function liveCheckoutApprovalPacket() {
     ...(productFilter.approvedCliplotSkuScope === true ? ['[DONE: owner-approved Cliplot SKU scope is recorded]'] : []),
     ...(orderWarehouse.status === 'validated_no_mutation' ? ['[DONE: order/Warehouse readiness validated with no mutation]'] : []),
     ...(liveSmokePlan.status === 'approved_live_order_warehouse_smoke_metadata_execution_disabled' ? ['[DONE: live Orders/Warehouse smoke metadata approved with execution disabled]'] : []),
+    ...(preflight.approvals?.order === true ? ['[DONE: live order/Warehouse approval metadata recorded from controlled CREATE_REPLAY_CANCEL evidence]'] : []),
     ...(paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' ? ['[DONE: payment status runtime read is approved and no-persistence]'] : []),
     ...(callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? ['[DONE: callback replay policy metadata approved with execution disabled]'] : []),
     ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),

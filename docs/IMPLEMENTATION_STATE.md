@@ -645,8 +645,10 @@ reported `activeReservationCount=0`. The run reported `paymentCreated=false`
 and `notificationSent=false`. Post-run production validation returned the
 executor to `approval_required` with `mutation=false`, `providerCall=false`,
 `persistence=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`. This proves
-the Orders/Warehouse create-replay-cancel lane only; live checkout order,
-payment, and notification approvals remain separate blockers.
+the Orders/Warehouse create-replay-cancel lane and now backs
+`CLIPLOT_LIVE_ORDER_APPROVAL_ID=owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel` while
+`ENABLE_LIVE_ORDER_SUBMIT=false`; live payment and notification approvals remain
+separate blockers.
 
 ### 2026-07-02 - Live-smoke Vault projection readiness gate
 

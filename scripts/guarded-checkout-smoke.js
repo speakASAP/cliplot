@@ -58,7 +58,10 @@ assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder ==
 assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'live preflight endpoint would reserve Warehouse stock', preflightPayload.liveCheckoutPreflight || {});
 assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'live preflight endpoint would create a payment', preflightPayload.liveCheckoutPreflight || {});
 assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'live preflight endpoint would send a notification', preflightPayload.liveCheckoutPreflight || {});
-assert(Array.isArray(preflightPayload.liveCheckoutPreflight?.missing) && preflightPayload.liveCheckoutPreflight.missing.length >= 3, 'live preflight endpoint blockers are missing', preflightPayload.liveCheckoutPreflight || {});
+assert(Array.isArray(preflightPayload.liveCheckoutPreflight?.missing) && preflightPayload.liveCheckoutPreflight.missing.length >= 2, 'live preflight endpoint blockers are missing', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.approvals?.order === true, 'order approval metadata should be present after controlled smoke evidence', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.approvals?.payment === false, 'payment approval unexpectedly present', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.approvals?.notification === false, 'notification approval unexpectedly present', preflightPayload.liveCheckoutPreflight || {});
 
 const externalOrderId = `cliplot-smoke-${Date.now()}`;
 const subtotal = Number(product.price || 0);
@@ -131,7 +134,7 @@ assert(checkout.paymentPreview?.paymentMethod === checkout.orderPreview?.payment
 });
 assert(!checkout.order, 'guarded checkout unexpectedly returned a live order object', { order: checkout.order });
 assert(!checkout.payment, 'guarded checkout unexpectedly returned a live payment object', { payment: checkout.payment });
-assert(checkout.liveMutationApprovals?.order === false, 'order approval unexpectedly enabled', checkout.liveMutationApprovals || {});
+assert(checkout.liveMutationApprovals?.order === true, 'order approval metadata should be present after controlled smoke evidence', checkout.liveMutationApprovals || {});
 assert(checkout.liveMutationApprovals?.payment === false, 'payment approval unexpectedly enabled', checkout.liveMutationApprovals || {});
 assert(checkout.liveMutationApprovals?.notification === false, 'notification approval unexpectedly enabled', checkout.liveMutationApprovals || {});
 assert(checkout.liveCheckoutPreflight?.status === 'blocked' && checkout.liveCheckoutPreflight?.wouldMutate === false, 'checkout live preflight is not blocked', checkout.liveCheckoutPreflight || {});
@@ -139,7 +142,7 @@ assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false,
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'checkout live preflight would reserve Warehouse stock', checkout.liveCheckoutPreflight || {});
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'checkout live preflight would create a payment', checkout.liveCheckoutPreflight || {});
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'checkout live preflight would send a notification', checkout.liveCheckoutPreflight || {});
-assert(Array.isArray(checkout.liveCheckoutPreflight?.missing) && checkout.liveCheckoutPreflight.missing.length >= 3, 'checkout live preflight blockers are missing', checkout.liveCheckoutPreflight || {});
+assert(Array.isArray(checkout.liveCheckoutPreflight?.missing) && checkout.liveCheckoutPreflight.missing.length >= 2, 'checkout live preflight blockers are missing', checkout.liveCheckoutPreflight || {});
 assert(checkout.orderValidation?.status === 'validated_no_mutation', 'order validation is not no-mutation', checkout.orderValidation || {});
 assert(checkout.paymentValidation?.status === 'validated_no_mutation', 'payment validation is not no-mutation', checkout.paymentValidation || {});
 assert(checkout.notificationValidation?.status === 'validated_no_send', 'notification validation is not no-send', checkout.notificationValidation || {});

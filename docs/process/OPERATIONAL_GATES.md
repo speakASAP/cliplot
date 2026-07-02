@@ -29,7 +29,7 @@ Revenue readiness requires both technical validation and explicit approval IDs.
 The live env flags are not sufficient by themselves:
 
 ```text
-ENABLE_LIVE_ORDER_SUBMIT=true requires CLIPLOT_LIVE_ORDER_APPROVAL_ID
+ENABLE_LIVE_ORDER_SUBMIT=true requires CLIPLOT_LIVE_ORDER_APPROVAL_ID plus false-to-true runtime flag approval for the bounded live checkout window
 ENABLE_LIVE_PAYMENT_CREATE=true requires CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
 ENABLE_LIVE_NOTIFICATIONS=true requires CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true requires CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID and ORDERS_STATUS_SERVICE_TOKEN

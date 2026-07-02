@@ -102,7 +102,7 @@ process.stdin.on("end", () => {
     && payload.liveOrderSubmit === false
     && payload.livePaymentCreate === false
     && payload.liveNotifications === false
-    && approvals.order === false
+    && approvals.order === true
     && approvals.payment === false
     && approvals.notification === false
     && integrations.orderValidation === "enabled_no_mutation"

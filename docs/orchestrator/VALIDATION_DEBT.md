@@ -33,7 +33,7 @@ evidence.
 Missing facts:
 
 - Owner-specific Catalog product scope or marketplace key.
-- Approved live order-create and Warehouse reservation evidence for Cliplot.
+- Approved live payment-create and notification-send evidence for Cliplot; live order-create and Warehouse reservation evidence is recorded from the controlled CREATE_REPLAY_CANCEL smoke.
 - Provider-backed payment evidence.
 - Auth client/callback policy.
 - Approved live notification send validation for Cliplot order confirmations.

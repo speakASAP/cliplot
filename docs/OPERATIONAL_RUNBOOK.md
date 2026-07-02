@@ -124,9 +124,11 @@ CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
 CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 ```
 
-The default deployed values are empty strings. Empty approval IDs intentionally
-keep `/api/checkout/submit` in `service_identity_required` guarded mode even if
-shared-service validation succeeds.
+`CLIPLOT_LIVE_ORDER_APPROVAL_ID` is recorded as `owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel` from
+the controlled Orders/Warehouse smoke evidence. This is not enough to mutate:
+`ENABLE_LIVE_ORDER_SUBMIT` remains `false`, and payment/notification approval IDs
+remain empty. Empty payment and notification approval IDs intentionally keep
+`/api/checkout/submit` in guarded mode even if shared-service validation succeeds.
 
 
 
@@ -503,8 +505,9 @@ The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with
 same order id on replay, order readback `status=cancelled`, Warehouse handoff
 `status=cancelled`, and reservation readback `activeReservationCount=0`.
 Payment creation and notification send remained outside scope and returned
-`false`. After the run, `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` must be verified
-back to `false` and `npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz`
+`false`. This evidence backs `CLIPLOT_LIVE_ORDER_APPROVAL_ID=owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel`
+only. After the run, `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` must be verified back to
+`false` and `npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz`
 must return `approval_required` with no mutation.
 
 ## Operator Readiness Bundle

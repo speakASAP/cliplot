@@ -91,10 +91,16 @@ ssh alfares 'kubectl rollout undo deployment/cliplot -n statex-apps'
   `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` and smoke owner metadata
   projected for a future owner-approved smoke window; the execution flag still
   stays `false` until that window is intentionally opened.
-- `CLIPLOT_LIVE_ORDER_APPROVAL_ID`, `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, and
-  `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` must stay empty until approved live
-  mutation evidence exists.
-- Deployment readiness checks false live mutation flags, empty live order/payment/notification approval IDs, and confirms that smoke metadata does not enable execution while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
+- `CLIPLOT_LIVE_ORDER_APPROVAL_ID` is now recorded as `owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel`
+  from the controlled Orders/Warehouse smoke evidence. It is metadata only while
+  `ENABLE_LIVE_ORDER_SUBMIT=false`.
+- `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID` and
+  `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` must stay empty until their separate
+  payment-create and notification-send evidence exists.
+- Deployment readiness checks false live mutation flags, the evidence-backed
+  live order approval metadata, empty payment/notification approval IDs, and
+  confirms that smoke metadata does not enable execution while
+  `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
 
 
 ## Docs/RAG Operational Readiness
@@ -116,11 +122,12 @@ Production has one bounded Orders/Warehouse smoke proof from 2026-07-03:
 external order `cliplot-live-smoke-1783034121293`, order
 `cd311dc8-d13a-4daa-81a8-c7d63b9dcbad`, idempotent replay to the same order,
 cancel through Orders, and post-cancel Warehouse reservation
-`activeReservationCount=0`. This evidence does not authorize normal live
-checkout mutation; deployment readiness still requires
-`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
-`ENABLE_LIVE_PAYMENT_CREATE=false`, and `ENABLE_LIVE_NOTIFICATIONS=false`
-outside a separately approved execution window.
+`activeReservationCount=0`. This evidence now backs `CLIPLOT_LIVE_ORDER_APPROVAL_ID=owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel`.
+It does not authorize normal live checkout mutation; deployment readiness still
+requires `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`,
+`ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
+`ENABLE_LIVE_NOTIFICATIONS=false` outside a separately approved execution
+window, with payment and notification approval IDs still empty.
 
 ## Revenue Closure Packet
 
