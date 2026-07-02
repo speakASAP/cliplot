@@ -337,7 +337,7 @@ function checkoutMissingFacts() {
   return missing;
 }
 
-function liveCheckoutPreflight() {
+export function liveCheckoutPreflight() {
   const approvals = liveMutationApprovals();
   const liveFlags = {
     order: serviceConfig.liveOrderSubmit,

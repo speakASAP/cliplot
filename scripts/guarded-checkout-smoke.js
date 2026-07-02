@@ -46,6 +46,12 @@ assert(readiness.liveCheckoutPreflight?.status === 'blocked' && readiness.liveCh
 assert(readiness.liveCheckoutPreflight?.liveFlags?.order === false, 'live order flag unexpectedly enabled', readiness.liveCheckoutPreflight || {});
 assert(readiness.liveCheckoutPreflight?.liveFlags?.payment === false, 'live payment flag unexpectedly enabled', readiness.liveCheckoutPreflight || {});
 assert(readiness.liveCheckoutPreflight?.liveFlags?.notification === false, 'live notification flag unexpectedly enabled', readiness.liveCheckoutPreflight || {});
+const { response: preflightResponse, payload: preflightPayload } = await getJson('/api/checkout/live-preflight');
+assert(preflightResponse.status === 200 && preflightPayload.success, 'live preflight endpoint failed', {
+  httpStatus: preflightResponse.status,
+});
+assert(preflightPayload.liveCheckoutPreflight?.status === 'blocked' && preflightPayload.liveCheckoutPreflight?.wouldMutate === false, 'live preflight endpoint is not guarded', preflightPayload.liveCheckoutPreflight || {});
+assert(Array.isArray(preflightPayload.liveCheckoutPreflight?.missing) && preflightPayload.liveCheckoutPreflight.missing.length >= 3, 'live preflight endpoint blockers are missing', preflightPayload.liveCheckoutPreflight || {});
 
 const externalOrderId = `cliplot-smoke-${Date.now()}`;
 const subtotal = Number(product.price || 0);
@@ -171,6 +177,7 @@ console.log(JSON.stringify({
   cartFeedbackContract: true,
   cartEditContract: true,
   liveCheckoutPreflight: checkout.liveCheckoutPreflight.status,
+  livePreflightEndpoint: preflightPayload.liveCheckoutPreflight.status,
   wouldMutate: checkout.liveCheckoutPreflight.wouldMutate,
   warehouseId: product.warehouseId,
   checkoutHttpStatus: checkoutResponse.status,
