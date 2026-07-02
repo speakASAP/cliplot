@@ -99,7 +99,10 @@ async function main() {
   assertFalse(paymentStatusStorage.body?.providerCall, 'payment_status_storage_readiness_provider_call_enabled', { paymentStatusStorage: paymentStatusStorage.body });
 
   const paymentDecision = await getJson('/api/payments/status-persistence-decision');
-  assertEqual(paymentDecision.body?.status, 'decision_required', 'payment_status_persistence_decision_unexpected', { paymentDecision: paymentDecision.body });
+  assertEqual(paymentDecision.body?.status, 'decision_recorded_approval_required', 'payment_status_persistence_decision_unexpected', { paymentDecision: paymentDecision.body });
+  assertEqual(paymentDecision.body?.decisionRecord?.id, 'ADR-002-payment-status-persistence-ownership', 'payment_status_decision_record_missing', { paymentDecision: paymentDecision.body });
+  assertEqual(paymentDecision.body?.decisionRecord?.status, 'proposed_for_owner_approval', 'payment_status_decision_record_status_unexpected', { paymentDecision: paymentDecision.body });
+  assertEqual(paymentDecision.body?.decisionRecord?.runtimeApproval, false, 'payment_status_decision_runtime_approval_unexpected', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.mutation, 'payment_status_persistence_decision_mutation_enabled', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.persistence, 'payment_status_persistence_decision_persistence_enabled', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.providerCall, 'payment_status_persistence_decision_provider_call_enabled', { paymentDecision: paymentDecision.body });
