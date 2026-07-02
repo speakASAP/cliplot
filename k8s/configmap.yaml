@@ -41,18 +41,18 @@ data:
   ENABLE_PAYMENT_STATUS_SNAPSHOT_READ: "true"
   CLIPLOT_STATUS_RUNTIME_APPROVAL_ID: "owner-approved-2026-07-02-read-only-customer-status"
   CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID: "owner-approved-2026-07-02-callback-replay-policy-metadata"
-  CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID: owner-approved-2026-07-03-callback-persistence-storage-metadata
-  CLIPLOT_CALLBACK_PERSISTENCE_ROLLOUT_APPROVAL_ID: owner-approved-2026-07-03-callback-persistence-rollout-metadata
-  CLIPLOT_CALLBACK_RETENTION_APPROVAL_ID: owner-approved-2026-07-03-callback-retention-deletion-metadata
-  CLIPLOT_CALLBACK_UNIQUENESS_APPROVAL_ID: owner-approved-2026-07-03-callback-uniqueness-conflict-metadata
-  CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID: owner-approved-2026-07-03-callback-replay-execution-metadata
-  CLIPLOT_CALLBACK_REPLAY_EXECUTION_WINDOW: owner-approved-2026-07-03-callback-replay-dry-run-window-execution-disabled
-  CLIPLOT_CALLBACK_REPLAY_ROLLBACK_OWNER: cliplot-operator
-  CLIPLOT_CALLBACK_REPLAY_VALIDATION_OWNER: cliplot-validation-owner
-  CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID: owner-approved-2026-07-03-live-status-write-metadata
-  CLIPLOT_LIVE_STATUS_WRITE_WINDOW: owner-approved-2026-07-03-live-status-write-window-execution-disabled
-  CLIPLOT_LIVE_STATUS_WRITE_ROLLBACK_OWNER: cliplot-operator
-  CLIPLOT_LIVE_STATUS_WRITE_VALIDATION_OWNER: cliplot-validation-owner
+  CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID: "owner-approved-2026-07-03-callback-persistence-storage-metadata"
+  CLIPLOT_CALLBACK_PERSISTENCE_ROLLOUT_APPROVAL_ID: "owner-approved-2026-07-03-callback-persistence-rollout-metadata"
+  CLIPLOT_CALLBACK_RETENTION_APPROVAL_ID: "owner-approved-2026-07-03-callback-retention-deletion-metadata"
+  CLIPLOT_CALLBACK_UNIQUENESS_APPROVAL_ID: "owner-approved-2026-07-03-callback-uniqueness-conflict-metadata"
+  CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID: "owner-approved-2026-07-03-callback-replay-execution-metadata"
+  CLIPLOT_CALLBACK_REPLAY_EXECUTION_WINDOW: "owner-approved-2026-07-03-callback-replay-dry-run-window-execution-disabled"
+  CLIPLOT_CALLBACK_REPLAY_ROLLBACK_OWNER: "cliplot-operator"
+  CLIPLOT_CALLBACK_REPLAY_VALIDATION_OWNER: "cliplot-validation-owner"
+  CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID: "owner-approved-2026-07-03-live-status-write-metadata"
+  CLIPLOT_LIVE_STATUS_WRITE_WINDOW: "owner-approved-2026-07-03-live-status-write-window-execution-disabled"
+  CLIPLOT_LIVE_STATUS_WRITE_ROLLBACK_OWNER: "cliplot-operator"
+  CLIPLOT_LIVE_STATUS_WRITE_VALIDATION_OWNER: "cliplot-validation-owner"
   CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID: "owner-approved-2026-07-02-shared-payments-status-storage-ownership"
   CLIPLOT_STATUS_MAPPING_OWNERSHIP_APPROVAL_ID: "owner-approved-2026-07-02-order-payment-status-mapping-renderer"
   CLIPLOT_STATUS_MAPPING_ROLLBACK_OWNER: "cliplot-operator"

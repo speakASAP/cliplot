@@ -24,7 +24,12 @@ assert(response.status === 200 && packet.success, 'callback persistence approval
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'approval_required_callback_persistence_storage_backend', 'callback persistence packet should remain approval-required', packet);
+const callbackPersistenceStatusAllowed = [
+  'approval_required_callback_persistence_storage_backend',
+  'approved_callback_persistence_metadata_execution_disabled',
+].includes(packet.status);
+const callbackPersistenceMetadataApproved = packet.status === 'approved_callback_persistence_metadata_execution_disabled';
+assert(callbackPersistenceStatusAllowed, 'callback persistence packet status unexpected', packet);
 assert(packet.mode === 'read_only_callback_persistence_approval_packet', 'callback persistence packet mode changed', packet);
 assert(packet.mutation === false, 'callback persistence packet reported mutation', packet);
 assert(packet.persistence === false, 'callback persistence packet reported persistence', packet);
@@ -67,8 +72,14 @@ assert(packet.storageBackendProposal?.mutation === false, 'storage backend propo
 assert(packet.storageBackendProposal?.persistence === false, 'storage backend proposal reports persistence', packet);
 assert(packet.storageBackendProposal?.providerCall === false, 'storage backend proposal reports provider call', packet);
 assert(packet.storageBackendProposal?.approvalIdPlaceholder === 'CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID', 'storage approval placeholder missing', packet);
+if (callbackPersistenceMetadataApproved) {
+  assert(packet.storageBackendProposal?.approvalIdPresent === true, 'storage approval metadata missing after approval', packet);
+  assert(packet.rolloutPlan?.approvalIdPresent === true, 'rollout approval metadata missing after approval', packet);
+  assert(packet.futureCallbackPersistenceContract?.retentionApprovalPresent === true, 'retention approval metadata missing after approval', packet);
+  assert(packet.futureCallbackPersistenceContract?.uniquenessApprovalPresent === true, 'uniqueness approval metadata missing after approval', packet);
+}
 assert(packet.storageBackendProposal?.dataBoundary?.includes('do not make Cliplot authoritative for payment status'), 'storage proposal authority boundary missing', packet);
-assert(packet.rolloutPlan?.status === 'proposal_metadata_recorded_approval_required', 'callback persistence rollout proposal missing', packet);
+assert(['proposal_metadata_recorded_approval_required', 'approved_callback_persistence_rollout_metadata_execution_disabled'].includes(packet.rolloutPlan?.status), 'callback persistence rollout proposal missing', packet);
 assert(packet.rolloutPlan?.mode === 'dry_run_plan_only', 'callback persistence rollout mode changed', packet);
 assert(packet.rolloutPlan?.dryRunOnlyNow === true, 'callback persistence rollout is not dry-run-only', packet);
 assert(packet.rolloutPlan?.runtimeEnablementNow === false, 'callback persistence rollout enabled runtime', packet);
@@ -94,8 +105,11 @@ assert(packet.forbiddenOperations?.includes('persist callback state'), 'persist 
 assert(packet.forbiddenOperations?.includes('call payment provider'), 'provider call forbidden operation missing', packet);
 assert(packet.satisfiedEvidence?.some((item) => item.includes('guarded callback ACK')), 'callback ACK satisfied evidence missing', packet);
 assert(packet.satisfiedEvidence?.some((item) => item.includes('callback replay/persistence metadata policy approved')), 'callback policy satisfied evidence missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval')), 'callback storage blocker missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback replay execution rollout approval')), 'callback replay blocker missing', packet);
+if (callbackPersistenceMetadataApproved) {
+  assert(packet.blockers.length === 0, 'callback persistence metadata approval should clear blockers', packet);
+} else {
+  assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval') || item.includes('guarded callback ACK') || item.includes('CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID')), 'callback storage/guard blocker missing', packet);
+}
 assert(!packet.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied evidence should not be counted as blockers', packet);
 assert(packet.sensitiveDataPolicy?.includes('metadata only'), 'sensitive data policy missing', packet);
 

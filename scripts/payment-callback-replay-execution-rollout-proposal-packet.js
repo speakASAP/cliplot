@@ -24,7 +24,8 @@ assert(response.status === 200 && packet.success, 'callback replay execution rol
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'proposal_metadata_recorded_approval_required', 'replay rollout status changed', packet);
+const replayRolloutMetadataApproved = packet.status === 'approved_callback_replay_execution_metadata_execution_disabled';
+assert(['proposal_metadata_recorded_approval_required', 'approved_callback_replay_execution_metadata_execution_disabled'].includes(packet.status), 'replay rollout status changed', packet);
 assert(packet.mode === 'read_only_callback_replay_execution_rollout_proposal_packet', 'replay rollout mode changed', packet);
 assert(packet.mutation === false, 'replay rollout reported mutation', packet);
 assert(packet.persistence === false, 'replay rollout reported persistence', packet);
@@ -39,13 +40,14 @@ assert(packet.livePaymentCreate === false, 'replay rollout enabled live payment 
 assert(packet.policyEvidence?.status === 'approved_callback_replay_policy_metadata_execution_disabled', 'callback replay policy evidence missing', packet);
 assert(packet.policyEvidence?.callbackPersistence === false, 'policy evidence enabled callback persistence', packet);
 assert(packet.policyEvidence?.callbackReplayEnabled === false, 'policy evidence enabled callback replay', packet);
-assert(packet.storageEvidence?.callbackPersistenceApproval === 'approval_required_callback_persistence_storage_backend', 'callback persistence approval evidence missing', packet);
+assert(['approval_required_callback_persistence_storage_backend', 'approved_callback_persistence_metadata_execution_disabled'].includes(packet.storageEvidence?.callbackPersistenceApproval), 'callback persistence approval evidence missing', packet);
 assert(packet.storageEvidence?.storageBackendProposal === 'proposal_metadata_recorded_approval_required', 'storage proposal evidence missing', packet);
 assert(packet.storageEvidence?.replayDryRunContract === 'dry_run_only_no_replay_execution', 'replay dry-run evidence missing', packet);
 assert(packet.storageEvidence?.storageConfigured === false, 'storage evidence configured storage', packet);
 assert(packet.storageEvidence?.callbackPersistence === false, 'storage evidence enabled callback persistence', packet);
 assert(packet.storageEvidence?.callbackReplayEnabled === false, 'storage evidence enabled callback replay', packet);
 assert(packet.storageEvidence?.liveWritesEnabled === false, 'storage evidence enabled live writes', packet);
+assert(['proposal_metadata_recorded_approval_required', 'approved_callback_replay_execution_window_metadata_execution_disabled'].includes(packet.executionWindowProposal?.status), 'execution window status changed', packet);
 assert(packet.executionWindowProposal?.mode === 'bounded_window_proposal_only', 'execution window mode changed', packet);
 assert(packet.executionWindowProposal?.approvalIdPlaceholder === 'CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID', 'replay approval placeholder missing', packet);
 assert(packet.executionWindowProposal?.currentRuntimeFlagEnabled === false, 'replay execution runtime flag enabled', packet);
@@ -70,7 +72,12 @@ assert(packet.mustRemainFalseBeforeApproval?.includes('provider-backed /payments
 assert(packet.forbiddenOperations?.includes('replay callback into storage'), 'replay forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('call payment provider'), 'provider call forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('send notification'), 'notification forbidden operation missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback replay execution rollout approval')), 'replay execution blocker missing', packet);
+if (replayRolloutMetadataApproved) {
+  assert(packet.blockers.length === 0, 'replay rollout metadata approval should clear blockers', packet);
+  assert(packet.executionWindowProposal?.approvalIdPresent === true, 'replay approval metadata missing after approval', packet);
+} else {
+  assert(packet.blockers?.some((item) => item.includes('callback replay execution rollout approval') || item.includes('callback replay/persistence policy metadata') || item.includes('callback persistence storage backend approval')), 'replay execution blocker missing', packet);
+}
 
 const serialized = JSON.stringify(packet);
 assert(!/sk_live|sk_test|whsec_|Bearer\s+/i.test(serialized), 'replay rollout packet appears to expose secret material', packet);

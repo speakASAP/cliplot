@@ -66,6 +66,11 @@ assert(packet.currentGuards?.callbackPersistence === false, 'current guard callb
 assert(packet.currentGuards?.callbackReplayEnabled === false, 'current guard callback replay enabled', packet);
 assert(packet.approvedPassiveReadContract?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider-backed read endpoint missing', packet);
 assert(packet.storageBackendProposal?.status === 'proposal_metadata_recorded_approval_required', 'storage backend proposal missing', packet);
+const storageContractMetadataApproved = packet.storageContract?.status === 'approved_callback_persistence_storage_contract_metadata_execution_disabled';
+if (storageContractMetadataApproved) {
+  assert(packet.rolloutPrerequisites?.storageApprovalRecorded === true, 'storage approval metadata missing in contract', packet);
+  assert(packet.retentionAndAudit?.retentionApprovalPresent === true, 'retention approval metadata missing in contract', packet);
+}
 assert(packet.rolloutPlan?.mode === 'dry_run_plan_only', 'dry-run rollout plan missing', packet);
 assert(packet.replayDryRunContract?.mode === 'dry_run_only_no_replay_execution', 'replay dry-run contract missing', packet);
 assert(packet.requiredApprovalsBeforeEnablement?.includes('approved callback event retention/deletion policy'), 'retention/deletion approval missing', packet);
@@ -75,9 +80,11 @@ assert(packet.mustRemainFalseBeforeApproval?.includes('ENABLE_PAYMENT_CALLBACK_R
 assert(packet.mustRemainFalseBeforeApproval?.includes('ENABLE_PAYMENT_LIVE_STATUS_WRITE'), 'live status write flag guard missing', packet);
 assert(packet.forbiddenOperations?.includes('persist callback state'), 'persist callback forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('call payment provider'), 'provider call forbidden operation missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval')), 'storage backend blocker missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback event retention/deletion policy')), 'retention/deletion blocker missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback storage uniqueness and conflict contract')), 'uniqueness/conflict blocker missing', packet);
+if (packet.blockers.length === 0) {
+  assert(storageContractMetadataApproved, 'storage contract should be metadata-approved after blockers clear', packet);
+} else {
+  assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval') || item.includes('callback event retention/deletion policy') || item.includes('callback storage uniqueness and conflict contract') || item.includes('guarded callback ACK') || item.includes('CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID')), 'storage contract blocker missing', packet);
+}
 
 const serialized = JSON.stringify(packet);
 assert(!/sk_live|sk_test|whsec_|Bearer\s+/i.test(serialized), 'storage contract appears to expose secret material', packet);

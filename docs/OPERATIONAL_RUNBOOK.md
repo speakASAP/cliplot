@@ -335,7 +335,7 @@ npm run readiness:payment-callback -- https://cliplot.alfares.cz
 npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz
 ```
 
-`GET /api/payments/callback-persistence-approval-packet` is the read-only approval packet for the future callback persistence storage backend. It aggregates guarded callback ACK evidence, ADR-005 policy metadata, Payments-owned passive status storage, idempotency keys, duplicate/conflict handling, retention metadata, rollback owner, validation owner, exact storage/replay blockers, a metadata-only storage backend proposal, a dry-run rollout plan, and a replay dry-run contract. The proposal names the Payments-owned callback event projection as the candidate backend and keeps Cliplot non-authoritative. It must return `approval_required_callback_persistence_storage_backend` with `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`; the proposal fields are not approval to persist callbacks, replay callbacks, update statuses, or call a provider.
+`GET /api/payments/callback-persistence-approval-packet` is the read-only approval packet for the future callback persistence storage backend. It aggregates guarded callback ACK evidence, ADR-005 policy metadata, Payments-owned passive status storage, idempotency keys, duplicate/conflict handling, retention metadata, rollback owner, validation owner, exact storage/replay blockers, a metadata-only storage backend proposal, a dry-run rollout plan, and a replay dry-run contract. The proposal names the Payments-owned callback event projection as the candidate backend and keeps Cliplot non-authoritative. It may return `approved_callback_persistence_metadata_execution_disabled` once all metadata approvals are recorded, but it must still keep `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`; the proposal fields are not approval to persist callbacks, replay callbacks, update statuses, or call a provider.
 
 ```bash
 npm run readiness:payment-callback-persistence -- https://cliplot.alfares.cz
@@ -386,7 +386,7 @@ packet for a future bounded live status write window. It aggregates approved
 passive Payments snapshot-read evidence, ADR-006 non-authoritative mapping
 ownership, callback persistence blockers, callback replay rollout blockers,
 and rollback/validation requirements while keeping live status writes disabled.
-It must return `approval_required_live_status_write` with
+It may return `approved_live_status_write_metadata_execution_disabled` after metadata approvals are recorded, but it must keep
 `liveStatusWritesEnabled=false`, `liveStatusWritesNow=false`,
 `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`,
 `persistence=false`, and `providerCall=false`. It is not approval to persist

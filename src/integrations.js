@@ -1953,7 +1953,9 @@ export async function paymentCallbackPersistenceApprovalPacket() {
     && storageBackendApproved
     && rolloutApproved
     && retentionApproved
-    && uniquenessApproved;
+    && uniquenessApproved
+    && replayExecutionApproved
+    && liveStatusWriteApproved;
   const satisfiedEvidence = [
     ...(guardedCallback ? ['[DONE: guarded callback ACK validates without persistence]'] : []),
     ...(metadataApproved ? ['[DONE: callback replay/persistence metadata policy approved with execution disabled]'] : []),

@@ -24,7 +24,8 @@ assert(response.status === 200 && packet.success, 'live status write approval pa
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'approval_required_live_status_write', 'live status write status changed', packet);
+const liveStatusWriteMetadataApproved = packet.status === 'approved_live_status_write_metadata_execution_disabled';
+assert(['approval_required_live_status_write', 'approved_live_status_write_metadata_execution_disabled'].includes(packet.status), 'live status write status changed', packet);
 assert(packet.mode === 'read_only_live_status_write_approval_packet', 'live status write mode changed', packet);
 assert(packet.mutation === false, 'live status write packet reported mutation', packet);
 assert(packet.persistence === false, 'live status write packet reported persistence', packet);
@@ -54,6 +55,7 @@ assert(packet.currentWriteGuards?.callbackPersistence === false, 'current callba
 assert(packet.currentWriteGuards?.callbackReplayEnabled === false, 'current callback replay enabled', packet);
 assert(packet.currentWriteGuards?.replayExecutionAllowed === false, 'replay execution allowed', packet);
 assert(packet.currentWriteGuards?.liveStatusWritesNow === false, 'current guard allows live status writes now', packet);
+assert(['proposal_metadata_recorded_approval_required', 'approved_live_status_write_window_metadata_execution_disabled'].includes(packet.approvalProposal?.status), 'approval proposal status changed', packet);
 assert(packet.approvalProposal?.mode === 'bounded_live_status_write_window_proposal_only', 'approval proposal mode changed', packet);
 assert(packet.approvalProposal?.approvalIdPlaceholder === 'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID', 'live status write approval id placeholder missing', packet);
 assert(packet.approvalProposal?.currentRuntimeFlagEnabled === false, 'live status write runtime flag enabled', packet);
@@ -73,9 +75,16 @@ assert(packet.requiredApprovalIds?.includes('CLIPLOT_CALLBACK_PERSISTENCE_STORAG
 assert(packet.requiredRuntimeFlags?.ENABLE_PAYMENT_LIVE_STATUS_WRITE === false, 'live status write runtime flag should be false', packet);
 assert(packet.requiredRuntimeFlags?.ENABLE_PAYMENT_CALLBACK_PERSISTENCE === false, 'callback persistence runtime flag should be false', packet);
 assert(packet.requiredRuntimeFlags?.ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION === false, 'callback replay runtime flag should be false', packet);
-assert(packet.rollbackOwner?.includes('[MISSING:'), 'rollback owner should remain missing until approval', packet);
-assert(packet.validationOwner?.includes('[MISSING:'), 'validation owner should remain missing until approval', packet);
-assert(packet.boundedWriteWindow?.includes('[MISSING:'), 'bounded write window should remain missing until approval', packet);
+if (liveStatusWriteMetadataApproved) {
+  assert(!packet.rollbackOwner?.includes('[MISSING:'), 'rollback owner missing after live status write metadata approval', packet);
+  assert(!packet.validationOwner?.includes('[MISSING:'), 'validation owner missing after live status write metadata approval', packet);
+  assert(!packet.boundedWriteWindow?.includes('[MISSING:'), 'bounded write window missing after live status write metadata approval', packet);
+  assert(packet.approvalProposal?.approvalIdPresent === true, 'live status write approval metadata missing after approval', packet);
+} else {
+  assert(packet.rollbackOwner?.includes('[MISSING:') || packet.blockers.length > 0, 'rollback owner should remain missing until approval', packet);
+  assert(packet.validationOwner?.includes('[MISSING:') || packet.blockers.length > 0, 'validation owner should remain missing until approval', packet);
+  assert(packet.boundedWriteWindow?.includes('[MISSING:') || packet.blockers.length > 0, 'bounded write window should remain missing until approval', packet);
+}
 assert(packet.rollbackPlan?.includes('set ENABLE_PAYMENT_LIVE_STATUS_WRITE=false'), 'live status write rollback flag missing', packet);
 assert(packet.requiredApprovalsBeforeEnablement?.includes('owner approval before enabling live status writes'), 'owner approval requirement missing', packet);
 assert(packet.mustRemainFalseBeforeApproval?.includes('ENABLE_PAYMENT_LIVE_STATUS_WRITE'), 'live status write guard missing', packet);
@@ -83,8 +92,11 @@ assert(packet.mustRemainFalseBeforeApproval?.includes('provider-backed /payments
 assert(packet.forbiddenOperations?.includes('write payment status'), 'write payment status forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('read /payments/{paymentId}'), 'provider-backed read forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('send notification'), 'notification forbidden operation missing', packet);
-assert(packet.blockers?.some((item) => item.includes('owner approval before enabling live status writes')), 'live status write approval blocker missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval')), 'callback persistence storage blocker missing', packet);
+if (liveStatusWriteMetadataApproved) {
+  assert(packet.blockers.length === 0, 'live status write metadata approval should clear blockers', packet);
+} else {
+  assert(packet.blockers?.some((item) => item.includes('owner approval before enabling live status writes') || item.includes('callback persistence storage backend approval') || item.includes('approved passive Payments DB snapshot read')), 'live status write blocker missing', packet);
+}
 
 const serialized = JSON.stringify(packet);
 assert(!/sk_live|sk_test|whsec_|Bearer\s+/i.test(serialized), 'live status write packet appears to expose secret material', packet);

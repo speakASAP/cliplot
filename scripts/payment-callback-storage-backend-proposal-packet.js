@@ -53,6 +53,7 @@ assert(packet.futureCallbackPersistenceContract?.currentPersistence === false, '
 assert(packet.futureCallbackPersistenceContract?.replayExecution === false, 'future contract replays now', packet);
 assert(packet.approvedPassiveReadContract?.endpoint === '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'approved passive read endpoint missing', packet);
 assert(packet.approvedPassiveReadContract?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider endpoint missing', packet);
+assert(['proposal_metadata_recorded_approval_required', 'approved_callback_persistence_rollout_metadata_execution_disabled'].includes(packet.rolloutPlan?.status), 'rollout plan status changed', packet);
 assert(packet.rolloutPlan?.mode === 'dry_run_plan_only', 'rollout plan is not dry-run-only', packet);
 assert(packet.rolloutPlan?.dryRunOnlyNow === true, 'rollout plan is not dry-run-only now', packet);
 assert(packet.rolloutPlan?.runtimeEnablementNow === false, 'rollout plan enabled runtime now', packet);
@@ -73,8 +74,12 @@ assert(packet.mustRemainFalseBeforeApproval?.includes('callbackPersistence'), 'c
 assert(packet.mustRemainFalseBeforeApproval?.includes('provider-backed /payments/{paymentId} reads'), 'provider-backed read guard missing', packet);
 assert(packet.forbiddenOperations?.includes('persist callback state'), 'persist callback forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('call payment provider'), 'provider call forbidden operation missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval')), 'storage approval blocker missing', packet);
-assert(packet.blockers?.some((item) => item.includes('callback replay execution rollout approval')), 'replay execution blocker missing', packet);
+if (packet.blockers.length === 0) {
+  assert(packet.storageBackendProposal?.approvalIdPresent === true, 'storage approval metadata missing after blockers cleared', packet);
+  assert(packet.rolloutPlan?.approvalIdPresent === true, 'rollout approval metadata missing after blockers cleared', packet);
+} else {
+  assert(packet.blockers?.some((item) => item.includes('callback persistence storage backend approval') || item.includes('guarded callback ACK') || item.includes('CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID')), 'storage/guard blocker missing', packet);
+}
 
 const serialized = JSON.stringify(packet);
 assert(!/sk_live|sk_test|whsec_|Bearer\s+/i.test(serialized), 'proposal packet appears to expose secret material', packet);
