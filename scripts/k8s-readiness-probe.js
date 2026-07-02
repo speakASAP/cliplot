@@ -125,6 +125,20 @@ async function main() {
   assertFalse(paymentDecision.body?.persistence, 'payment_status_persistence_decision_persistence_enabled', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.providerCall, 'payment_status_persistence_decision_provider_call_enabled', { paymentDecision: paymentDecision.body });
 
+  const paymentMapping = await getJson('/api/payments/status-mapping-ownership');
+  assertEqual(paymentMapping.body?.status, 'approval_required_order_payment_status_mapping_ownership', 'payment_status_mapping_ownership_unexpected', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.decisionRecord?.id, 'ADR-006-order-payment-status-mapping-ownership', 'payment_status_mapping_decision_record_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.orders?.authoritative, true, 'payment_status_mapping_orders_owner_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.payments?.authoritative, true, 'payment_status_mapping_payments_owner_missing', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.ownership?.cliplot?.authoritative, false, 'payment_status_mapping_cliplot_authoritative', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.runtimeReadEnabled, false, 'payment_status_mapping_runtime_enabled', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.paymentsSnapshotReadEnabled, false, 'payment_status_mapping_snapshot_enabled', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.storageRead, false, 'payment_status_mapping_storage_read_enabled', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.callbackPersistence, false, 'payment_status_mapping_callback_persistence_enabled', { paymentMapping: paymentMapping.body });
+  assertFalse(paymentMapping.body?.mutation, 'payment_status_mapping_mutation_enabled', { paymentMapping: paymentMapping.body });
+  assertFalse(paymentMapping.body?.persistence, 'payment_status_mapping_persistence_enabled', { paymentMapping: paymentMapping.body });
+  assertFalse(paymentMapping.body?.providerCall, 'payment_status_mapping_provider_call_enabled', { paymentMapping: paymentMapping.body });
+
   const snapshotReadApproval = await getJson('/api/payments/status-snapshot-read-approval-packet');
   assertEqual(snapshotReadApproval.body?.status, 'approval_required_passive_payments_snapshot_read', 'payment_status_snapshot_read_approval_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
   assertEqual(snapshotReadApproval.body?.runtimeReadEnabled, false, 'payment_status_snapshot_read_runtime_enabled', { snapshotReadApproval: snapshotReadApproval.body });
@@ -206,6 +220,7 @@ async function main() {
     paymentStatusReadiness: paymentStatusReadiness.body.status,
     paymentStatusStorageReadiness: paymentStatusStorage.body.status,
     paymentStatusPersistenceDecision: paymentDecision.body.status,
+    paymentStatusMappingOwnership: paymentMapping.body.status,
     paymentStatusSnapshotReadApproval: snapshotReadApproval.body.status,
     paymentStatusRuntimeReadiness: statusRuntimeReadiness.body.status,
     checkoutStatusSurface: checkoutStatusSurface.body.status,

@@ -2132,6 +2132,157 @@ export async function paymentStatusPersistenceDecisionPacket() {
   };
 }
 
+export async function paymentStatusMappingOwnershipPacket() {
+  const statusReadiness = await paymentStatusReadiness();
+  const storageReadiness = await paymentStatusStorageReadiness();
+  const decisionPacket = await paymentStatusPersistenceDecisionPacket();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const runtimeReadiness = paymentStatusRuntimeReadiness();
+
+  return {
+    success: true,
+    status: 'approval_required_order_payment_status_mapping_ownership',
+    mode: 'guarded_order_payment_status_mapping_ownership',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    runtimeReadEnabled: false,
+    paymentsSnapshotReadEnabled: false,
+    storageRead: false,
+    callbackPersistence: false,
+    approvedRuntimeChange: false,
+    decisionRecord: {
+      id: 'ADR-006-order-payment-status-mapping-ownership',
+      title: 'Order And Payment Status Mapping Ownership',
+      path: '07_decisions/ADR-006-order-payment-status-mapping-ownership.md',
+      status: 'proposed_for_owner_approval',
+      recorded: true,
+      runtimeApproval: false,
+    },
+    ownership: {
+      orders: {
+        owner: 'orders-microservice',
+        authoritative: true,
+        owns: [
+          'order lifecycle',
+          'externalOrderId idempotency',
+          'order id',
+          'Warehouse reservation side effects after approved live order create',
+        ],
+      },
+      payments: {
+        owner: 'payments-microservice',
+        authoritative: true,
+        owns: [
+          'payment id',
+          'payment status',
+          'amount',
+          'currency',
+          'payment method',
+          'provider-derived payment truth',
+        ],
+      },
+      cliplot: {
+        owner: 'cliplot',
+        authoritative: false,
+        role: 'customer_safe_renderer_after_owner_approval',
+        mayRenderOnlyAfterApproval: true,
+        mayPersistStatusTruth: false,
+      },
+    },
+    mappingContract: {
+      authoritative: false,
+      source: 'owner_approval_required',
+      proposedFields: [
+        'externalOrderId',
+        'orderId',
+        'paymentId',
+        'paymentCreateIdempotencyKey',
+        'amount',
+        'currency',
+        'status',
+        'customerSafePaymentStatus',
+        'createdAt',
+        'completedAt',
+      ],
+      uniqueness: [
+        'externalOrderId scoped to applicationId=cliplot',
+        'paymentId owned by payments-microservice',
+      ],
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    readContract: {
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      applicationId: serviceConfig.applicationId,
+      requiredScope: 'payments:read',
+      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      source: 'payments_db_snapshot',
+      forbiddenEndpoint: '/payments/{paymentId}',
+      providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    currentEvidence: {
+      paymentStatus: statusReadiness.status,
+      paymentStorage: storageReadiness.status,
+      paymentDecision: decisionPacket.status,
+      callbackReplayPolicy: callbackPolicy.status,
+      snapshotReadApproval: 'approval_required_passive_payments_snapshot_read',
+      runtimeReadiness: runtimeReadiness.status,
+      readScopeStatus: statusReadiness.readScopeReadiness?.status || null,
+      scopeValidated: statusReadiness.readScopeReadiness?.scopeValidated === true,
+      currentStatusPersistence: storageReadiness.readContract?.currentPersistence,
+      callbackPersistence: callbackPolicy.callbackPersistence,
+      callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
+      runtimeReadEnabled: runtimeReadiness.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: runtimeReadiness.paymentsSnapshotReadEnabled,
+      storageRead: runtimeReadiness.storageRead,
+    },
+    requiredOwnerApprovals: [
+      'approved order/payment status mapping ownership',
+      'owner approval to enable Cliplot passive Payments status snapshot reads',
+      'customer-safe Czech status copy approval',
+      'explicit approval that passive reads use only Payments DB-only by-order-id route',
+      'runtime rollout owner and rollback owner recorded',
+    ],
+    forbiddenOperations: [
+      'create order',
+      'reserve Warehouse stock',
+      'create payment',
+      'send notification',
+      'persist callback state',
+      'replay payment callback',
+      'write Cliplot-local payment status',
+      'read /payments/{paymentId}',
+      'call payment provider',
+      'print API keys or webhook keys',
+      'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
+    ],
+    blockers: [
+      '[MISSING: approved order/payment status mapping ownership]',
+      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+      '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+      '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
+      '[MISSING: runtime rollout owner and rollback owner recorded]',
+    ],
+    sensitiveDataPolicy: [
+      'ownership metadata only',
+      'no payment API key value',
+      'no webhook key value',
+      'no payment rows',
+      'no customer PII',
+      'no provider transaction id',
+      'no raw provider payload',
+    ],
+    next: 'Collect owner approval for ADR-006 before enabling any customer-facing runtime order/payment status correlation.',
+  };
+}
+
 export async function paymentStatusSnapshotReadApprovalPacket() {
   const statusReadiness = await paymentStatusReadiness();
   const storageReadiness = await paymentStatusStorageReadiness();

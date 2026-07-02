@@ -385,6 +385,22 @@ npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz
 ```
 
 
+`GET /api/payments/status-mapping-ownership` is the read-only ownership packet
+for future customer-facing order/payment status correlation. It must return
+`approval_required_order_payment_status_mapping_ownership`, `mutation=false`,
+`persistence=false`, `providerCall=false`, `runtimeReadEnabled=false`,
+`paymentsSnapshotReadEnabled=false`, `storageRead=false`, and
+`callbackPersistence=false`. The packet records ADR-006 as proposed for owner
+approval, keeps Orders authoritative for order lifecycle, Payments authoritative
+for payment status, and Cliplot a non-authoritative customer-safe renderer. It
+must not create orders, reserve Warehouse stock, create payments, send
+notifications, persist callbacks, read `/payments/{paymentId}`, print secrets,
+or read payment rows.
+
+```bash
+npm run readiness:payment-mapping -- https://cliplot.alfares.cz
+```
+
 ## Operator Readiness Bundle
 
 Run the read-only bundle before handoff or live-mutation approval reviews:

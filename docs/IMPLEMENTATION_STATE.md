@@ -195,6 +195,14 @@ notification sends, and Docs/RAG ingestion gated.
   `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`,
   `persistence=false`, and `providerCall=false`. It is approval evidence only;
   it does not enable live reads, live writes, provider calls, or persistence.
+- The order/payment status mapping ownership packet is wired as
+  `GET /api/payments/status-mapping-ownership` and
+  `npm run readiness:payment-mapping`. It records ADR-006 as proposed for
+  owner approval, assigns future order lifecycle ownership to Orders, future
+  payment status ownership to Payments, and keeps Cliplot as a non-authoritative
+  customer-safe renderer. It keeps runtime reads, local storage, callback
+  persistence, mutation, provider calls, order creation, Warehouse reservation,
+  payment creation, and notification sends disabled.
 - The customer status page now has a guarded frontend payment-status read path:
   `/objednavka/stav`, `/checkout/success`, and `/checkout/cancelled` render the
   browser-local checkout snapshot first, then fetch `/api/payments/status` by
