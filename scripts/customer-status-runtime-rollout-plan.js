@@ -42,6 +42,10 @@ assert(plan.targetSurface?.futureReadContract === '/payments/status/by-order-id?
 assert(plan.targetSurface?.requiredScope === 'payments:read', 'payments:read scope missing', plan);
 assert(plan.targetSurface?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider-refresh endpoint missing', plan);
 assert(plan.targetSurface?.routes?.includes('/objednavka/stav'), 'customer status route missing', plan);
+assert(plan.dependencyStatuses?.statusSurface === 'guarded_customer_status_surface_contract', 'status surface dependency missing', plan);
+assert(plan.dependencyStatuses?.snapshotReadApproval === 'approval_required_passive_payments_snapshot_read', 'snapshot-read dependency missing', plan);
+assert(plan.dependencyStatuses?.paymentDecision === 'decision_recorded_approval_required', 'payment decision dependency missing', plan);
+assert(plan.dependencyStatuses?.paymentReadScope === 'validated_payments_read_scope_no_mutation', 'payment read-scope dependency missing', plan);
 assert(Array.isArray(plan.prerequisites) && plan.prerequisites.some((item) => item.includes('owner approval')), 'owner approval prerequisite missing', plan);
 assert(plan.prerequisites.some((item) => item.includes('customer-safe status copy approval')), 'copy approval prerequisite missing', plan);
 assert(plan.prerequisites.some((item) => item.includes('DB-only by-order-id route')), 'DB-only route approval prerequisite missing', plan);

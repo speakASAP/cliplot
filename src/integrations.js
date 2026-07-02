@@ -1862,6 +1862,12 @@ export async function customerStatusRuntimeRolloutPlan() {
       forbiddenEndpoint: snapshotReadApproval.readContract?.forbiddenEndpoint,
       providerRefreshRisk: snapshotReadApproval.readContract?.providerRefreshRisk,
     },
+    dependencyStatuses: {
+      statusSurface: surface.status,
+      snapshotReadApproval: snapshotReadApproval.status,
+      paymentDecision: paymentDecision.status,
+      paymentReadScope: snapshotReadApproval.currentReadiness?.readScopeStatus || null,
+    },
     decisionRecord: {
       id: 'ADR-003-read-only-customer-status-runtime-rollout',
       path: '07_decisions/ADR-003-read-only-customer-status-runtime-rollout.md',
@@ -1945,8 +1951,6 @@ export async function customerStatusRuntimeRolloutPlan() {
 
 export async function customerStatusRuntimeActivationGate() {
   const rollout = await customerStatusRuntimeRolloutPlan();
-  const surface = await customerStatusSurfaceReadiness();
-  const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
   const approvals = liveMutationApprovals();
   const statusRuntimeApprovalPresent = isApprovalPresent(serviceConfig.statusRuntimeApprovalId);
   const requestedRuntimeRead = serviceConfig.customerStatusRuntimeRead === true;
@@ -1959,16 +1963,12 @@ export async function customerStatusRuntimeActivationGate() {
     || approvals.notification;
 
   const baselineGuarded = rollout.status === 'approval_required_read_only_customer_status_runtime_rollout'
-    && surface.status === 'guarded_customer_status_surface_contract'
-    && snapshotReadApproval.status === 'approval_required_passive_payments_snapshot_read'
+    && rollout.dependencyStatuses?.statusSurface === 'guarded_customer_status_surface_contract'
+    && rollout.dependencyStatuses?.snapshotReadApproval === 'approval_required_passive_payments_snapshot_read'
     && rollout.runtimeReadEnabled === false
     && rollout.paymentsSnapshotReadEnabled === false
     && rollout.storageRead === false
-    && rollout.callbackPersistence === false
-    && snapshotReadApproval.runtimeReadEnabled === false
-    && surface.runtimeReadEnabled === false
-    && surface.paymentsSnapshotReadEnabled === false
-    && surface.storageRead === false;
+    && rollout.callbackPersistence === false;
 
   const blockers = [];
   if (!baselineGuarded) blockers.push('[MISSING: guarded customer status baseline evidence]');
@@ -2045,21 +2045,21 @@ export async function customerStatusRuntimeActivationGate() {
     ],
     currentBaseline: {
       rollout: rollout.status,
-      surface: surface.status,
-      snapshotReadApproval: snapshotReadApproval.status,
-      paymentReadScope: snapshotReadApproval.currentReadiness?.readScopeStatus,
+      surface: rollout.dependencyStatuses?.statusSurface || null,
+      snapshotReadApproval: rollout.dependencyStatuses?.snapshotReadApproval || null,
+      paymentReadScope: rollout.dependencyStatuses?.paymentReadScope || null,
       runtimeReadEnabled: rollout.runtimeReadEnabled,
       paymentsSnapshotReadEnabled: rollout.paymentsSnapshotReadEnabled,
       storageRead: rollout.storageRead,
       callbackPersistence: rollout.callbackPersistence,
     },
     approvedReadContract: {
-      endpoint: snapshotReadApproval.readContract?.endpoint,
-      applicationId: snapshotReadApproval.readContract?.applicationId,
-      requiredScope: snapshotReadApproval.readContract?.requiredScope,
-      requiredRuntimeKey: snapshotReadApproval.readContract?.requiredRuntimeKey,
-      providerRefreshRisk: snapshotReadApproval.readContract?.providerRefreshRisk,
-      forbiddenEndpoint: snapshotReadApproval.readContract?.forbiddenEndpoint,
+      endpoint: rollout.targetSurface?.futureReadContract,
+      applicationId: serviceConfig.applicationId,
+      requiredScope: rollout.targetSurface?.requiredScope,
+      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      providerRefreshRisk: rollout.targetSurface?.providerRefreshRisk,
+      forbiddenEndpoint: rollout.targetSurface?.forbiddenEndpoint,
       mutation: false,
       persistence: false,
       providerCall: false,
