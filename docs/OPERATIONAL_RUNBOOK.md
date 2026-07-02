@@ -361,6 +361,23 @@ out of the packet.
 npm run readiness:payment-callback-replay-rollout -- https://cliplot.alfares.cz
 ```
 
+
+`GET /api/payments/live-status-write-approval-packet` is the read-only approval
+packet for a future bounded live status write window. It aggregates approved
+passive Payments snapshot-read evidence, ADR-006 non-authoritative mapping
+ownership, callback persistence blockers, callback replay rollout blockers,
+and rollback/validation requirements while keeping live status writes disabled.
+It must return `approval_required_live_status_write` with
+`liveStatusWritesEnabled=false`, `liveStatusWritesNow=false`,
+`callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`,
+`persistence=false`, and `providerCall=false`. It is not approval to persist
+callbacks, replay callbacks, write order/payment status, call a provider, create
+payments, or send notifications.
+
+```bash
+npm run readiness:payment-live-status-write -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the

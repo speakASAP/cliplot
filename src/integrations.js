@@ -2369,6 +2369,250 @@ export async function paymentCallbackReplayExecutionRolloutProposalPacket() {
 }
 
 
+export async function paymentLiveStatusWriteApprovalPacket() {
+  const statusReadiness = await paymentStatusReadiness();
+  const storageReadiness = await paymentStatusStorageReadiness();
+  const decisionPacket = await paymentStatusPersistenceDecisionPacket();
+  const mappingPacket = await paymentStatusMappingOwnershipPacket();
+  const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
+  const replayRollout = await paymentCallbackReplayExecutionRolloutProposalPacket();
+  const runtime = paymentStatusRuntimeReadiness();
+
+  const passiveSnapshotApproved = statusReadiness.status === 'ready_for_approved_payment_status_runtime_read'
+    && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read'
+    && mappingPacket.status === 'approved_order_payment_status_mapping_ownership'
+    && runtime.runtimeReadEnabled === true
+    && runtime.paymentsSnapshotReadEnabled === true
+    && runtime.storageRead === false
+    && runtime.callbackPersistence === false;
+  const writeGuardsIntact = storageReadiness.readContract?.currentPersistence === false
+    && storageReadiness.callbackContract?.currentPersistence === false
+    && storageReadiness.storage?.liveWritesEnabled === false
+    && callbackPolicy.callbackPersistence === false
+    && callbackPolicy.callbackReplayEnabled === false
+    && callbackPersistence.callbackPersistence === false
+    && callbackPersistence.callbackReplayEnabled === false
+    && replayRollout.replayExecutionAllowed === false
+    && replayRollout.liveStatusWritesNow === false
+    && serviceConfig.livePaymentCreate === false;
+
+  const satisfiedEvidence = [
+    ...(passiveSnapshotApproved ? [
+      '[DONE: passive Payments DB snapshot read is approved and active]',
+      '[DONE: order/payment status mapping ownership is approved for non-authoritative rendering]',
+      '[DONE: customer-safe status copy is approved for read-only rendering]',
+    ] : []),
+    ...(writeGuardsIntact ? [
+      '[DONE: live status write guards remain disabled]',
+      '[DONE: callback persistence and replay execution remain disabled]',
+      '[DONE: provider-backed payment status reads remain forbidden]',
+    ] : []),
+  ];
+  const blockers = [
+    ...(passiveSnapshotApproved ? [] : ['[MISSING: approved passive Payments DB snapshot read and mapping evidence]']),
+    ...(writeGuardsIntact ? [] : ['[MISSING: current no-write/no-replay guard evidence]']),
+    '[MISSING: owner approval before enabling live status writes]',
+    '[MISSING: approved callback persistence storage backend approval]',
+    '[MISSING: approved callback persistence rollout plan]',
+    '[MISSING: callback replay execution rollout approval]',
+    '[MISSING: bounded live status write window]',
+    '[MISSING: validation owner checklist for live status writes]',
+    '[MISSING: rollback owner procedure for live status writes]',
+  ];
+
+  return {
+    success: true,
+    status: 'approval_required_live_status_write',
+    mode: 'read_only_live_status_write_approval_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    callbackPersistence: false,
+    callbackReplayEnabled: false,
+    liveStatusWritesEnabled: false,
+    liveStatusWritesNow: false,
+    livePaymentCreate: serviceConfig.livePaymentCreate,
+    passiveReadEvidence: {
+      paymentStatus: statusReadiness.status,
+      snapshotReadApproval: snapshotReadApproval.status,
+      mappingOwnership: mappingPacket.status,
+      runtimeReadiness: runtime.status,
+      runtimeReadEnabled: runtime.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: runtime.paymentsSnapshotReadEnabled,
+      storageRead: runtime.storageRead,
+      callbackPersistence: runtime.callbackPersistence,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    ownership: {
+      ordersOwner: 'orders-microservice',
+      paymentsOwner: 'payments-microservice',
+      cliplotOwner: 'cliplot',
+      ordersAuthoritative: true,
+      paymentsAuthoritative: true,
+      cliplotAuthoritative: false,
+      writeOwnerAfterApproval: 'payments-microservice',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    approvedReadContract: {
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      applicationId: serviceConfig.applicationId,
+      requiredScope: 'payments:read',
+      source: 'payments_db_snapshot',
+      forbiddenEndpoint: '/payments/{paymentId}',
+      providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    currentWriteGuards: {
+      storageConfigured: storageReadiness.storage?.configured === true,
+      liveWritesEnabled: storageReadiness.storage?.liveWritesEnabled === true,
+      currentStatusPersistence: storageReadiness.readContract?.currentPersistence,
+      callbackPersistence: storageReadiness.callbackContract?.currentPersistence,
+      callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
+      replayExecutionAllowed: replayRollout.replayExecutionAllowed,
+      liveStatusWritesNow: replayRollout.liveStatusWritesNow,
+      livePaymentCreate: serviceConfig.livePaymentCreate,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    approvalProposal: {
+      status: 'proposal_metadata_recorded_approval_required',
+      mode: 'bounded_live_status_write_window_proposal_only',
+      approvalIdPlaceholder: 'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID',
+      proposedRuntimeFlag: 'ENABLE_PAYMENT_LIVE_STATUS_WRITE',
+      currentRuntimeFlagEnabled: false,
+      writeOwner: 'payments-microservice',
+      cliplotRole: 'non_authoritative_renderer_and_guarded_callback_ack',
+      writeSourceAfterApproval: 'approved Payments-owned callback event projection or Payments-owned status command',
+      currentRuntimeEnablement: false,
+      liveStatusWritesNow: false,
+      callbackPersistenceNow: false,
+      callbackReplayEnabledNow: false,
+      providerBackedReadsNow: false,
+      notificationSendsNow: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      requiredBeforeEnablement: [
+        'approved callback persistence storage backend approval',
+        'approved callback persistence rollout plan',
+        'callback replay execution rollout approval',
+        'bounded live status write window',
+        'validation owner checklist for live status writes',
+        'rollback owner procedure for live status writes',
+      ],
+    },
+    dryRunPlan: {
+      status: 'proposal_metadata_recorded_approval_required',
+      mode: 'synthetic_live_status_write_dry_run_only',
+      dryRunOnlyNow: true,
+      syntheticOnlyNow: true,
+      phases: [
+        { name: 'approved_passive_snapshot_baseline', runtimeMutation: false },
+        { name: 'synthetic_callback_to_status_mapping_dry_run', runtimeMutation: false },
+        { name: 'duplicate_status_write_idempotency_dry_run', runtimeMutation: false },
+        { name: 'terminal_status_conflict_manual_review_dry_run', runtimeMutation: false },
+        { name: 'post_window_read_only_reconciliation_dry_run', runtimeMutation: false },
+      ],
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    futureExecutionPlan: {
+      status: 'approval_required_before_runtime_use',
+      wouldPersistAfterApproval: true,
+      wouldUpdatePaymentStatusAfterApproval: true,
+      wouldUpdateOrderStatusAfterApproval: false,
+      wouldCallProviderAfterApproval: false,
+      wouldSendNotificationAfterApproval: false,
+      currentRuntimeExecution: false,
+    },
+    requiredApprovalIds: [
+      'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID',
+      'CLIPLOT_CALLBACK_PERSISTENCE_STORAGE_APPROVAL_ID',
+      'CLIPLOT_CALLBACK_PERSISTENCE_ROLLOUT_APPROVAL_ID',
+      'CLIPLOT_CALLBACK_REPLAY_EXECUTION_APPROVAL_ID',
+    ],
+    requiredRuntimeFlags: {
+      ENABLE_PAYMENT_LIVE_STATUS_WRITE: false,
+      ENABLE_PAYMENT_CALLBACK_PERSISTENCE: false,
+      ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION: false,
+    },
+    rollbackOwner: '[MISSING: rollback owner procedure for live status writes]',
+    validationOwner: '[MISSING: validation owner checklist for live status writes]',
+    boundedWriteWindow: '[MISSING: approved live status write window]',
+    rollbackPlan: [
+      'set ENABLE_PAYMENT_LIVE_STATUS_WRITE=false',
+      'set ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION=false',
+      'set ENABLE_PAYMENT_CALLBACK_PERSISTENCE=false',
+      'restore read-only Payments DB snapshot rendering',
+      'run readiness:payment-live-status-write',
+      'run readiness:payment-callback-replay-rollout',
+      'run readiness:revenue-closure',
+    ],
+    requiredApprovalsBeforeEnablement: [
+      'owner approval before enabling live status writes',
+      'callback persistence storage backend approval',
+      'callback persistence rollout plan',
+      'callback replay execution rollout approval',
+      'bounded live status write window',
+      'validation owner checklist for live status writes',
+      'rollback owner procedure for live status writes',
+    ],
+    mustRemainFalseBeforeApproval: [
+      'ENABLE_PAYMENT_LIVE_STATUS_WRITE',
+      'callbackPersistence',
+      'callbackReplayEnabled',
+      'ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION',
+      'Cliplot-local callback storage writes',
+      'Cliplot-local payment status writes',
+      'live order/payment status writes',
+      'provider-backed /payments/{paymentId} reads',
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'ENABLE_LIVE_NOTIFICATIONS',
+    ],
+    forbiddenOperations: [
+      'persist callback state',
+      'replay callback into storage',
+      'write payment status',
+      'write order status',
+      'create payment',
+      'call payment provider',
+      'read /payments/{paymentId}',
+      'send notification',
+      'print webhook key or API key values',
+      'return raw provider payloads, payment rows, provider transaction IDs, customer PII, or secrets',
+    ],
+    satisfiedEvidence,
+    blockers: [...new Set(blockers)],
+    sensitiveDataPolicy: [
+      'metadata only',
+      'synthetic write-window proposal only',
+      'no real order id',
+      'no real payment id',
+      'no webhook key value',
+      'no payment API key value',
+      'no callback payload',
+      'no provider payload',
+      'no customer PII',
+      'no payment rows',
+      'no provider transaction id',
+    ],
+    next: 'Review the metadata-only live status write approval packet; separate owner approval is still required before callback persistence, replay execution, storage writes, live status writes, or provider-backed reads are enabled.',
+  };
+}
+
+
 export async function paymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
   const statusResult = await paymentStatus({ orderId: syntheticOrderId });
@@ -4625,6 +4869,7 @@ export async function liveCheckoutApprovalPacket() {
   const paymentStatusPacket = await paymentStatusReadiness();
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
   const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
+  const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
   const readiness = serviceReadiness();
@@ -4710,6 +4955,7 @@ export async function liveCheckoutApprovalPacket() {
       statusReadiness: paymentStatusPacket.status,
       callbackReplayPolicy: callbackPolicy.status,
       callbackPersistence: callbackPersistence.status,
+      liveStatusWriteApproval: liveStatusWriteApproval.status,
       callbackPersistenceEnabled: callbackPersistence.callbackPersistence,
       callbackReplayEnabled: callbackPersistence.callbackReplayEnabled,
       livePaymentCreate: serviceConfig.livePaymentCreate,
@@ -4795,6 +5041,7 @@ export async function revenueClosurePacket() {
   const paymentDecision = await paymentStatusPersistenceDecisionPacket();
   const paymentMapping = await paymentStatusMappingOwnershipPacket();
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
   const readiness = serviceReadiness();
@@ -4809,6 +5056,7 @@ export async function revenueClosurePacket() {
     paymentDecision: paymentDecision.status,
     paymentMapping: paymentMapping.status,
     callbackReplayPolicy: callbackPolicy.status,
+    liveStatusWriteApproval: liveStatusWriteApproval.status,
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
     liveCheckoutApproval: approvalPacket.status,
@@ -4846,6 +5094,7 @@ export async function revenueClosurePacket() {
       'callback persistence storage backend proposal',
       'callback persistence rollout plan',
       'callback replay dry-run procedure',
+      'live status write approval packet',
       'operator rollback procedure for persisted callback/status writes',
       'validation owner checklist',
     ],
@@ -4860,6 +5109,7 @@ export async function revenueClosurePacket() {
       'CREATE_REPLAY_CANCEL live smoke executor run',
       'callback persistence enablement',
       'callback replay execution enablement',
+      'live status write enablement',
       'live order/payment status writes',
     ],
     currentPacketMayMutate: false,
@@ -4940,6 +5190,15 @@ export async function revenueClosurePacket() {
       status: callbackPolicy.status,
       callbackPersistence: callbackPolicy.callbackPersistence,
       callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
+    },
+    liveStatusWriteApproval: {
+      status: liveStatusWriteApproval.status,
+      liveStatusWritesEnabled: liveStatusWriteApproval.liveStatusWritesEnabled,
+      liveStatusWritesNow: liveStatusWriteApproval.liveStatusWritesNow,
+      blockerCount: liveStatusWriteApproval.blockers?.length || 0,
+      mutation: liveStatusWriteApproval.mutation,
+      persistence: liveStatusWriteApproval.persistence,
+      providerCall: liveStatusWriteApproval.providerCall,
     },
     customerStatus: {
       activation: customerStatusActivation.status,

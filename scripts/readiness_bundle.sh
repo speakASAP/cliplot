@@ -146,6 +146,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_step payment_callback_replay_policy npm run readiness:payment-callback-policy -- "$BASE_URL"
   run_step payment_callback_storage_proposal npm run readiness:payment-callback-storage-proposal -- "$BASE_URL"
   run_step payment_callback_replay_rollout npm run readiness:payment-callback-replay-rollout -- "$BASE_URL"
+  run_step payment_live_status_write_approval npm run readiness:payment-live-status-write -- "$BASE_URL"
   run_step payment_read_scope_readiness npm run readiness:payment-read-scope -- "$BASE_URL"
   run_step payment_status_readiness npm run readiness:payment-status -- "$BASE_URL"
   run_step payment_status_storage_readiness npm run readiness:payment-storage -- "$BASE_URL"
