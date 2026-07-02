@@ -2353,6 +2353,144 @@ export async function customerStatusRuntimeActivationGate() {
   };
 }
 
+
+export async function customerStatusApprovalEvidencePacket() {
+  const surface = await customerStatusSurfaceReadiness();
+  const rollout = await customerStatusRuntimeRolloutPlan();
+  const activation = await customerStatusRuntimeActivationGate();
+  const runtimeReadiness = paymentStatusRuntimeReadiness();
+  const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
+
+  const baselineGuarded = surface.status === 'guarded_customer_status_surface_contract'
+    && rollout.status === 'approval_required_read_only_customer_status_runtime_rollout'
+    && activation.status === 'blocked_read_only_customer_status_runtime_activation'
+    && runtimeReadiness.status === 'blocked_payments_snapshot_runtime_read'
+    && snapshotReadApproval.status === 'approval_required_passive_payments_snapshot_read'
+    && surface.runtimeReadEnabled === false
+    && rollout.runtimeReadEnabled === false
+    && activation.runtimeReadEnabled === false
+    && runtimeReadiness.runtimeReadEnabled === false
+    && snapshotReadApproval.runtimeReadEnabled === false;
+
+  const blockers = [
+    '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+    '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
+    '[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true after owner approval]',
+    '[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true after owner approval]',
+    '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+    '[MISSING: explicit approval that passive reads use only Payments DB-only by-order-id route]',
+    '[MISSING: callback persistence/replay policy confirming callback persistence remains disabled for read-only activation]',
+    '[MISSING: approved order/payment status mapping ownership]',
+    '[MISSING: runtime rollout owner and rollback owner recorded]',
+  ];
+
+  return {
+    success: true,
+    status: baselineGuarded
+      ? 'approval_required_customer_status_runtime_evidence_packet'
+      : 'blocked_customer_status_runtime_evidence_drift',
+    mode: 'guarded_customer_status_runtime_approval_evidence',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    runtimeReadEnabled: false,
+    paymentsSnapshotReadEnabled: false,
+    storageRead: false,
+    callbackPersistence: false,
+    approvedRuntimeChange: false,
+    wouldReadPaymentsSnapshot: false,
+    wouldRenderRuntimeCustomerStatus: false,
+    wouldMutate: false,
+    baselineGuarded,
+    intentChain: {
+      vision: 'Czech customers can check order/payment progress without Cliplot becoming a payment source of truth.',
+      goalImpact: 'Prepare an owner approval packet for read-only customer status activation with no live mutation.',
+      system: 'Cliplot storefront plus shared Payments DB-only by-order-id snapshot contract.',
+      feature: 'Guarded customer status runtime evidence packet.',
+      task: 'Aggregate activation prerequisites and blockers for future runtime approval.',
+      executionPlan: 'Expose metadata-only endpoint and readiness script; keep all runtime flags false.',
+      codingPrompt: 'Do not enable live reads, writes, provider calls, persistence, order creation, payment creation, warehouse reservation, or notification sends.',
+      code: 'customerStatusApprovalEvidencePacket endpoint and readiness check.',
+      validation: 'npm run readiness:customer-status-approval -- https://cliplot.alfares.cz',
+    },
+    currentEvidence: {
+      statusSurface: surface.status,
+      runtimeRollout: rollout.status,
+      activationGate: activation.status,
+      paymentRuntimeReadiness: runtimeReadiness.status,
+      snapshotReadApproval: snapshotReadApproval.status,
+      paymentReadScope: rollout.dependencyStatuses?.paymentReadScope || null,
+      frontendStatusFetch: 'deployed_guarded_fetch',
+    },
+    runtimeFlags: {
+      customerStatusRuntimeRead: serviceConfig.customerStatusRuntimeRead,
+      paymentStatusSnapshotRead: serviceConfig.paymentStatusSnapshotRead,
+      statusRuntimeApprovalPresent: isApprovalPresent(serviceConfig.statusRuntimeApprovalId),
+      liveOrderSubmit: serviceConfig.liveOrderSubmit,
+      livePaymentCreate: serviceConfig.livePaymentCreate,
+      liveNotifications: serviceConfig.liveNotifications,
+    },
+    approvedReadContract: {
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      applicationId: serviceConfig.applicationId,
+      requiredScope: 'payments:read',
+      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      source: 'payments_db_snapshot',
+      providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
+      forbiddenEndpoint: '/payments/{paymentId}',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    approvalRequest: {
+      requiredApprovalId: 'CLIPLOT_STATUS_RUNTIME_APPROVAL_ID',
+      requiredRuntimeFlags: [
+        'ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true',
+        'ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true',
+      ],
+      mustRemainFalse: [
+        'ENABLE_LIVE_ORDER_SUBMIT',
+        'ENABLE_LIVE_PAYMENT_CREATE',
+        'ENABLE_LIVE_NOTIFICATIONS',
+        'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+        'callback persistence',
+        'Cliplot-local payment status writes',
+        'provider-backed /payments/{paymentId} reads',
+      ],
+      requiredApprovals: [
+        'owner approval for provider-refresh-free Payments DB snapshot reads',
+        'customer-safe Czech status copy approval',
+        'explicit DB-only by-order-id read route approval',
+        'callback persistence/replay policy',
+        'order/payment status mapping ownership approval',
+        'rollback owner and validation owner assignment',
+      ],
+    },
+    validationCommands: [
+      'npm run readiness:customer-status-approval -- https://cliplot.alfares.cz',
+      'npm run readiness:customer-status-activation -- https://cliplot.alfares.cz',
+      'npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz',
+      'npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz',
+      'npm run readiness:bundle',
+    ],
+    forbiddenOperations: [
+      'create order',
+      'create payment',
+      'reserve Warehouse stock',
+      'send notification',
+      'persist callback state',
+      'read /payments/{paymentId}',
+      'call payment provider',
+      'print API keys or webhook keys',
+      'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
+    ],
+    blockers,
+    next: 'Use this packet as the owner approval evidence source; do not enable runtime reads until every blocker is resolved and the approval ID plus both read-only flags exist together.',
+  };
+}
+
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
     .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)

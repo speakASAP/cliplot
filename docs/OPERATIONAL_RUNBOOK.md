@@ -254,6 +254,12 @@ live order/payment/Warehouse/notification mutation.
 npm run readiness:customer-status-activation -- https://cliplot.alfares.cz
 ```
 
+`GET /api/checkout/customer-status-approval-evidence-packet` is the operator-facing evidence packet for a future read-only customer status activation. It aggregates the guarded status surface, passive Payments snapshot approval packet, runtime rollout plan, activation gate, and disabled runtime adapter evidence. It must return `approval_required_customer_status_runtime_evidence_packet`, `baselineGuarded=true`, `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`, `storageRead=false`, `callbackPersistence=false`, `wouldReadPaymentsSnapshot=false`, `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. It is approval evidence only and must not enable live order creation, payment creation, Warehouse reservation, callback persistence, notification sends, or provider-backed payment reads.
+
+```bash
+npm run readiness:customer-status-approval -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/status-runtime-readiness` reports the disabled-by-default
 passive Payments DB snapshot adapter for `/api/payments/status`. The adapter may
 only use `/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}`

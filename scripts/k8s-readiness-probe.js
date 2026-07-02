@@ -160,6 +160,21 @@ async function main() {
   assertFalse(customerStatusActivation.body?.providerCall, 'customer_status_activation_provider_call_enabled', { customerStatusActivation: customerStatusActivation.body });
   assertEqual(customerStatusActivation.body?.approvedReadContract?.forbiddenEndpoint, '/payments/{paymentId}', 'customer_status_activation_forbidden_endpoint_missing', { customerStatusActivation: customerStatusActivation.body });
 
+  const customerStatusApproval = await getJson('/api/checkout/customer-status-approval-evidence-packet');
+  assertEqual(customerStatusApproval.body?.status, 'approval_required_customer_status_runtime_evidence_packet', 'customer_status_approval_evidence_unexpected', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.baselineGuarded, true, 'customer_status_approval_baseline_not_guarded', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.runtimeReadEnabled, false, 'customer_status_approval_runtime_read_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.paymentsSnapshotReadEnabled, false, 'customer_status_approval_snapshot_read_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.storageRead, false, 'customer_status_approval_storage_read_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.callbackPersistence, false, 'customer_status_approval_callback_persistence_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.wouldReadPaymentsSnapshot, false, 'customer_status_approval_would_read_snapshot', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.wouldRenderRuntimeCustomerStatus, false, 'customer_status_approval_would_render_runtime_status', { customerStatusApproval: customerStatusApproval.body });
+  assertFalse(customerStatusApproval.body?.mutation, 'customer_status_approval_mutation_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertFalse(customerStatusApproval.body?.persistence, 'customer_status_approval_persistence_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertFalse(customerStatusApproval.body?.providerCall, 'customer_status_approval_provider_call_enabled', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.approvedReadContract?.forbiddenEndpoint, '/payments/{paymentId}', 'customer_status_approval_forbidden_endpoint_missing', { customerStatusApproval: customerStatusApproval.body });
+  assertEqual(customerStatusApproval.body?.approvalRequest?.requiredApprovalId, 'CLIPLOT_STATUS_RUNTIME_APPROVAL_ID', 'customer_status_approval_id_missing', { customerStatusApproval: customerStatusApproval.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -179,6 +194,7 @@ async function main() {
     checkoutStatusSurface: checkoutStatusSurface.body.status,
     customerStatusRollout: customerStatusRollout.body.status,
     customerStatusActivation: customerStatusActivation.body.status,
+    customerStatusApprovalEvidence: customerStatusApproval.body.status,
   }, null, 2));
 }
 

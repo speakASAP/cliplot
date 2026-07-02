@@ -182,6 +182,18 @@ notification sends, and Docs/RAG ingestion gated.
   `paymentsSnapshotReadEnabled=false`, `storageRead=false`, `mutation=false`,
   `persistence=false`, `providerCall=false`, and `/payments/{paymentId}` is
   still forbidden for passive Cliplot status reads.
+- The customer status approval evidence packet is wired as
+  `GET /api/checkout/customer-status-approval-evidence-packet` and
+  `npm run readiness:customer-status-approval`. It aggregates the guarded
+  surface, rollout plan, activation gate, passive snapshot approval packet, and
+  disabled runtime adapter while keeping production at
+  `approval_required_customer_status_runtime_evidence_packet` with
+  `baselineGuarded=true`, `runtimeReadEnabled=false`,
+  `paymentsSnapshotReadEnabled=false`, `storageRead=false`,
+  `callbackPersistence=false`, `wouldReadPaymentsSnapshot=false`,
+  `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`. It is approval evidence only;
+  it does not enable live reads, live writes, provider calls, or persistence.
 - The customer status page now has a guarded frontend payment-status read path:
   `/objednavka/stav`, `/checkout/success`, and `/checkout/cancelled` render the
   browser-local checkout snapshot first, then fetch `/api/payments/status` by

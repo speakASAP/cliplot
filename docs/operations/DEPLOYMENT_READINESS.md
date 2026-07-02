@@ -69,6 +69,14 @@ present.
   `wouldReadPaymentsSnapshot=false`, `wouldRenderRuntimeCustomerStatus=false`,
   `mutation=false`, `persistence=false`, and `providerCall=false` until all
   read-only runtime approvals and flags exist together.
+- The customer status approval evidence packet must remain
+  `approval_required_customer_status_runtime_evidence_packet` with
+  `baselineGuarded=true`, `runtimeReadEnabled=false`,
+  `paymentsSnapshotReadEnabled=false`, `storageRead=false`,
+  `callbackPersistence=false`, `wouldReadPaymentsSnapshot=false`,
+  `wouldRenderRuntimeCustomerStatus=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`. It is evidence for owner
+  approval only and must not enable live status reads.
 - The passive Payments DB snapshot adapter behind `/api/payments/status` must
   remain inactive by default. `/api/payments/status-runtime-readiness` must
   return `blocked_payments_snapshot_runtime_read`,
