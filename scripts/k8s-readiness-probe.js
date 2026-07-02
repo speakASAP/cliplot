@@ -55,6 +55,7 @@ async function main() {
   assertEqual(preflight?.status, 'blocked', 'live_preflight_not_blocked', { preflight: preflightResponse.body });
   assertFalse(preflight?.wouldMutate, 'live_preflight_would_mutate', { preflight: preflightResponse.body });
   assertFalse(preflight?.mutationPlan?.wouldCreateOrder, 'live_preflight_would_create_order', { preflight: preflightResponse.body });
+  assertFalse(preflight?.mutationPlan?.wouldReserveWarehouse, 'live_preflight_would_reserve_warehouse', { preflight: preflightResponse.body });
   assertFalse(preflight?.mutationPlan?.wouldCreatePayment, 'live_preflight_would_create_payment', { preflight: preflightResponse.body });
   assertFalse(preflight?.mutationPlan?.wouldSendNotification, 'live_preflight_would_send_notification', { preflight: preflightResponse.body });
 

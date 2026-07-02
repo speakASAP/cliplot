@@ -156,8 +156,9 @@ notification sends, and Docs/RAG ingestion gated.
 - GOAL-06 readiness bundle now passes after Docs/RAG embedding connectivity was restored via Docker Ollama host port `11435`, `scripts/publish_docs_rag.sh` was hardened to select the newest Running Ready non-deleting Docs/RAG pod, and Docs/RAG chunking was capped by character length in `docs-rag-microservice:febd791`.
 - Controlled Docs/RAG ingestion for repoName `cliplot` passed with job `7a03ada9-9b99-4ef7-8223-5c5a298244f5`, `chunksProcessed=76`, `chunksTotal=76`. Retrieval search returned HTTP 200 with 5 results, and agent-context returned HTTP 200 with 6 sources; both top results were `cliplot/implementation-goals/GOAL-06-operational-closure.execution-plan.md`.
 - The full `npm run readiness:bundle` is the operator aggregate check and now passes with Docs/RAG preflight, guarded checkout smoke, Vault presence, and Kubernetes rollout evidence.
+- The live checkout mutation plan now names Warehouse reservation explicitly as `wouldReserveWarehouse`, because Orders live create calls Warehouse reservation before payment/notification continuation. Guarded production reports keep it `false`; the fully approved simulated activation path sets it `true` together with order, payment, and notification mutation booleans.
 - The post-rename order/Warehouse readiness report is wired as `GET /api/checkout/order-warehouse-readiness` and `npm run readiness:order-warehouse`. It proves, without live mutation, that `service=cliplot` can use a Catalog-backed product with `warehouseId`, validate `orders.create.v1` through Orders `/api/orders/validate-create`, and verify Warehouse availability through `/api/stock/availability/batch` while returning `mutation=false`, `providerCall=false`, and `persistence=false`.
-- The live activation gate now blocks partial future live configurations. `npm run readiness:activation -- https://cliplot.alfares.cz` proves order-only and order-plus-payment scenarios remain `blocked` with `wouldMutate=false`; a fully approved simulated configuration becomes `ready_for_approved_live_mutation` with order, payment, and notification mutation plan booleans true.
+- The live activation gate now blocks partial future live configurations. `npm run readiness:activation -- https://cliplot.alfares.cz` proves order-only and order-plus-payment scenarios remain `blocked` with `wouldMutate=false`; a fully approved simulated configuration becomes `ready_for_approved_live_mutation` with order, Warehouse reservation, payment, and notification mutation plan booleans true.
 - The Kubernetes readiness monitor lane is endpoint-only and read-only. It
   checks `/health`, `/api/checkout/live-preflight`,
   `/api/integrations/readiness`, and `/api/payments/status` without POST or
@@ -523,8 +524,8 @@ behavior until those approvals are present.
   `localhost:5000/cliplot:d7caf93`. `GET /api/checkout/live-preflight`
   exposes the guarded preflight contract as JSON with
   `status=blocked`, `wouldMutate=false`, and an explicit `mutationPlan` where
-  `wouldCreateOrder=false`, `wouldCreatePayment=false`, and
-  `wouldSendNotification=false`. This fixes the partial-live semantic risk:
+  `wouldCreateOrder=false`, `wouldReserveWarehouse=false`,
+  `wouldCreatePayment=false`, and `wouldSendNotification=false`. This fixes the partial-live semantic risk:
   operators can distinguish full live readiness from whether any mutation would
   occur. The endpoint remains read-only and does not call Orders, Payments,
   Warehouse reservation, Notifications, or persistence.

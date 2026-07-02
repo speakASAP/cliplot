@@ -188,8 +188,9 @@ Status: deployed and validated in guarded mode.
 contract for live checkout activation. It returns the current preflight status,
 live flags, approval booleans, validation lane status, remaining blockers,
 `wouldMutate`, and an explicit mutation plan. In the current guarded
-configuration it remains `blocked`, `wouldMutate=false`, and all mutation-plan
-booleans are false.
+configuration it remains `blocked`, `wouldMutate=false`, with `wouldCreateOrder=false`,
+`wouldReserveWarehouse=false`, `wouldCreatePayment=false`, and
+`wouldSendNotification=false`.
 
 This lane does not enable live order creation, payment creation, Warehouse
 reservation, callback persistence, or notification send.

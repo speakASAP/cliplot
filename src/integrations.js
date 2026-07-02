@@ -368,15 +368,17 @@ export function liveCheckoutPreflight() {
     && approvals.notification
     && missing.length === 0;
   const wouldCreateOrder = fullyReady;
+  const wouldReserveWarehouse = fullyReady;
   const wouldCreatePayment = fullyReady;
   const wouldSendNotification = fullyReady;
-  const wouldMutate = wouldCreateOrder || wouldCreatePayment || wouldSendNotification;
+  const wouldMutate = wouldCreateOrder || wouldReserveWarehouse || wouldCreatePayment || wouldSendNotification;
 
   return {
     status: fullyReady ? 'ready_for_approved_live_mutation' : 'blocked',
     wouldMutate,
     mutationPlan: {
       wouldCreateOrder,
+      wouldReserveWarehouse,
       wouldCreatePayment,
       wouldSendNotification,
     },

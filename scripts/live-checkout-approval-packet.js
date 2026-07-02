@@ -21,6 +21,7 @@ assert(packet.catalog?.warehouseBackedProductCount > 0, 'approval packet lacks W
 assert(packet.liveCheckoutPreflight?.status === 'blocked', 'approval packet unexpectedly reports live checkout ready', packet.liveCheckoutPreflight || {});
 assert(packet.liveCheckoutPreflight?.wouldMutate === false, 'approval packet would mutate', packet.liveCheckoutPreflight || {});
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, 'approval packet would create order', packet.liveCheckoutPreflight || {});
+assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'approval packet would reserve Warehouse stock', packet.liveCheckoutPreflight || {});
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'approval packet would create payment', packet.liveCheckoutPreflight || {});
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'approval packet would send notification', packet.liveCheckoutPreflight || {});
 assert(Array.isArray(packet.requiredRuntimeKeys) && packet.requiredRuntimeKeys.includes('PAYMENT_API_KEY'), 'runtime key names missing', packet);

@@ -63,12 +63,14 @@ process.stdin.on("end", () => {
   console.log("livePreflight.status=" + p.status);
   console.log("livePreflight.wouldMutate=" + p.wouldMutate);
   console.log("livePreflight.wouldCreateOrder=" + Boolean(p.mutationPlan && p.mutationPlan.wouldCreateOrder));
+  console.log("livePreflight.wouldReserveWarehouse=" + Boolean(p.mutationPlan && p.mutationPlan.wouldReserveWarehouse));
   console.log("livePreflight.wouldCreatePayment=" + Boolean(p.mutationPlan && p.mutationPlan.wouldCreatePayment));
   console.log("livePreflight.wouldSendNotification=" + Boolean(p.mutationPlan && p.mutationPlan.wouldSendNotification));
   const guarded = payload.success
     && p.status === "blocked"
     && p.wouldMutate === false
     && p.mutationPlan?.wouldCreateOrder === false
+    && p.mutationPlan?.wouldReserveWarehouse === false
     && p.mutationPlan?.wouldCreatePayment === false
     && p.mutationPlan?.wouldSendNotification === false;
   if (!guarded) process.exit(1);

@@ -19,6 +19,7 @@ const preflight = packet.liveCheckoutPreflight || {};
 assert(preflight.status === 'blocked', 'live activation gate is not blocked', preflight);
 assert(preflight.wouldMutate === false, 'live activation gate would mutate', preflight);
 assert(preflight.mutationPlan?.wouldCreateOrder === false, 'live activation would create order', preflight);
+assert(preflight.mutationPlan?.wouldReserveWarehouse === false, 'live activation would reserve Warehouse stock', preflight);
 assert(preflight.mutationPlan?.wouldCreatePayment === false, 'live activation would create payment', preflight);
 assert(preflight.mutationPlan?.wouldSendNotification === false, 'live activation would send notification in guarded deployment', preflight);
 assert(preflight.liveFlags?.order === false && preflight.liveFlags?.payment === false && preflight.liveFlags?.notification === false, 'live flags are not all false', preflight.liveFlags || {});
@@ -116,12 +117,14 @@ for (const testCase of partialCases) {
     assert(simulated.status === 'ready_for_approved_live_mutation', `approved activation case ${testCase.name} is not ready`, simulated);
     assert(simulated.wouldMutate === true, `approved activation case ${testCase.name} would not mutate`, simulated);
     assert(simulated.mutationPlan?.wouldCreateOrder === true, `approved activation case ${testCase.name} would not create order`, simulated);
+    assert(simulated.mutationPlan?.wouldReserveWarehouse === true, `approved activation case ${testCase.name} would not reserve Warehouse stock`, simulated);
     assert(simulated.mutationPlan?.wouldCreatePayment === true, `approved activation case ${testCase.name} would not create payment`, simulated);
     assert(simulated.mutationPlan?.wouldSendNotification === true, `approved activation case ${testCase.name} would not send notification`, simulated);
   } else {
     assert(simulated.status === 'blocked', `partial activation case ${testCase.name} is not blocked`, simulated);
     assert(simulated.wouldMutate === false, `partial activation case ${testCase.name} would mutate`, simulated);
     assert(simulated.mutationPlan?.wouldCreateOrder === false, `partial activation case ${testCase.name} would create order`, simulated);
+    assert(simulated.mutationPlan?.wouldReserveWarehouse === false, `partial activation case ${testCase.name} would reserve Warehouse stock`, simulated);
     assert(simulated.mutationPlan?.wouldCreatePayment === false, `partial activation case ${testCase.name} would create payment`, simulated);
     assert(simulated.mutationPlan?.wouldSendNotification === false, `partial activation case ${testCase.name} would send notification`, simulated);
   }

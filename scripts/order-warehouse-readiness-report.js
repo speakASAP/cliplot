@@ -37,6 +37,7 @@ assert(report.warehouseReservationReadiness?.mutation === false, 'Warehouse read
 assert(report.warehouseReservationReadiness?.reservationCreated === false, 'Warehouse readiness created a reservation', report.warehouseReservationReadiness || {});
 assert(report.warehouseReservationReadiness?.stockMutation === false, 'Warehouse readiness mutated stock', report.warehouseReservationReadiness || {});
 assert(report.liveCheckoutPreflight?.status === 'blocked' && report.liveCheckoutPreflight?.wouldMutate === false, 'live preflight is not fail-closed', report.liveCheckoutPreflight || {});
+assert(report.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'live preflight would reserve Warehouse stock', report.liveCheckoutPreflight || {});
 assert(Array.isArray(report.blockers) && report.blockers.length === 0, 'readiness report has blockers', report);
 
 console.log(JSON.stringify({
@@ -57,6 +58,7 @@ console.log(JSON.stringify({
   warehouseReservationReadiness: report.warehouseReservationReadiness.status,
   livePreflight: report.liveCheckoutPreflight.status,
   wouldMutate: report.liveCheckoutPreflight.wouldMutate,
+  wouldReserveWarehouse: report.liveCheckoutPreflight.mutationPlan.wouldReserveWarehouse,
   mutation: report.mutation,
   providerCall: report.providerCall,
   persistence: report.persistence,

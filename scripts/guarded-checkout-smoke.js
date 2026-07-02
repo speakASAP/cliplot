@@ -55,6 +55,7 @@ assert(preflightResponse.status === 200 && preflightPayload.success, 'live prefl
 });
 assert(preflightPayload.liveCheckoutPreflight?.status === 'blocked' && preflightPayload.liveCheckoutPreflight?.wouldMutate === false, 'live preflight endpoint is not guarded', preflightPayload.liveCheckoutPreflight || {});
 assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, 'live preflight endpoint would create an order', preflightPayload.liveCheckoutPreflight || {});
+assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'live preflight endpoint would reserve Warehouse stock', preflightPayload.liveCheckoutPreflight || {});
 assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'live preflight endpoint would create a payment', preflightPayload.liveCheckoutPreflight || {});
 assert(preflightPayload.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'live preflight endpoint would send a notification', preflightPayload.liveCheckoutPreflight || {});
 assert(Array.isArray(preflightPayload.liveCheckoutPreflight?.missing) && preflightPayload.liveCheckoutPreflight.missing.length >= 3, 'live preflight endpoint blockers are missing', preflightPayload.liveCheckoutPreflight || {});
@@ -130,6 +131,7 @@ assert(checkout.liveMutationApprovals?.payment === false, 'payment approval unex
 assert(checkout.liveMutationApprovals?.notification === false, 'notification approval unexpectedly enabled', checkout.liveMutationApprovals || {});
 assert(checkout.liveCheckoutPreflight?.status === 'blocked' && checkout.liveCheckoutPreflight?.wouldMutate === false, 'checkout live preflight is not blocked', checkout.liveCheckoutPreflight || {});
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, 'checkout live preflight would create an order', checkout.liveCheckoutPreflight || {});
+assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'checkout live preflight would reserve Warehouse stock', checkout.liveCheckoutPreflight || {});
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'checkout live preflight would create a payment', checkout.liveCheckoutPreflight || {});
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'checkout live preflight would send a notification', checkout.liveCheckoutPreflight || {});
 assert(Array.isArray(checkout.liveCheckoutPreflight?.missing) && checkout.liveCheckoutPreflight.missing.length >= 3, 'checkout live preflight blockers are missing', checkout.liveCheckoutPreflight || {});
