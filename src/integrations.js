@@ -1920,6 +1920,7 @@ export async function paymentStatusReadiness() {
     && callback.mutation === false
     && callback.persistence === false
     && callback.providerCall === false;
+  const statusStorageOwnershipApproved = isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId);
 
   return {
     success: true,
@@ -2017,7 +2018,7 @@ export async function paymentStatusReadiness() {
     },
     mappingContract: {
       authoritative: false,
-      source: 'approved_persistence_contract_required',
+      source: statusStorageOwnershipApproved ? 'payments_db_snapshot_read_model_approved' : 'approved_persistence_contract_required',
       proposedFields: [
         'externalOrderId',
         'orderId',
@@ -2033,16 +2034,24 @@ export async function paymentStatusReadiness() {
       persistence: false,
       providerCall: false,
     },
-    blockers: [
-      ...(readScope.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+    satisfiedEvidence: [
       ...(readOnlyRuntime ? [
         '[DONE: owner-approved passive Payments DB snapshot read is active]',
         '[DONE: provider-backed /payments/{paymentId} reads remain forbidden]',
-      ] : [
+      ] : []),
+      ...(statusStorageOwnershipApproved
+        ? ['[DONE: owner-approved shared Payments source-of-truth storage ownership decision recorded]']
+        : []),
+    ],
+    blockers: [
+      ...(readScope.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+      ...(readOnlyRuntime ? [] : [
         '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
         '[MISSING: owner approval for provider-backed payment status reads]',
       ]),
-      '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
+      ...(statusStorageOwnershipApproved
+        ? []
+        : ['[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]']),
     ],
     sensitiveDataPolicy: [
       'no payment API key value',
@@ -2053,7 +2062,9 @@ export async function paymentStatusReadiness() {
       'customer-safe Czech labels only',
     ],
     next: guarded
-      ? 'Design and approve persisted payment id storage before Cliplot calls Payments status read endpoints.'
+      ? (statusStorageOwnershipApproved
+          ? 'Payments-owned passive DB snapshot reads are approved; callback persistence, live status writes, provider-backed reads, payment creation, and notifications remain disabled.'
+          : 'Record payment status storage ownership before Cliplot calls Payments status read endpoints.')
       : 'Restore guarded payment status and callback readiness before designing provider-backed status reads.',
   };
 }
@@ -2075,6 +2086,35 @@ export async function paymentStatusStorageReadiness() {
     schemaVersion: 'cliplot.payment_status.v1',
     updatedAt: new Date().toISOString(),
   };
+
+  const storageSatisfiedEvidence = [
+    ...(paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
+      ? ['[DONE: owner-approved passive Payments DB snapshot read is active]']
+      : []),
+    ...(sharedPaymentsOwnershipApproved
+      ? [
+          '[DONE: approved storage ownership decision selects Payments DB snapshot read model]',
+          '[DONE: Cliplot-local payment status storage remains deferred]',
+          '[DONE: externalOrderId/paymentId uniqueness owned by Payments read model for passive status reads]',
+        ]
+      : []),
+  ];
+  const storageBlockers = [
+    ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+    ...(paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
+      ? []
+      : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
+    ...(sharedPaymentsOwnershipApproved
+      ? []
+      : [
+          '[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for storage ownership decision]',
+          '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
+          '[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]',
+        ]),
+    '[MISSING: callback persistence storage backend approval]',
+    '[MISSING: callback persistence rollout plan]',
+    '[MISSING: owner approval before enabling live status writes]',
+  ];
 
   return {
     success: true,
@@ -2138,26 +2178,8 @@ export async function paymentStatusStorageReadiness() {
       readScopeStatus: paymentReadiness.readScopeReadiness?.status || null,
       scopeValidated: paymentReadiness.readScopeReadiness?.scopeValidated || false,
     },
-    blockers: [
-      ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
-      ...(paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
-        ? ['[DONE: owner-approved passive Payments DB snapshot read is active]']
-        : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
-      ...(sharedPaymentsOwnershipApproved
-        ? [
-            '[DONE: approved storage ownership decision selects Payments DB snapshot read model]',
-            '[DONE: Cliplot-local payment status storage remains deferred]',
-            '[DONE: externalOrderId/paymentId uniqueness owned by Payments read model for passive status reads]',
-          ]
-        : [
-            '[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for storage ownership decision]',
-            '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
-            '[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]',
-          ]),
-      '[MISSING: callback persistence storage backend approval]',
-      '[MISSING: callback persistence rollout plan]',
-      '[MISSING: owner approval before enabling live status writes]',
-    ],
+    satisfiedEvidence: storageSatisfiedEvidence,
+    blockers: storageBlockers,
     sensitiveDataPolicy: [
       'no payment API key value',
       'no webhook key value',
@@ -2262,6 +2284,30 @@ export async function paymentStatusPersistenceDecisionPacket() {
     },
   ];
 
+  const decisionSatisfiedEvidence = [
+    '[DONE: ADR-002-payment-status-persistence-ownership recorded]',
+    '[DONE: Payments read-by-orderId DB snapshot contract deployed as payments-microservice:fc42e72]',
+    ...(approvedPassiveSnapshotRead
+      ? [
+          '[DONE: owner-approved passive Payments DB snapshot read is active]',
+          '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]',
+          '[DONE: passive snapshot reads limited to Payments DB-only by-order-id route]',
+        ]
+      : []),
+    ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId)
+      ? ['[DONE: owner-approved shared Payments source-of-truth storage ownership decision recorded]']
+      : []),
+  ];
+  const decisionBlockers = [
+    ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+    ...(approvedPassiveSnapshotRead ? [] : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
+    ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId)
+      ? []
+      : ['[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for shared Payments source-of-truth storage ownership]']),
+    '[MISSING: callback persistence storage backend approval]',
+    '[MISSING: owner approval before enabling live status writes]',
+  ];
+
   return {
     success: true,
     status: 'decision_recorded_approval_required',
@@ -2326,23 +2372,8 @@ export async function paymentStatusPersistenceDecisionPacket() {
         'Cliplot-local storage writes',
       ],
     },
-    blockers: [
-      '[DONE: ADR-002-payment-status-persistence-ownership recorded and proposed for owner approval]',
-      '[DONE: Payments read-by-orderId DB snapshot contract deployed as payments-microservice:fc42e72]',
-      ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
-      ...(approvedPassiveSnapshotRead
-        ? [
-            '[DONE: owner-approved passive Payments DB snapshot read is active]',
-            '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]',
-            '[DONE: passive snapshot reads limited to Payments DB-only by-order-id route]',
-          ]
-        : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
-      ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId)
-        ? ['[DONE: owner-approved shared Payments source-of-truth storage ownership decision recorded]']
-        : ['[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for shared Payments source-of-truth storage ownership]']),
-      '[MISSING: callback persistence storage backend approval]',
-      '[MISSING: owner approval before live status writes]',
-    ],
+    satisfiedEvidence: decisionSatisfiedEvidence,
+    blockers: decisionBlockers,
     sensitiveDataPolicy: [
       'no payment API key value',
       'no webhook key value',
@@ -2351,7 +2382,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
       'no storage read',
       'decision metadata only',
     ],
-    next: 'Owner approval, callback replay policy, and live status read/write approvals are still required before implementing any live status persistence or passive Payments snapshot reads.',
+    next: 'Passive Payments snapshot reads and shared Payments ownership are approved; callback persistence, replay execution, provider-backed reads, Cliplot-local writes, and live status writes remain blocked.',
   };
 }
 
@@ -2371,9 +2402,38 @@ export async function paymentStatusMappingOwnershipPacket() {
     && callbackPolicy.callbackPersistence === false
     && storageReadiness.readContract?.currentPersistence === false;
 
+  const mappingSatisfiedEvidence = [
+    ...(mappingOwnershipApproved
+      ? [
+          '[DONE: approved order/payment status mapping ownership recorded]',
+          '[DONE: Cliplot remains non-authoritative customer-safe renderer]',
+          `[DONE: runtime rollout owner recorded: ${serviceConfig.statusMappingValidationOwner}]`,
+          `[DONE: rollback owner recorded: ${serviceConfig.statusMappingRollbackOwner}]`,
+        ]
+      : []),
+    ...(approvedRuntimeRead
+      ? [
+          '[DONE: owner-approved passive Payments DB snapshot read is active]',
+          '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]',
+          '[DONE: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID recorded for read-only customer status rollout]',
+        ]
+      : []),
+  ];
+  const mappingBlockers = [
+    ...(mappingOwnershipApproved ? [] : ['[MISSING: approved order/payment status mapping ownership]']),
+    ...(approvedRuntimeRead
+      ? []
+      : [
+          '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+          '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+          '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
+        ]),
+    ...(mappingOwnershipApproved ? [] : ['[MISSING: runtime rollout owner and rollback owner recorded]']),
+  ];
+
   return {
     success: true,
-    status: 'approval_required_order_payment_status_mapping_ownership',
+    status: mappingOwnershipApproved ? 'approved_order_payment_status_mapping_ownership' : 'approval_required_order_payment_status_mapping_ownership',
     mode: 'guarded_order_payment_status_mapping_ownership',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -2513,28 +2573,8 @@ export async function paymentStatusMappingOwnershipPacket() {
       'print API keys or webhook keys',
       'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
     ],
-    blockers: [
-      ...(mappingOwnershipApproved
-        ? [
-            '[DONE: approved order/payment status mapping ownership recorded]',
-            '[DONE: Cliplot remains non-authoritative customer-safe renderer]',
-            `[DONE: runtime rollout owner recorded: ${serviceConfig.statusMappingValidationOwner}]`,
-            `[DONE: rollback owner recorded: ${serviceConfig.statusMappingRollbackOwner}]`,
-          ]
-        : ['[MISSING: approved order/payment status mapping ownership]']),
-      ...(approvedRuntimeRead
-        ? [
-            '[DONE: owner-approved passive Payments DB snapshot read is active]',
-            '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]',
-            '[DONE: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID recorded for read-only customer status rollout]',
-          ]
-        : [
-            '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
-            '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
-            '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
-          ]),
-      ...(mappingOwnershipApproved ? [] : ['[MISSING: runtime rollout owner and rollback owner recorded]']),
-    ],
+    satisfiedEvidence: mappingSatisfiedEvidence,
+    blockers: mappingBlockers,
     sensitiveDataPolicy: [
       'ownership metadata only',
       'no payment API key value',

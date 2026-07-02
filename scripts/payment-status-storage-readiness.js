@@ -53,8 +53,9 @@ assert(Array.isArray(readiness.blockers), 'storage blockers missing', readiness)
 assert(!readiness.blockers.some((item) => item.includes('payments:read scope')), 'payments:read scope blocker should be closed after runtime evidence', readiness);
 if (readiness.storage?.ownershipApproved === true) {
   assert(readiness.storage?.ownershipApprovalIdFingerprint, 'storage ownership approval fingerprint missing', readiness);
-  assert(readiness.blockers.some((item) => item.includes('approved storage ownership decision selects Payments DB snapshot read model')), 'approved storage ownership evidence missing', readiness);
+  assert(readiness.satisfiedEvidence?.some((item) => item.includes('approved storage ownership decision selects Payments DB snapshot read model')), 'approved storage ownership evidence missing', readiness);
   assert(readiness.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'callback storage backend blocker missing', readiness);
+  assert(!readiness.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied storage evidence should not be counted as blockers', readiness);
   assert(!readiness.blockers.some((item) => item.includes('decision whether persistence belongs')), 'stale storage ownership decision blocker present', readiness);
 } else {
   assert(readiness.blockers.some((item) => item.includes('CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID') || item.includes('decision whether persistence belongs')), 'storage ownership blocker missing', readiness);

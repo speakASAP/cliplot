@@ -75,7 +75,7 @@ following false:
 ## Required Evidence Before Runtime Enablement
 
 - `npm run readiness:payment-mapping -- https://cliplot.alfares.cz` returns
-  `approval_required_order_payment_status_mapping_ownership`.
+  `approved_order_payment_status_mapping_ownership` after the approval ID and owner metadata are configured, while live writes remain disabled.
 - `npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz`
   returns `approved_callback_replay_policy_metadata_execution_disabled` with
   callback persistence and replay disabled.

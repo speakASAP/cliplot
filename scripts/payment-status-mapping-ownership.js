@@ -24,7 +24,7 @@ assert(response.status === 200 && packet.success, 'mapping ownership packet requ
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'approval_required_order_payment_status_mapping_ownership', 'mapping ownership should remain approval-required', packet);
+assert(['approval_required_order_payment_status_mapping_ownership', 'approved_order_payment_status_mapping_ownership'].includes(packet.status), 'mapping ownership status changed', packet);
 assert(packet.mode === 'guarded_order_payment_status_mapping_ownership', 'mapping ownership mode changed', packet);
 assert(packet.mutation === false, 'mapping ownership reported mutation', packet);
 assert(packet.persistence === false, 'mapping ownership reported persistence', packet);
@@ -79,16 +79,18 @@ assert(Array.isArray(packet.blockers), 'mapping ownership blockers missing', pac
 if (packet.decisionRecord?.status === 'owner_approved_non_authoritative_renderer') {
   assert(packet.decisionRecord?.approvalIdFingerprint, 'mapping ownership approval fingerprint missing', packet);
   assert(packet.ownership?.cliplot?.authoritative === false, 'Cliplot became authoritative after mapping approval', packet);
-  assert(packet.blockers.some((item) => item.includes('approved order/payment status mapping ownership recorded')), 'approved mapping ownership evidence missing', packet);
-  assert(packet.blockers.some((item) => item.includes('runtime rollout owner recorded')), 'runtime rollout owner evidence missing', packet);
-  assert(packet.blockers.some((item) => item.includes('rollback owner recorded')), 'rollback owner evidence missing', packet);
+  assert(packet.status === 'approved_order_payment_status_mapping_ownership', 'approved mapping should update packet status', packet);
+  assert(packet.satisfiedEvidence?.some((item) => item.includes('approved order/payment status mapping ownership recorded')), 'approved mapping ownership evidence missing', packet);
+  assert(packet.satisfiedEvidence?.some((item) => item.includes('runtime rollout owner recorded')), 'runtime rollout owner evidence missing', packet);
+  assert(packet.satisfiedEvidence?.some((item) => item.includes('rollback owner recorded')), 'rollback owner evidence missing', packet);
   assert(!packet.blockers.some((item) => item.includes('[MISSING: runtime rollout owner')), 'stale rollout owner blocker present', packet);
+  assert(!packet.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied evidence should not be counted as blockers', packet);
 } else {
   assert(packet.blockers.some((item) => item.includes('approved order/payment status mapping ownership')), 'mapping ownership approval blocker missing', packet);
 }
 if (packet.runtimeReadEnabled === true) {
-  assert(packet.blockers.some((item) => item.includes('owner-approved passive Payments DB snapshot read is active')), 'approved passive snapshot read evidence missing', packet);
-  assert(packet.blockers.some((item) => item.includes('CLIPLOT_STATUS_RUNTIME_APPROVAL_ID recorded')), 'status runtime approval evidence missing', packet);
+  assert(packet.satisfiedEvidence?.some((item) => item.includes('owner-approved passive Payments DB snapshot read is active')), 'approved passive snapshot read evidence missing', packet);
+  assert(packet.satisfiedEvidence?.some((item) => item.includes('CLIPLOT_STATUS_RUNTIME_APPROVAL_ID recorded')), 'status runtime approval evidence missing', packet);
   assert(!packet.blockers.some((item) => item.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'approved passive snapshot read still reported missing', packet);
 } else {
   assert(packet.blockers.some((item) => item.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'snapshot-read owner approval blocker missing', packet);

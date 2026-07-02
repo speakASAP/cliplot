@@ -364,8 +364,7 @@ npm run readiness:payment-status -- https://cliplot.alfares.cz
 `GET /api/payments/status-storage-readiness` is the read-only schema/storage
 ownership proposal for future payment status persistence. It must return
 `blocked_storage_backend_not_approved`, `mutation=false`, `persistence=false`,
-and `providerCall=false` until a decision records whether persistence belongs in
-Cliplot-local storage or an approved shared commerce service.
+and `providerCall=false`. It records shared Payments ownership for passive DB snapshot reads when approved, while callback persistence, Cliplot-local writes, and live status writes remain blocked.
 
 ```bash
 npm run readiness:payment-storage -- https://cliplot.alfares.cz
@@ -376,9 +375,7 @@ approval packet. It compares Payments-owned, Cliplot-local, and Orders-owned
 options and currently recommends `shared-payments-source-of-truth`. It must
 return `decision_recorded_approval_required`, `mutation=false`,
 `persistence=false`, and `providerCall=false`. The packet must mark
-`07_decisions/ADR-002-payment-status-persistence-ownership.md` as recorded and
-proposed for owner approval, but that ADR does not approve runtime status reads,
-callback persistence, or Cliplot-local storage writes.
+`07_decisions/ADR-002-payment-status-persistence-ownership.md` as recorded and may show `owner_approved_shared_payments_source_of_truth` when the approval ID is configured. That approval allows passive Payments DB snapshot reads only; it does not approve callback persistence, provider-backed reads, or Cliplot-local storage writes.
 
 ```bash
 npm run readiness:payment-decision -- https://cliplot.alfares.cz
@@ -404,12 +401,7 @@ npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz
 
 `GET /api/payments/status-mapping-ownership` is the read-only ownership packet
 for future customer-facing order/payment status correlation. It must return
-`approval_required_order_payment_status_mapping_ownership`, `mutation=false`,
-`persistence=false`, `providerCall=false`, `runtimeReadEnabled=false`,
-`paymentsSnapshotReadEnabled=false`, `storageRead=false`, and
-`callbackPersistence=false`. The packet records ADR-006 as proposed for owner
-approval, keeps Orders authoritative for order lifecycle, Payments authoritative
-for payment status, and Cliplot a non-authoritative customer-safe renderer. It
+`approved_order_payment_status_mapping_ownership` when ADR-006 owner metadata is configured, with `mutation=false`, `persistence=false`, `providerCall=false`, `runtimeReadEnabled=true`, `paymentsSnapshotReadEnabled=true`, `storageRead=false`, and `callbackPersistence=false`. The packet keeps Orders authoritative for order lifecycle, Payments authoritative for payment status, and Cliplot a non-authoritative customer-safe renderer. It
 must not create orders, reserve Warehouse stock, create payments, send
 notifications, persist callbacks, read `/payments/{paymentId}`, print secrets,
 or read payment rows.

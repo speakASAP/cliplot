@@ -51,10 +51,10 @@ assert(packet.approvalPacket?.requiredDecisionRecord === 'ADR-002-payment-status
 assert(packet.approvalPacket?.decisionRecorded === true, 'approval packet should mark ADR recorded', packet);
 assert(['proposed_for_owner_approval', 'owner_approved_shared_payments_source_of_truth'].includes(packet.approvalPacket?.requiredDecisionRecordStatus), 'ADR approval status missing', packet);
 assert(packet.approvalPacket?.mustRemainFalseBeforeApproval?.includes('provider-backed status reads'), 'approval guard missing', packet);
-assert(Array.isArray(packet.blockers) && packet.blockers.some((item) => item.includes('[DONE: ADR-002-payment-status-persistence-ownership')), 'ADR recorded blocker/evidence missing', packet);
+assert(Array.isArray(packet.satisfiedEvidence) && packet.satisfiedEvidence.some((item) => item.includes('[DONE: ADR-002-payment-status-persistence-ownership')), 'ADR recorded evidence missing', packet);
 const passiveSnapshotApproved = packet.currentReadiness?.passiveSnapshotReadApproved === true;
 if (passiveSnapshotApproved) {
-  assert(packet.blockers.some((item) => item.includes('owner-approved passive Payments DB snapshot read is active')), 'approved passive snapshot read evidence missing', packet);
+  assert(packet.satisfiedEvidence.some((item) => item.includes('owner-approved passive Payments DB snapshot read is active')), 'approved passive snapshot read evidence missing', packet);
   assert(!packet.blockers.some((item) => item.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'approved passive snapshot read still reported missing', packet);
   assert(packet.currentReadiness?.runtimeReadEnabled === true, 'runtime read evidence missing from decision packet', packet);
   assert(packet.currentReadiness?.paymentsSnapshotReadEnabled === true, 'snapshot read evidence missing from decision packet', packet);
@@ -64,7 +64,8 @@ if (passiveSnapshotApproved) {
   assert(packet.blockers.some((item) => item.includes('owner approval')), 'owner approval blocker missing', packet);
 }
 assert(!packet.blockers.some((item) => item.includes('[MISSING: ADR-payment-status-persistence-ownership]')), 'stale missing ADR blocker still present', packet);
-assert(Array.isArray(packet.blockers) && packet.blockers.length >= 4, 'decision blockers missing', packet);
+assert(Array.isArray(packet.blockers) && packet.blockers.length >= 2, 'decision blockers missing', packet);
+assert(!packet.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied decision evidence should not be counted as blockers', packet);
 assert(Array.isArray(packet.sensitiveDataPolicy) && packet.sensitiveDataPolicy.includes('decision metadata only'), 'sensitive data policy missing', packet);
 
 console.log(JSON.stringify({

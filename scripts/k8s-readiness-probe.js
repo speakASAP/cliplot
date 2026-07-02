@@ -120,14 +120,18 @@ async function main() {
   const paymentDecision = await getJson('/api/payments/status-persistence-decision');
   assertEqual(paymentDecision.body?.status, 'decision_recorded_approval_required', 'payment_status_persistence_decision_unexpected', { paymentDecision: paymentDecision.body });
   assertEqual(paymentDecision.body?.decisionRecord?.id, 'ADR-002-payment-status-persistence-ownership', 'payment_status_decision_record_missing', { paymentDecision: paymentDecision.body });
-  assertEqual(paymentDecision.body?.decisionRecord?.status, 'proposed_for_owner_approval', 'payment_status_decision_record_status_unexpected', { paymentDecision: paymentDecision.body });
-  assertEqual(paymentDecision.body?.decisionRecord?.runtimeApproval, false, 'payment_status_decision_runtime_approval_unexpected', { paymentDecision: paymentDecision.body });
+  if (!['proposed_for_owner_approval', 'owner_approved_shared_payments_source_of_truth'].includes(paymentDecision.body?.decisionRecord?.status)) {
+    fail('payment_status_decision_record_status_unexpected', { paymentDecision: paymentDecision.body });
+  }
+  assertEqual(typeof paymentDecision.body?.decisionRecord?.runtimeApproval, 'boolean', 'payment_status_decision_runtime_approval_missing', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.mutation, 'payment_status_persistence_decision_mutation_enabled', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.persistence, 'payment_status_persistence_decision_persistence_enabled', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.providerCall, 'payment_status_persistence_decision_provider_call_enabled', { paymentDecision: paymentDecision.body });
 
   const paymentMapping = await getJson('/api/payments/status-mapping-ownership');
-  assertEqual(paymentMapping.body?.status, 'approval_required_order_payment_status_mapping_ownership', 'payment_status_mapping_ownership_unexpected', { paymentMapping: paymentMapping.body });
+  if (!['approval_required_order_payment_status_mapping_ownership', 'approved_order_payment_status_mapping_ownership'].includes(paymentMapping.body?.status)) {
+    fail('payment_status_mapping_ownership_unexpected', { paymentMapping: paymentMapping.body });
+  }
   assertEqual(paymentMapping.body?.decisionRecord?.id, 'ADR-006-order-payment-status-mapping-ownership', 'payment_status_mapping_decision_record_missing', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.ownership?.orders?.authoritative, true, 'payment_status_mapping_orders_owner_missing', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.ownership?.payments?.authoritative, true, 'payment_status_mapping_payments_owner_missing', { paymentMapping: paymentMapping.body });
