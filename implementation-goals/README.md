@@ -16,7 +16,7 @@ backlog -> ready -> active -> validating -> done
 | `GOAL-03-shared-service-integration` | done | GOAL-02 | Catalog/auth reads, guarded checkout submit, service identity, Vault projection, and shared-service blockers recorded. |
 | `GOAL-04-kubernetes-vault-rag-deployment` | done | GOAL-03 platform-ready subset | Deployable Kubernetes service with Vault and RAG docs. |
 | `GOAL-05-checkout-revenue-readiness` | active | GOAL-03/04 plus owner/provider evidence | Provider-backed checkout evidence; current lane has authenticated Catalog reads plus no-mutation order/payment and no-send notification validation. |
-| `GOAL-06-operational-closure` | blocked | GOAL-05 | Monitoring, runbook, smoke, final handoff. |
+| `GOAL-06-operational-closure` | active | GOAL-05 | Monitoring, runbook, smoke, final handoff; final closure remains dependency-gated by live approvals and Docs/RAG backend. |
 
 ## Before Coding
 

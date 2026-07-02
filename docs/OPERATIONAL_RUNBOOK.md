@@ -157,3 +157,18 @@ evidence and approval IDs exist.
 `GET /api/payments/status` is intentionally non-authoritative while GOAL-05 is
 guarded. It must return `payment_status_guarded_no_persistence`,
 `mutation=false`, `persistence=false`, and `providerCall=false`.
+
+
+## Operator Readiness Bundle
+
+Run the read-only bundle before handoff or live-mutation approval reviews:
+
+```bash
+npm run readiness:bundle
+```
+
+The bundle checks git status, Kubernetes rollout state, live checkout preflight,
+integration readiness, Vault key presence without printing values, Docs/RAG
+preflight, and guarded checkout smoke. Docs/RAG preflight may return blocked
+while the embedding backend is unreachable; that is an operational blocker, not
+a checkout mutation.

@@ -74,3 +74,15 @@ ssh alfares 'cd /home/ssf/Documents/Github/cliplot && DOCS_RAG_PREFLIGHT_ONLY=1 
 
 Do not run the normal publication command until preflight passes and ingestion
 is intentionally approved.
+
+
+## Read-Only Bundle
+
+For an operator-safe aggregate check:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && npm run readiness:bundle'
+```
+
+The command must not create orders, payments, Warehouse reservations,
+notifications, callback persistence, or Docs/RAG ingestion jobs.
