@@ -81,9 +81,9 @@ reservations, callback persistence, or notifications.
 
 ## Kubernetes Readiness Monitor Validation
 
-Status: pending final deployment evidence.
+Commit: `f5912a8`
 
-Planned commands:
+Commands:
 
 ```bash
 node --check scripts/k8s-readiness-probe.js
@@ -95,10 +95,56 @@ python3 scripts/deployment_readiness_gate.py --root .
 npm run readiness:k8s -- https://cliplot.alfares.cz
 kubectl apply --dry-run=server -f k8s/readiness-cronjob.yaml -n statex-apps
 ./scripts/deploy.sh
-kubectl get cronjob cliplot-readiness-monitor -n statex-apps
+kubectl exec -n statex-apps cliplot-service-74f7966c5b-4sgx7 -- node scripts/k8s-readiness-probe.js http://cliplot-service:8080
 npm run smoke:checkout -- https://cliplot.alfares.cz
+npm run readiness:bundle
 ```
 
-The Kubernetes monitor must remain read-only. It does not run the full
-operator bundle, does not run checkout POST smoke, and does not mutate orders,
-payments, Warehouse stock, callbacks, notifications, or Docs/RAG ingestion.
+Evidence:
+
+```text
+npm run check=pass
+npm run build=pass
+PRE_CODING_GATE=pass
+STRICT_DOC_AUDIT=pass
+DEPLOYMENT_READINESS=pass
+cronjob.batch/cliplot-readiness-monitor created (server dry run)
+deployment.image=localhost:5000/cliplot-service:f5912a8
+deployment.updated=1
+deployment.ready=1
+deployment.available=1
+cronjob.name=cliplot-readiness-monitor
+cronjob.schedule=*/30 * * * *
+cronjob.suspend=false
+externalK8sProbe.ok=true
+externalK8sProbe.livePreflightStatus=blocked
+externalK8sProbe.wouldMutate=false
+externalK8sProbe.liveOrderSubmit=false
+externalK8sProbe.livePaymentCreate=false
+externalK8sProbe.liveNotifications=false
+externalK8sProbe.paymentStatus=payment_status_guarded_no_persistence
+internalK8sProbe.ok=true
+internalK8sProbe.baseUrl=http://cliplot-service:8080
+internalK8sProbe.livePreflightStatus=blocked
+internalK8sProbe.wouldMutate=false
+internalK8sProbe.liveOrderSubmit=false
+internalK8sProbe.livePaymentCreate=false
+internalK8sProbe.liveNotifications=false
+internalK8sProbe.paymentStatus=payment_status_guarded_no_persistence
+checkoutHttpStatus=202
+checkoutStatus=service_identity_required
+orderValidation=validated_no_mutation
+paymentValidation=validated_no_mutation
+notificationValidation=validated_no_send
+warehouseReservationReadiness=validated_no_mutation
+mutation=false
+READINESS_STEP=docs_rag_preflight exit=2
+embeddingBackendUrl=http://192.168.88.53:11434
+embeddingReason=embedding_backend_fetch_failed
+CLIPLOT_READINESS_BUNDLE=blocked
+READINESS_BUNDLE_EXIT=2
+```
+
+The Kubernetes monitor is read-only. It does not run the full operator bundle,
+does not run checkout POST smoke, and does not mutate orders, payments,
+Warehouse stock, callbacks, notifications, or Docs/RAG ingestion.

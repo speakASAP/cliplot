@@ -6,7 +6,7 @@
 **Mode:** Goal-driven orchestration enabled  
 **Active goal:** GOAL-06-operational-closure
 **Goal status:** GOAL-06 active for safe operational readiness increments; final closure dependency-gated
-**Current checkpoint:** GOAL-06 read-only Kubernetes readiness monitor is being added while GOAL-05 live revenue mutation remains blocked by approval evidence. GOAL-05 guarded checkout revenue path is deployed;
+**Current checkpoint:** GOAL-06 read-only Kubernetes readiness monitor is deployed while GOAL-05 live revenue mutation remains blocked by approval evidence. GOAL-05 guarded checkout revenue path is deployed;
 Warehouse-derived `warehouseId` is carried from product availability into
 checkout order validation payloads, and no-mutation order-create/payment-create
 validation plus no-send notification validation pass while live order creation,
@@ -118,6 +118,17 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `paymentValidation=validated_no_mutation`,
   `notificationValidation=validated_no_send`, and
   `warehouseReservationReadiness=validated_no_mutation`.
+
+- GOAL-06 Kubernetes readiness monitor deployed as
+  `cliplot-readiness-monitor` on schedule `*/30 * * * *` with deployed
+  image `localhost:5000/cliplot-service:f5912a8`. Production
+  `npm run readiness:k8s -- https://cliplot.alfares.cz` returned
+  `ok=true`, `livePreflightStatus=blocked`, `wouldMutate=false`,
+  `liveOrderSubmit=false`, `livePaymentCreate=false`,
+  `liveNotifications=false`, and
+  `paymentStatus=payment_status_guarded_no_persistence`. In-pod internal
+  probe against `http://cliplot-service:8080` returned the same guarded
+  state.
 
 - GOAL-05 guarded checkout status surface deployed as
   `localhost:5000/cliplot-service:cb00ffd`. Successful guarded checkout now
