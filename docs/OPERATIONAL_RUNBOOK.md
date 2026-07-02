@@ -273,6 +273,12 @@ payloads, or secret values.
 npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz
 ```
 
+The frontend status routes may call `/api/payments/status?orderId=<externalOrderId>`
+after rendering the browser-local checkout snapshot. In guarded production this
+must keep showing customer-safe copy only: payment is not confirmed, order is
+not paid, and goods are not reserved. Validate the UI contract with
+`npm run smoke:checkout` and `npm run readiness:checkout-status-surface`.
+
 `GET /api/payments/callback-readiness` validates the configured webhook key
 through an internal synthetic callback ACK. It must return
 `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`,

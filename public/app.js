@@ -571,6 +571,49 @@ async function loadAuthLinks() {
   }
 }
 
+function guardedPaymentStatusCopy(statusPayload = {}) {
+  if (statusPayload.status === 'payment_status_snapshot_read' && statusPayload.runtimeReadEnabled === true) {
+    return {
+      label: statusPayload.customerSafePaymentStatus?.label || 'Stav platby zatím neznáme',
+      detail: 'Stav platby je načtený z bezpečného přehledu objednávky.',
+    };
+  }
+  if (statusPayload.status === 'payment_status_snapshot_not_available') {
+    return {
+      label: 'Stav platby zatím neznáme',
+      detail: 'Platba k této objednávce ještě není dostupná.',
+    };
+  }
+  return {
+    label: 'Platba se zatím nespustila',
+    detail: 'Po kontrole objednávky pošleme další pokyny k platbě.',
+  };
+}
+
+async function refreshCheckoutStatus(externalOrderId) {
+  const panel = document.querySelector('[data-payment-status-panel]');
+  if (!panel || !externalOrderId) return;
+  try {
+    const response = await fetch(`/api/payments/status?orderId=${encodeURIComponent(externalOrderId)}`, {
+      headers: { accept: 'application/json' },
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.success === false) return;
+    const copy = guardedPaymentStatusCopy(payload);
+    const guarded = payload.runtimeReadEnabled !== true && payload.paymentsSnapshotReadEnabled !== true;
+    panel.innerHTML = `
+      <p>Platba: <strong>${escapeHtml(copy.label)}</strong></p>
+      <p>${escapeHtml(copy.detail)}</p>
+      ${guarded ? '<p>Zboží zatím není rezervované a objednávka není zaplacená.</p>' : ''}
+    `;
+  } catch {
+    panel.innerHTML = `
+      <p>Platba: <strong>Stav platby zatím neznáme</strong></p>
+      <p>Objednávku máme uloženou v tomto prohlížeči. Platbu zatím nepotvrzujeme.</p>
+    `;
+  }
+}
+
 function renderCheckoutStatusPage() {
   const path = window.location.pathname;
   if (!['/objednavka/stav', '/checkout/success', '/checkout/cancelled'].includes(path)) return false;
@@ -616,7 +659,7 @@ function renderCheckoutStatusPage() {
     <section class="checkout-status-page" aria-live="polite">
       <div class="section-heading">
         <h1>${title}</h1>
-        <p>Platba se zatím nespustila. Po kontrole objednávky pošleme další pokyny k platbě.</p>
+        <p>Objednávku máme připravenou ke kontrole. Platbu ani rezervaci zatím nepotvrzujeme.</p>
       </div>
       <div class="status-summary">
         <p>Stav: <strong>Čeká na kontrolu</strong></p>
@@ -641,7 +684,7 @@ function renderCheckoutStatusPage() {
             <dd>${formatPrice(summary.total)}</dd>
           </div>
         </dl>
-        <p>Zboží zatím není rezervované a objednávka není zaplacená.</p>
+        <div class="payment-status-panel" data-payment-status-panel><p>Platba: <strong>Ověřujeme stav.</strong></p></div>
         <div class="hero-actions">
           <a class="primary-link" href="/#produkty">Zpět k produktům</a>
           <a class="secondary-link" href="/#checkout">Upravit objednávku</a>
@@ -649,6 +692,7 @@ function renderCheckoutStatusPage() {
       </div>
     </section>
   `;
+  refreshCheckoutStatus(externalOrderId);
   return true;
 }
 

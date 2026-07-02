@@ -56,6 +56,7 @@ readiness.
 | Customer status runtime rollout plan | ready now | main orchestrator | customer status rollout plan endpoint/script/ADR/docs | `npm run readiness:customer-status-rollout -- https://cliplot.alfares.cz` |
 | Customer status runtime activation gate | ready now | main orchestrator | customer status activation endpoint/script/docs | `npm run readiness:customer-status-activation -- https://cliplot.alfares.cz` |
 | Passive status runtime read adapter | ready now | main orchestrator | disabled adapter endpoint/script/docs | `npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz` |
+| Frontend guarded customer status read | ready now | main orchestrator | status page frontend/smoke/docs | `npm run smoke:checkout -- https://cliplot.alfares.cz` |
 | Final live revenue closure | dependency-gated | main orchestrator | checkout/order/payment/notification config | approved live evidence and approval IDs |
 | Kubernetes readiness monitor | ready now | main orchestrator | `scripts/k8s-readiness-probe.js`, `k8s/readiness-cronjob.yaml`, `scripts/deploy.sh` | `npm run readiness:k8s -- https://cliplot.alfares.cz`, server dry-run, deployed CronJob inspect |
 | Docs/RAG publication | dependency-gated | main orchestrator | docs-rag service | preflight pass then intentional ingestion approval |

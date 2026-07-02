@@ -100,6 +100,11 @@ assert(
   'add-to-cart and cart edit feedback contract changed',
   { httpStatus: appResponse.status },
 );
+assert(appJs.includes('/api/payments/status?orderId='), 'checkout status page does not fetch guarded payment status', {});
+assert(appJs.includes('data-payment-status-panel'), 'checkout status payment panel binding missing', {});
+assert(appJs.includes('Platbu ani rezervaci zatím nepotvrzujeme'), 'checkout status guarded payment/reservation copy missing', {});
+assert(appJs.includes('payload.runtimeReadEnabled !== true'), 'checkout status runtime-read guard missing', {});
+assert(appJs.includes('Zboží zatím není rezervované a objednávka není zaplacená'), 'checkout status no-paid/no-reservation copy missing', {});
 
 const { response: checkoutResponse, payload: checkout } = await postJson('/api/checkout/submit', checkoutBody);
 assert(checkoutResponse.status === 202, 'guarded checkout did not return HTTP 202', {

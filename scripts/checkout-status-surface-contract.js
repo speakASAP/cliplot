@@ -77,6 +77,10 @@ assert(appResponse.status === 200, 'app.js unavailable', { httpStatus: appRespon
 assert(appJs.includes('Čeká na kontrolu'), 'guarded status label missing from frontend', {});
 assert(appJs.includes('Platba se zatím nespustila'), 'guarded payment copy missing from frontend', {});
 assert(appJs.includes('Zboží zatím není rezervované'), 'guarded reservation copy missing from frontend', {});
+assert(appJs.includes('/api/payments/status?orderId='), 'status page payment status fetch missing from frontend', {});
+assert(appJs.includes('data-payment-status-panel'), 'payment status panel binding missing from frontend', {});
+assert(appJs.includes('payload.runtimeReadEnabled !== true'), 'guarded runtime-read condition missing from frontend', {});
+assert(appJs.includes('Platbu ani rezervaci zatím nepotvrzujeme'), 'guarded no-confirmation copy missing from frontend', {});
 
 console.log(JSON.stringify({
   ok: true,
