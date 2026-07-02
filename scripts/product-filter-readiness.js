@@ -8,22 +8,35 @@ function assert(condition, message, evidence = {}) {
   }
 }
 
-const response = await fetch(new URL('/api/products/filter-readiness', baseUrl));
-const text = await response.text();
-let report = null;
-try {
-  report = text ? JSON.parse(text) : {};
-} catch {
-  assert(false, 'product filter readiness returned non-json response', {
-    httpStatus: response.status,
-    body: text.slice(0, 300),
-  });
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-assert(response.status === 200 && report.success, 'product filter readiness request failed', {
-  httpStatus: response.status,
-  status: report.status,
-});
+async function loadReadinessReport() {
+  const response = await fetch(new URL('/api/products/filter-readiness', baseUrl));
+  const text = await response.text();
+  let report = null;
+  try {
+    report = text ? JSON.parse(text) : {};
+  } catch {
+    assert(false, 'product filter readiness returned non-json response', {
+      httpStatus: response.status,
+      body: text.slice(0, 300),
+    });
+  }
+
+  assert(response.status === 200 && report.success, 'product filter readiness request failed', {
+    httpStatus: response.status,
+    status: report.status,
+  });
+  return report;
+}
+
+let report = await loadReadinessReport();
+for (let attempt = 2; attempt <= 4 && Number(report.warehouseBackedProductCount || 0) === 0; attempt += 1) {
+  await sleep(300 * attempt);
+  report = await loadReadinessReport();
+}
 assert(report.status === 'approval_required_catalog_product_filter_rule', 'product filter readiness should remain approval-required', report);
 assert(report.mode === 'guarded_catalog_product_filter_readiness', 'product filter readiness mode changed', report);
 assert(report.mutation === false, 'product filter readiness reported mutation', report);
