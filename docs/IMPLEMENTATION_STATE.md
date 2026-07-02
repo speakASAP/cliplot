@@ -512,3 +512,15 @@ behavior until those approvals are present.
   `DOCS_RAG_PREFLIGHT=blocked`, exit `2`. Normal publication remains the
   mutating ingestion step and must not run until preflight passes and ingestion
   is intentionally approved.
+
+
+- GOAL-06 read-only operator readiness bundle added as
+  `npm run readiness:bundle`. The bundle gates checkout POST smoke behind
+  `GET /api/checkout/live-preflight` and integration readiness, verifies K8s
+  rollout state, Vault key presence without printing values, Docs/RAG preflight
+  only, and guarded checkout smoke. Clean-worktree execution returned
+  `CLIPLOT_READINESS_BUNDLE=blocked`, exit `2`, because Docs/RAG embedding
+  backend fetch still fails. Checkout safety checks passed:
+  `livePreflight.status=blocked`, `wouldMutate=false`, all mutation-plan
+  booleans false, all live flags and approval booleans false, and guarded
+  checkout `mutation=false`.
