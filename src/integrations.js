@@ -1609,6 +1609,122 @@ export async function paymentStatusPersistenceDecisionPacket() {
   };
 }
 
+export async function paymentStatusSnapshotReadApprovalPacket() {
+  const statusReadiness = await paymentStatusReadiness();
+  const storageReadiness = await paymentStatusStorageReadiness();
+  const decisionPacket = await paymentStatusPersistenceDecisionPacket();
+  const readScope = statusReadiness.readScopeReadiness || {};
+  const prerequisites = [
+    {
+      id: 'payments-read-scope',
+      status: readScope.scopeValidated ? 'satisfied' : 'missing',
+      evidence: readScope.scopeValidated
+        ? 'Cliplot PAYMENT_API_KEY reached Payments DB-only read-by-orderId route with payments:read and no mutation.'
+        : '[MISSING: payments:read runtime scope evidence]',
+      requiredBeforeApproval: true,
+    },
+    {
+      id: 'ownership-decision-record',
+      status: decisionPacket.decisionRecord?.recorded ? 'satisfied' : 'missing',
+      evidence: decisionPacket.decisionRecord?.recorded
+        ? `${decisionPacket.decisionRecord.id} recorded as ${decisionPacket.decisionRecord.status}`
+        : '[MISSING: payment status ownership ADR]',
+      requiredBeforeApproval: true,
+    },
+    {
+      id: 'owner-approval-passive-status-read',
+      status: 'missing',
+      evidence: '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+      requiredBeforeApproval: true,
+    },
+    {
+      id: 'customer-safe-status-copy-approval',
+      status: 'missing',
+      evidence: '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+      requiredBeforeApproval: true,
+    },
+    {
+      id: 'runtime-rollout-plan',
+      status: 'missing',
+      evidence: '[MISSING: approved runtime rollout plan for read-only customer status surface]',
+      requiredBeforeApproval: true,
+    },
+    {
+      id: 'db-only-route-approval',
+      status: 'missing',
+      evidence: '[MISSING: explicit approval that passive snapshot reads use only Payments DB-only by-order-id route]',
+      requiredBeforeApproval: true,
+    },
+  ];
+  const blockers = prerequisites
+    .filter((item) => item.status !== 'satisfied')
+    .map((item) => item.evidence);
+
+  return {
+    success: true,
+    status: 'approval_required_passive_payments_snapshot_read',
+    mode: 'guarded_passive_payments_snapshot_read_approval_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    livePaymentCreate: serviceConfig.livePaymentCreate,
+    runtimeReadEnabled: false,
+    approvedRuntimeChange: false,
+    recommendedOption: decisionPacket.recommendedOption,
+    decisionRecord: decisionPacket.decisionRecord,
+    readContract: {
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      applicationId: serviceConfig.applicationId,
+      requiredScope: 'payments:read',
+      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      source: 'payments_db_snapshot',
+      providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      forbiddenEndpoint: '/payments/{paymentId}',
+      forbiddenReason: 'GET /payments/{paymentId} can refresh pending/processing Stripe/card provider state and must not be used for passive Cliplot status reads.',
+    },
+    currentReadiness: {
+      paymentStatus: statusReadiness.status,
+      paymentStorage: storageReadiness.status,
+      paymentDecision: decisionPacket.status,
+      readScopeStatus: readScope.status || null,
+      scopeValidated: readScope.scopeValidated === true,
+      currentStatusPersistence: storageReadiness.readContract?.currentPersistence,
+      callbackPersistence: storageReadiness.callbackContract?.currentPersistence,
+    },
+    customerSafeStatusContract: statusReadiness.customerSafeStatusContract,
+    approvalChecklist: prerequisites,
+    requiredApprovalEvidence: [
+      'owner approval for provider-refresh-free Payments DB snapshot reads',
+      'customer-safe Czech status copy approval for pending/processing/completed/failed/cancelled/refunded states',
+      'operator acceptance that Cliplot remains non-authoritative for provider payment truth',
+      'approved runtime rollout plan for read-only customer status surface',
+      'explicit approval that passive snapshot reads use only Payments DB-only by-order-id route',
+    ],
+    mustRemainFalseBeforeApproval: [
+      'ENABLE_LIVE_PAYMENT_CREATE unless full live checkout approval exists',
+      'runtimeReadEnabled',
+      'callback persistence',
+      'Cliplot-local payment status storage writes',
+      'provider-backed /payments/{paymentId} reads',
+    ],
+    blockers,
+    sensitiveDataPolicy: [
+      'no payment API key value',
+      'no webhook key value',
+      'no provider call',
+      'no storage write',
+      'no storage read',
+      'approval metadata only',
+    ],
+    next: 'Collect owner approval for provider-refresh-free Payments DB snapshot reads and customer-safe status copy before Cliplot renders live payment status.',
+  };
+}
+
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
     .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)

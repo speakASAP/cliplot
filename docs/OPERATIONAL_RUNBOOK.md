@@ -284,6 +284,22 @@ callback persistence, or Cliplot-local storage writes.
 npm run readiness:payment-decision -- https://cliplot.alfares.cz
 ```
 
+`GET /api/payments/status-snapshot-read-approval-packet` is the read-only
+owner approval packet for passive customer-facing payment status reads. It
+aggregates only metadata and readiness evidence; it must not accept real
+`orderId` or `paymentId` input, return payment rows, print secrets, call
+providers, persist callback state, or enable Cliplot-local storage. It must
+return `approval_required_passive_payments_snapshot_read`, `runtimeReadEnabled=false`,
+`mutation=false`, `persistence=false`, and `providerCall=false`. The only future
+read contract is the provider-refresh-free Payments DB snapshot endpoint:
+`/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}`. The
+packet must continue to reject `/payments/{paymentId}` for passive reads because
+that endpoint can refresh pending Stripe/card provider state.
+
+```bash
+npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz
+```
+
 
 ## Operator Readiness Bundle
 

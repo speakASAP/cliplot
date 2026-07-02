@@ -143,6 +143,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_step payment_status_readiness npm run readiness:payment-status -- "$BASE_URL"
   run_step payment_status_storage_readiness npm run readiness:payment-storage -- "$BASE_URL"
   run_step payment_status_persistence_decision npm run readiness:payment-decision -- "$BASE_URL"
+  run_step payment_status_snapshot_read_approval npm run readiness:payment-snapshot-read-approval -- "$BASE_URL"
   run_step live_smoke_plan npm run readiness:live-smoke-plan -- "$BASE_URL"
   run_step live_smoke_executor_guard npm run readiness:live-smoke-executor -- "$BASE_URL"
   run_step guarded_checkout_smoke npm run smoke:checkout -- "$BASE_URL"

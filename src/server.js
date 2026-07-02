@@ -16,6 +16,7 @@ import {
   paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
   paymentStatusPersistenceDecisionPacket,
+  paymentStatusSnapshotReadApprovalPacket,
   paymentStatus,
   serviceReadiness,
   runLiveOrderWarehouseSmoke,
@@ -291,6 +292,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/status-persistence-decision') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-snapshot-read-approval-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentStatusSnapshotReadApprovalPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-snapshot-read-approval-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

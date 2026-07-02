@@ -107,6 +107,14 @@ async function main() {
   assertFalse(paymentDecision.body?.persistence, 'payment_status_persistence_decision_persistence_enabled', { paymentDecision: paymentDecision.body });
   assertFalse(paymentDecision.body?.providerCall, 'payment_status_persistence_decision_provider_call_enabled', { paymentDecision: paymentDecision.body });
 
+  const snapshotReadApproval = await getJson('/api/payments/status-snapshot-read-approval-packet');
+  assertEqual(snapshotReadApproval.body?.status, 'approval_required_passive_payments_snapshot_read', 'payment_status_snapshot_read_approval_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
+  assertEqual(snapshotReadApproval.body?.runtimeReadEnabled, false, 'payment_status_snapshot_read_runtime_enabled', { snapshotReadApproval: snapshotReadApproval.body });
+  assertEqual(snapshotReadApproval.body?.readContract?.endpoint, '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'payment_status_snapshot_read_endpoint_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
+  assertFalse(snapshotReadApproval.body?.mutation, 'payment_status_snapshot_read_approval_mutation_enabled', { snapshotReadApproval: snapshotReadApproval.body });
+  assertFalse(snapshotReadApproval.body?.persistence, 'payment_status_snapshot_read_approval_persistence_enabled', { snapshotReadApproval: snapshotReadApproval.body });
+  assertFalse(snapshotReadApproval.body?.providerCall, 'payment_status_snapshot_read_approval_provider_call_enabled', { snapshotReadApproval: snapshotReadApproval.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -121,6 +129,7 @@ async function main() {
     paymentStatusReadiness: paymentStatusReadiness.body.status,
     paymentStatusStorageReadiness: paymentStatusStorage.body.status,
     paymentStatusPersistenceDecision: paymentDecision.body.status,
+    paymentStatusSnapshotReadApproval: snapshotReadApproval.body.status,
   }, null, 2));
 }
 

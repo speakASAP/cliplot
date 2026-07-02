@@ -47,6 +47,10 @@ present.
   `/payments/status/by-order-id` readiness probe, but passive customer status
   reads remain disabled until ADR-002 owner approval, callback replay policy,
   and live status read/write approvals exist.
+- The passive payment status snapshot-read approval packet is read-only and
+  must remain `approval_required_passive_payments_snapshot_read` with
+  `runtimeReadEnabled=false`, `mutation=false`, `persistence=false`, and
+  `providerCall=false` until owner approval and runtime rollout evidence exist.
 
 ## Deploy Command
 

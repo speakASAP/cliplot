@@ -341,6 +341,36 @@ persistence=false
 providerCall=false
 ```
 
+## Passive Payment Snapshot-Read Approval Packet
+
+Status: implemented and approval-gated.
+
+The approval packet for passive customer payment status reads must aggregate
+only readiness metadata. It does not accept real order/payment IDs, does not
+call provider-refreshing endpoints, and does not enable callback persistence or
+Cliplot-local storage.
+
+Expected validation:
+
+```bash
+npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz
+```
+
+Expected evidence:
+
+```text
+status=approval_required_passive_payments_snapshot_read
+decisionRecord=ADR-002-payment-status-persistence-ownership
+readEndpoint=/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}
+readScopeStatus=validated_payments_read_scope_no_mutation
+scopeValidated=true
+runtimeReadEnabled=false
+approvedRuntimeChange=false
+mutation=false
+persistence=false
+providerCall=false
+```
+
 
 ## Live Notification Send Path Wiring
 
