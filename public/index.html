@@ -75,7 +75,7 @@
         </div>
         <div>
           <strong>Vrácení zboží</strong>
-          <span>Jednoduche vrácení do 14 dnu podle ceskych pravidel.</span>
+          <span>Jednoduché vrácení do 14 dnů podle českých pravidel.</span>
         </div>
         <div>
           <strong>Česká podpora</strong>
@@ -113,7 +113,7 @@
           </div>
           <div data-cart-items class="cart-items"></div>
           <div class="cart-total">
-            <span>Celkem</span>
+            <span>Mezisoučet</span>
             <strong data-cart-total>0 Kč</strong>
           </div>
         </div>
@@ -143,18 +143,41 @@
             <label>
               Doprava
               <select name="shipping">
-                <option>Zásilkovna - výdejní místo</option>
-                <option>PPL kurýr</option>
-                <option>Balíkovna</option>
+                <option value="balikovna">Balíkovna - 69 Kč</option>
+                <option value="zasilkovna">Zásilkovna - 79 Kč</option>
+                <option value="ppl">PPL kurýr - 119 Kč</option>
               </select>
             </label>
             <label>
               Platba
               <select name="payment">
-                <option>Platba kartou - připravuje se</option>
-                <option>Bankovní převod - připravuje se</option>
+                <option value="invoice">Kartou online po potvrzení - 0 Kč</option>
+                <option value="bank_transfer">Bankovní převod - 0 Kč</option>
               </select>
             </label>
+          </div>
+          <div class="checkout-review" aria-live="polite">
+            <h3>Kontrola objednávky</h3>
+            <div class="review-items" data-review-items></div>
+            <dl class="price-breakdown">
+              <div>
+                <dt>Mezisoučet</dt>
+                <dd data-order-subtotal>0 Kč</dd>
+              </div>
+              <div>
+                <dt>Doprava</dt>
+                <dd data-order-shipping>0 Kč</dd>
+              </div>
+              <div>
+                <dt>Platba</dt>
+                <dd data-order-payment>0 Kč</dd>
+              </div>
+              <div class="price-breakdown-total">
+                <dt>Celkem k úhradě</dt>
+                <dd data-order-total>0 Kč</dd>
+              </div>
+            </dl>
+            <p data-review-choice>Vyberte dopravu a platbu.</p>
           </div>
           <button class="primary-button" type="submit">Připravit objednávku</button>
           <p class="checkout-note">
@@ -172,7 +195,7 @@
       <h2>Košík</h2>
       <div data-drawer-items></div>
       <div class="cart-total">
-        <span>Celkem</span>
+        <span>Mezisoučet</span>
         <strong data-drawer-total>0 Kč</strong>
       </div>
       <a class="primary-link" href="#checkout" data-close-cart>Přejít k objednávce</a>

@@ -371,11 +371,47 @@ function checkoutIntentEvidence(checkout) {
   };
 }
 
+const shippingOptions = new Map([
+  ['balikovna', { method: 'balikovna', label: 'Balíkovna', cost: 69 }],
+  ['zasilkovna', { method: 'zasilkovna', label: 'Zásilkovna', cost: 79 }],
+  ['ppl', { method: 'ppl', label: 'PPL kurýr', cost: 119 }],
+]);
+
+const paymentOptions = new Map([
+  ['invoice', { method: serviceConfig.paymentMethod, choice: 'invoice', label: 'Kartou online po potvrzení', fee: 0 }],
+  ['bank_transfer', { method: serviceConfig.paymentMethod, choice: 'bank_transfer', label: 'Bankovní převod', fee: 0 }],
+]);
+
+function normalizeCheckoutChoice(value, options, fallback) {
+  const key = String(value || '').trim().toLowerCase();
+  return options.get(key) || options.get(fallback);
+}
+
+function checkoutSummary(checkout) {
+  return {
+    subtotal: checkout.subtotal,
+    shipping: checkout.shipping,
+    payment: checkout.payment,
+    total: checkout.total,
+    currency: 'CZK',
+  };
+}
+
 function normalizeCheckout(input) {
   const items = Array.isArray(input?.items) ? input.items : [];
   const customer = input?.customer && typeof input.customer === 'object' ? input.customer : {};
-  const total = Number(input?.total || 0);
   const externalOrderId = normalizeExternalOrderId(input?.externalOrderId) || createExternalOrderId();
+  const normalizedItems = items.map((entry) => ({
+    productId: String(entry?.product?.id || entry?.productId || ''),
+    title: String(entry?.product?.name || entry?.name || ''),
+    quantity: Number(entry?.quantity || 0),
+    unitPrice: Number(entry?.product?.price || entry?.unitPrice || 0),
+    warehouseId: String(entry?.product?.warehouseId || entry?.warehouseId || "").trim(),
+  }));
+  const subtotal = normalizedItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  const shipping = normalizeCheckoutChoice(input?.shipping || customer.shipping, shippingOptions, 'balikovna');
+  const payment = normalizeCheckoutChoice(input?.payment || customer.payment, paymentOptions, 'invoice');
+  const total = subtotal + shipping.cost + payment.fee;
   return {
     externalOrderId,
     customer: {
@@ -384,16 +420,11 @@ function normalizeCheckout(input) {
       phone: String(customer.phone || '').trim(),
       address: String(customer.address || '').trim(),
     },
-    items: items.map((entry) => ({
-      productId: String(entry?.product?.id || entry?.productId || ''),
-      title: String(entry?.product?.name || entry?.name || ''),
-      quantity: Number(entry?.quantity || 0),
-      unitPrice: Number(entry?.product?.price || entry?.unitPrice || 0),
-      warehouseId: String(entry?.product?.warehouseId || entry?.warehouseId || "").trim(),
-    })),
-    total: Number.isFinite(total) ? total : 0,
-    shipping: String(customer.shipping || input?.shipping || ''),
-    payment: String(customer.payment || input?.payment || ''),
+    items: normalizedItems,
+    subtotal,
+    total,
+    shipping,
+    payment,
   };
 }
 
@@ -486,7 +517,7 @@ async function guardedWarehouseReservationReadiness(checkout) {
 }
 
 function buildOrderCreatePayload(checkout) {
-  const subtotal = checkout.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  const subtotal = checkout.subtotal;
   return {
     contractVersion: 'orders.create.v1',
     channel: serviceConfig.orderChannel,
@@ -514,7 +545,7 @@ function buildOrderCreatePayload(checkout) {
     })),
     totals: {
       subtotal,
-      shippingCost: 0,
+      shippingCost: checkout.shipping.cost,
       taxAmount: 0,
       total: checkout.total,
       currency: 'CZK',
@@ -524,7 +555,7 @@ function buildOrderCreatePayload(checkout) {
       status: 'pending',
     },
     shipping: {
-      method: checkout.shipping || 'Balikovna',
+      method: checkout.shipping.label,
     },
   };
 }
@@ -616,6 +647,8 @@ function buildPaymentCreatePayload(checkout, order) {
       externalOrderId: checkout.externalOrderId,
       userId: `cliplot:${checkout.customer.email}`,
       checkoutIntentId: checkout.externalOrderId,
+      shippingMethod: checkout.shipping.method,
+      paymentChoice: checkout.payment.choice || checkout.payment.method,
     },
   };
 }
@@ -821,6 +854,9 @@ function buildOrderConfirmationNotification(checkout) {
       '',
       itemLines,
       '',
+      `Mezisoučet: ${checkout.subtotal} Kč`,
+      `Doprava: ${checkout.shipping.label} (${checkout.shipping.cost} Kč)`,
+      `Platba: ${checkout.payment.label}`,
       `Celkem: ${checkout.total} Kč`,
       'Doručení: 1-2 dny podle dostupnosti dopravce.',
       '',
@@ -872,6 +908,7 @@ export async function submitCheckout(input) {
         missing,
         liveMutationApprovals: liveMutationApprovals(),
         checkoutIntent: checkoutIntentEvidence(checkout),
+        checkoutSummary: checkoutSummary(checkout),
         orderPreview,
         warehouseReservationReadiness,
         orderValidation,
@@ -911,6 +948,7 @@ export async function submitCheckout(input) {
       payment,
       liveMutationApprovals: liveMutationApprovals(),
       checkoutIntent: checkoutIntentEvidence(checkout),
+      checkoutSummary: checkoutSummary(checkout),
       paymentPreview,
       notification: serviceConfig.liveNotifications
         ? 'pending_live_send_in_payment_lane'

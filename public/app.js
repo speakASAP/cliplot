@@ -63,6 +63,17 @@ const currency = new Intl.NumberFormat('cs-CZ', {
   maximumFractionDigits: 0,
 });
 
+const shippingOptions = [
+  { value: 'balikovna', label: 'Balíkovna', cost: 69 },
+  { value: 'zasilkovna', label: 'Zásilkovna', cost: 79 },
+  { value: 'ppl', label: 'PPL kurýr', cost: 119 },
+];
+
+const paymentOptions = [
+  { value: 'invoice', label: 'Kartou online po potvrzení', fee: 0 },
+  { value: 'bank_transfer', label: 'Bankovní převod', fee: 0 },
+];
+
 const selectors = {
   products: document.querySelector('[data-products]'),
   cartCount: document.querySelector('[data-cart-count]'),
@@ -70,6 +81,12 @@ const selectors = {
   drawerItems: document.querySelector('[data-drawer-items]'),
   cartTotal: document.querySelector('[data-cart-total]'),
   drawerTotal: document.querySelector('[data-drawer-total]'),
+  reviewItems: document.querySelector('[data-review-items]'),
+  orderSubtotal: document.querySelector('[data-order-subtotal]'),
+  orderShipping: document.querySelector('[data-order-shipping]'),
+  orderPayment: document.querySelector('[data-order-payment]'),
+  orderTotal: document.querySelector('[data-order-total]'),
+  reviewChoice: document.querySelector('[data-review-choice]'),
   drawer: document.querySelector('[data-cart-drawer]'),
   backdrop: document.querySelector('.drawer-backdrop'),
   result: document.querySelector('[data-checkout-result]'),
@@ -91,6 +108,20 @@ function escapeHtml(value) {
 
 function saveCart() {
   localStorage.setItem(cartStorageKey, JSON.stringify(state.cart));
+}
+
+function selectedOption(options, value) {
+  return options.find((option) => option.value === value) || options[0];
+}
+
+function checkoutBreakdown(form = document.querySelector('#checkoutForm')) {
+  const data = form ? Object.fromEntries(new FormData(form).entries()) : {};
+  const shipping = selectedOption(shippingOptions, data.shipping);
+  const payment = selectedOption(paymentOptions, data.payment);
+  const subtotal = cartTotal();
+  const paymentFee = Number(payment.fee || 0);
+  const total = subtotal + Number(shipping.cost || 0) + paymentFee;
+  return { subtotal, shipping, payment, paymentFee, total };
 }
 
 function createCheckoutIntentId() {
@@ -192,10 +223,10 @@ function renderProducts() {
 function renderCart() {
   const entries = cartEntries();
   const count = entries.reduce((sum, item) => sum + item.quantity, 0);
-  const total = formatPrice(cartTotal());
+  const subtotal = formatPrice(cartTotal());
   selectors.cartCount.textContent = count;
-  selectors.cartTotal.textContent = total;
-  selectors.drawerTotal.textContent = total;
+  selectors.cartTotal.textContent = subtotal;
+  selectors.drawerTotal.textContent = subtotal;
 
   const markup = entries.length
     ? entries
@@ -220,6 +251,28 @@ function renderCart() {
   selectors.cartItems.innerHTML = markup;
   selectors.drawerItems.innerHTML = markup;
   saveCart();
+  renderCheckoutReview();
+}
+
+function renderCheckoutReview() {
+  const entries = cartEntries();
+  const breakdown = checkoutBreakdown();
+  if (!selectors.reviewItems) return;
+
+  selectors.reviewItems.innerHTML = entries.length
+    ? entries.map(({ product, quantity }) => `
+        <div>
+          <span>${escapeHtml(product.name)} × ${quantity}</span>
+          <strong>${formatPrice(product.price * quantity)}</strong>
+        </div>
+      `).join('')
+    : '<p class="product-description">Košík je prázdný.</p>';
+
+  selectors.orderSubtotal.textContent = formatPrice(breakdown.subtotal);
+  selectors.orderShipping.textContent = formatPrice(breakdown.shipping.cost);
+  selectors.orderPayment.textContent = formatPrice(breakdown.paymentFee);
+  selectors.orderTotal.textContent = formatPrice(breakdown.total);
+  selectors.reviewChoice.textContent = `${breakdown.shipping.label} | ${breakdown.payment.label}`;
 }
 
 function addToCart(productId) {
@@ -291,6 +344,10 @@ document.querySelector('#searchInput').addEventListener('input', (event) => {
   renderProducts();
 });
 
+document.querySelector('#checkoutForm').addEventListener('change', () => {
+  renderCheckoutReview();
+});
+
 document.querySelector('#checkoutForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const entries = cartEntries();
@@ -301,6 +358,7 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
   }
 
   const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+  const breakdown = checkoutBreakdown(event.currentTarget);
   selectors.result.hidden = false;
   selectors.result.textContent = 'Kontrolujeme objednávku...';
 
@@ -310,8 +368,16 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
     body: JSON.stringify({
       externalOrderId: checkoutIntentFor(entries),
       customer: data,
+      shipping: breakdown.shipping.value,
+      payment: breakdown.payment.value,
+      pricing: {
+        subtotal: breakdown.subtotal,
+        shippingCost: breakdown.shipping.cost,
+        paymentFee: breakdown.paymentFee,
+        total: breakdown.total,
+      },
       items: entries,
-      total: cartTotal(),
+      total: breakdown.total,
     }),
   });
   const payload = await response.json();
@@ -324,19 +390,16 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
     return;
   }
 
-  const missing = Array.isArray(payload.missing) && payload.missing.length
-    ? `<details><summary>Technické ověření</summary><ul>${payload.missing.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`
-    : '';
   const reference = payload.checkoutIntent?.externalOrderId
     ? `<p>Referenční číslo: <strong>${escapeHtml(payload.checkoutIntent.externalOrderId)}</strong></p>`
     : '';
 
   selectors.result.innerHTML = `
     <strong>Objednávka je připravena ke kontrole.</strong>
-    <p>Zákazník: ${escapeHtml(data.name)} | Celkem: ${formatPrice(cartTotal())}</p>
+    <p>Zákazník: ${escapeHtml(data.name)} | Celkem: ${formatPrice(payload.checkoutSummary?.total ?? breakdown.total)}</p>
     ${reference}
-    <p>Platba se zatím nespustila. Po finálním zapojení plateb dostanete potvrzení objednávky a odkaz na platbu.</p>
-    ${missing}
+    <p>Doprava: ${escapeHtml(payload.checkoutSummary?.shipping?.label || breakdown.shipping.label)} | Platba: ${escapeHtml(payload.checkoutSummary?.payment?.label || breakdown.payment.label)}</p>
+    <p>Platba se zatím nespustila. Po kontrole objednávky dostanete další pokyny k platbě.</p>
   `;
 });
 

@@ -633,3 +633,47 @@ select {
   cursor: pointer;
   font-weight: 700;
 }
+
+
+.checkout-review {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.checkout-review h3,
+.checkout-review p {
+  margin: 0;
+}
+
+.review-items {
+  display: grid;
+  gap: 8px;
+}
+
+.review-items > div,
+.price-breakdown > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.price-breakdown {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.price-breakdown dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.price-breakdown-total {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 18px;
+}

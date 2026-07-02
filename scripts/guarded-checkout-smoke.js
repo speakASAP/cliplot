@@ -34,6 +34,7 @@ assert(product, 'no warehouse-backed product available for guarded checkout smok
 });
 
 const externalOrderId = `cliplot-smoke-${Date.now()}`;
+const subtotal = Number(product.price || 0);
 const checkoutBody = {
   externalOrderId,
   customer: {
@@ -41,11 +42,17 @@ const checkoutBody = {
     email: 'smoke-test@cliplot.invalid',
     phone: '+420000000000',
     address: 'Testovaci 1, Praha',
-    shipping: 'Balikovna',
-    payment: 'invoice',
+  },
+  shipping: 'balikovna',
+  payment: 'invoice',
+  pricing: {
+    subtotal,
+    shippingCost: 69,
+    paymentFee: 0,
+    total: subtotal + 69,
   },
   items: [{ product, quantity: 1 }],
-  total: Number(product.price || 0),
+  total: subtotal + 69,
 };
 
 const { response: checkoutResponse, payload: checkout } = await postJson('/api/checkout/submit', checkoutBody);
@@ -60,6 +67,22 @@ assert(checkout.checkoutIntent?.externalOrderId === externalOrderId, 'checkout i
   expected: externalOrderId,
   actual: checkout.checkoutIntent?.externalOrderId,
 });
+assert(checkout.checkoutSummary?.subtotal === subtotal, 'checkout subtotal mismatch', checkout.checkoutSummary || {});
+assert(checkout.checkoutSummary?.shipping?.cost === 69, 'checkout shipping cost mismatch', checkout.checkoutSummary || {});
+assert(checkout.checkoutSummary?.payment?.fee === 0, 'checkout payment fee mismatch', checkout.checkoutSummary || {});
+assert(checkout.checkoutSummary?.total === subtotal + 69, 'checkout total mismatch', checkout.checkoutSummary || {});
+assert(checkout.orderPreview?.totals?.shippingCost === 69, 'order preview shipping cost mismatch', checkout.orderPreview?.totals || {});
+assert(checkout.orderPreview?.totals?.total === subtotal + 69, 'order preview total mismatch', checkout.orderPreview?.totals || {});
+assert(checkout.paymentPreview?.amount === subtotal + 69, 'payment preview amount mismatch', checkout.paymentPreview || {});
+assert(checkout.paymentPreview?.paymentMethod === checkout.orderPreview?.payment?.method, 'payment method mismatch', {
+  paymentPreview: checkout.paymentPreview?.paymentMethod,
+  orderPreview: checkout.orderPreview?.payment?.method,
+});
+assert(!checkout.order, 'guarded checkout unexpectedly returned a live order object', { order: checkout.order });
+assert(!checkout.payment, 'guarded checkout unexpectedly returned a live payment object', { payment: checkout.payment });
+assert(checkout.liveMutationApprovals?.order === false, 'order approval unexpectedly enabled', checkout.liveMutationApprovals || {});
+assert(checkout.liveMutationApprovals?.payment === false, 'payment approval unexpectedly enabled', checkout.liveMutationApprovals || {});
+assert(checkout.liveMutationApprovals?.notification === false, 'notification approval unexpectedly enabled', checkout.liveMutationApprovals || {});
 assert(checkout.orderValidation?.status === 'validated_no_mutation', 'order validation is not no-mutation', checkout.orderValidation || {});
 assert(checkout.paymentValidation?.status === 'validated_no_mutation', 'payment validation is not no-mutation', checkout.paymentValidation || {});
 assert(checkout.notificationValidation?.status === 'validated_no_send', 'notification validation is not no-send', checkout.notificationValidation || {});
@@ -76,6 +99,10 @@ console.log(JSON.stringify({
   checkoutHttpStatus: checkoutResponse.status,
   checkoutStatus: checkout.status,
   externalOrderId: checkout.checkoutIntent.externalOrderId,
+  subtotal: checkout.checkoutSummary.subtotal,
+  shippingCost: checkout.checkoutSummary.shipping.cost,
+  paymentFee: checkout.checkoutSummary.payment.fee,
+  total: checkout.checkoutSummary.total,
   orderValidation: checkout.orderValidation.status,
   paymentValidation: checkout.paymentValidation.status,
   notificationValidation: checkout.notificationValidation.status,
