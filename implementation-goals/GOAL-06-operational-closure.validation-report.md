@@ -488,3 +488,41 @@ This packet does not call the live smoke executor, does not create orders, does
 not create payments, does not reserve Warehouse stock, does not send
 notifications, does not persist callbacks, does not call payment providers, and
 does not print secret values.
+
+
+## Customer Status Approval Evidence Cleanup
+
+Status: implemented as read-only evidence contract cleanup.
+
+The approved read-only customer status evidence packet now separates already
+satisfied runtime approval evidence from remaining revenue-closure blockers.
+When `CLIPLOT_STATUS_RUNTIME_APPROVAL_ID`,
+`ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`, and
+`ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true` are present, the packet no longer
+reports those satisfied read-only requirements as `[MISSING]`. It still keeps
+callback persistence/replay, order/payment mapping ownership, live checkout
+mutation, provider-refresh reads, Cliplot-local payment status storage,
+Warehouse reservation, and notification sends blocked behind separate approval
+paths.
+
+Expected validation:
+
+```bash
+npm run readiness:customer-status-approval -- https://cliplot.alfares.cz
+npm run readiness:revenue-closure -- https://cliplot.alfares.cz
+npm run readiness:k8s -- https://cliplot.alfares.cz
+```
+
+Expected approved read-only evidence:
+
+```text
+status=approved_customer_status_runtime_evidence_packet
+runtimeReadEnabled=true
+paymentsSnapshotReadEnabled=true
+storageRead=false
+callbackPersistence=false
+mutation=false
+persistence=false
+providerCall=false
+remainingClosureBlockers=callback persistence/replay policy, order/payment mapping ownership
+```

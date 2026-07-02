@@ -2802,23 +2802,34 @@ export async function customerStatusApprovalEvidencePacket() {
   const approvedRuntimeRead = activation.status === 'ready_for_approved_read_only_customer_status_runtime'
     && runtimeReadiness.status === 'ready_for_approved_payments_snapshot_runtime_read'
     && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const paymentMapping = await paymentStatusMappingOwnershipPacket();
   const baselineGuarded = ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(surface.status)
     && ['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(rollout.status)
     && ['blocked_read_only_customer_status_runtime_activation', 'ready_for_approved_read_only_customer_status_runtime'].includes(activation.status)
     && ['blocked_payments_snapshot_runtime_read', 'ready_for_approved_payments_snapshot_runtime_read'].includes(runtimeReadiness.status)
     && ['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(snapshotReadApproval.status);
 
-  const blockers = [
-    '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
-    '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
-    '[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true after owner approval]',
-    '[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true after owner approval]',
-    '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
-    '[MISSING: explicit approval that passive reads use only Payments DB-only by-order-id route]',
-    '[MISSING: callback persistence/replay policy confirming callback persistence remains disabled for read-only activation]',
-    '[MISSING: approved order/payment status mapping ownership]',
-    '[MISSING: runtime rollout owner and rollback owner recorded]',
-  ];
+  const blockers = approvedRuntimeRead
+    ? [
+        ...(callbackPolicy.status === 'approval_required_callback_replay_policy'
+          ? ['[MISSING: approved callback persistence/replay policy before callback persistence or replay]']
+          : []),
+        ...(paymentMapping.status === 'approval_required_order_payment_status_mapping_ownership'
+          ? ['[MISSING: approved order/payment status mapping ownership before Cliplot stores or correlates payment truth]']
+          : []),
+      ]
+    : [
+        '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+        '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
+        '[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true after owner approval]',
+        '[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true after owner approval]',
+        '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+        '[MISSING: explicit approval that passive reads use only Payments DB-only by-order-id route]',
+        '[MISSING: callback persistence/replay policy confirming callback persistence remains disabled for read-only activation]',
+        '[MISSING: approved order/payment status mapping ownership]',
+        '[MISSING: runtime rollout owner and rollback owner recorded]',
+      ];
 
   return {
     success: true,
@@ -2846,8 +2857,8 @@ export async function customerStatusApprovalEvidencePacket() {
       system: 'Cliplot storefront plus shared Payments DB-only by-order-id snapshot contract.',
       feature: 'Guarded customer status runtime evidence packet.',
       task: 'Aggregate activation prerequisites and blockers for future runtime approval.',
-      executionPlan: 'Expose metadata-only endpoint and readiness script; keep all runtime flags false.',
-      codingPrompt: 'Do not enable live reads, writes, provider calls, persistence, order creation, payment creation, warehouse reservation, or notification sends.',
+      executionPlan: 'Expose metadata-only endpoint and readiness script; allow only the approved DB-only snapshot read flags while live mutation, persistence, provider-refresh reads, and notification sends stay disabled.',
+      codingPrompt: 'Do not enable live writes, provider-refresh reads, persistence, order creation, payment creation, warehouse reservation, or notification sends.',
       code: 'customerStatusApprovalEvidencePacket endpoint and readiness check.',
       validation: 'npm run readiness:customer-status-approval -- https://cliplot.alfares.cz',
     },
@@ -2858,6 +2869,8 @@ export async function customerStatusApprovalEvidencePacket() {
       paymentRuntimeReadiness: runtimeReadiness.status,
       snapshotReadApproval: snapshotReadApproval.status,
       paymentReadScope: rollout.dependencyStatuses?.paymentReadScope || null,
+      callbackReplayPolicy: callbackPolicy.status,
+      paymentMappingOwnership: paymentMapping.status,
       frontendStatusFetch: 'deployed_guarded_fetch',
     },
     runtimeFlags: {
@@ -2886,6 +2899,7 @@ export async function customerStatusApprovalEvidencePacket() {
         'ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true',
         'ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true',
       ],
+      remainingClosureBlockers: blockers,
       mustRemainFalse: [
         'ENABLE_LIVE_ORDER_SUBMIT',
         'ENABLE_LIVE_PAYMENT_CREATE',
@@ -2923,7 +2937,9 @@ export async function customerStatusApprovalEvidencePacket() {
       'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
     ],
     blockers,
-    next: 'Use this packet as the owner approval evidence source; do not enable runtime reads until every blocker is resolved and the approval ID plus both read-only flags exist together.',
+    next: approvedRuntimeRead
+      ? 'Read-only customer status runtime is approved; keep live checkout mutation, callback persistence, provider-refresh reads, and Cliplot-local payment status storage blocked until their separate approvals exist.'
+      : 'Use this packet as the owner approval evidence source; do not enable runtime reads until every blocker is resolved and the approval ID plus both read-only flags exist together.',
   };
 }
 

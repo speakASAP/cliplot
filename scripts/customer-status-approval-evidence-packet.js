@@ -65,6 +65,13 @@ if (approved) {
   assert(packet.runtimeFlags?.customerStatusRuntimeRead === true, 'approved customer runtime flag missing', packet);
   assert(packet.runtimeFlags?.paymentStatusSnapshotRead === true, 'approved snapshot flag missing', packet);
   assert(packet.runtimeFlags?.statusRuntimeApprovalPresent === true, 'approved runtime approval missing', packet);
+  assert(Array.isArray(packet.blockers), 'approved packet blockers missing', packet);
+  assert(!packet.blockers.some((blocker) => blocker.includes('ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true')), 'approved packet still reports customer runtime flag missing', packet);
+  assert(!packet.blockers.some((blocker) => blocker.includes('ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true')), 'approved packet still reports snapshot runtime flag missing', packet);
+  assert(!packet.blockers.some((blocker) => blocker.includes('CLIPLOT_STATUS_RUNTIME_APPROVAL_ID')), 'approved packet still reports status runtime approval missing', packet);
+  assert(!packet.blockers.some((blocker) => blocker.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'approved packet still reports passive snapshot approval missing', packet);
+  assert(!packet.blockers.some((blocker) => blocker.includes('customer-safe status copy approval')), 'approved packet still reports customer-safe copy approval missing', packet);
+  assert(!packet.blockers.some((blocker) => blocker.includes('explicit approval that passive reads use only Payments DB-only')), 'approved packet still reports DB-only route approval missing', packet);
 } else {
   assert(packet.runtimeReadEnabled === false, 'blocked runtime read unexpectedly enabled', packet);
   assert(packet.paymentsSnapshotReadEnabled === false, 'blocked snapshot read unexpectedly enabled', packet);

@@ -604,3 +604,18 @@ Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=clip
 ### 2026-07-02 - Cliplot Payments read-scope runtime evidence
 
 Added guarded `GET /api/payments/read-scope-readiness` and `npm run readiness:payment-read-scope`. The probe sends Cliplot's `PAYMENT_API_KEY` only in-memory to Payments `GET /payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness`, expects a synthetic missing-order `404`, and records `scopeValidated=true`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing secrets or enabling passive status reads.
+
+
+### 2026-07-02 - Customer status approval evidence cleanup
+
+The approved read-only customer status packet now distinguishes satisfied
+runtime approval facts from remaining closure blockers. With
+`CLIPLOT_STATUS_RUNTIME_APPROVAL_ID`, `ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`,
+and `ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true` present, the packet reports
+`approved_customer_status_runtime_evidence_packet`, `runtimeReadEnabled=true`,
+`paymentsSnapshotReadEnabled=true`, `storageRead=false`,
+`callbackPersistence=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`. Remaining blockers stay scoped to callback
+persistence/replay and order/payment mapping ownership; live order creation,
+live payment creation, Warehouse reservation, notification sends,
+provider-refresh reads, and Cliplot-local payment status storage remain disabled.
