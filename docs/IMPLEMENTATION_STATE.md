@@ -415,3 +415,15 @@ behavior until those approvals are present.
   `totalAvailable=63`, `totalReserved=0`, `warehouseAvailable=63`, and
   `warehouseReserved=0`. Live order creation, live Warehouse reservation,
   payment creation, and notification send remain approval-gated.
+- GOAL-05 live mutation approval gates deployed as
+  `localhost:5000/cliplot-service:abe3810`. `ENABLE_LIVE_ORDER_SUBMIT=false`,
+  `ENABLE_LIVE_PAYMENT_CREATE=false`, and `ENABLE_LIVE_NOTIFICATIONS=false`
+  remain false, and separate approval IDs are required before live order,
+  payment, or notification mutation can run. Runtime readiness returned
+  `liveMutationApprovals.order=false`, `payment=false`, `notification=false`,
+  and three explicit `CLIPLOT_LIVE_*_APPROVAL_ID` blockers. Guarded checkout
+  returned HTTP `202 service_identity_required`, exposed the same three approval
+  blockers, kept `warehouseReservationReadiness.status=validated_no_mutation`,
+  and still reported `orderCreated=false`, `warehouseMutation=false`,
+  `paymentValidation.mutation=false`, `paymentValidation.providerCall=false`,
+  and `notificationSent=false`.

@@ -23,3 +23,17 @@ git diff --check
 
 Failed gates block the next phase. Do not weaken a gate to pass. Fix the
 artifact, split the goal, or record a human-approved exception.
+## Live Mutation Approval Gate
+
+Revenue readiness requires both technical validation and explicit approval IDs.
+The live env flags are not sufficient by themselves:
+
+```text
+ENABLE_LIVE_ORDER_SUBMIT=true requires CLIPLOT_LIVE_ORDER_APPROVAL_ID
+ENABLE_LIVE_PAYMENT_CREATE=true requires CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
+ENABLE_LIVE_NOTIFICATIONS=true requires CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+```
+
+Until those approval IDs are present, checkout must stay guarded and return
+approval blockers without creating orders, reservations, payments, or customer
+notifications.

@@ -31,3 +31,12 @@ Validation:
 - Deploy with `./scripts/deploy.sh`.
 - Public or in-cluster smoke for `/api/products`,
   `/api/integrations/readiness`, and guarded `/api/checkout/submit`.
+Live mutation approval enforcement:
+
+- Do not let `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, or
+  `ENABLE_LIVE_NOTIFICATIONS` enable mutation by themselves.
+- Require the matching `CLIPLOT_LIVE_*_APPROVAL_ID` before any live order,
+  payment, or notification mutation path can run.
+- Validation smoke must prove approval IDs are absent by default and checkout
+  remains guarded with no order, reservation, payment, provider, or notification
+  mutation.

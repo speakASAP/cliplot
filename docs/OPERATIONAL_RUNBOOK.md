@@ -95,3 +95,18 @@ Known current blocker: docs-rag ingestion may fail while
   guarded checkout and returns `warehouseReservationReadiness` without creating a
   reservation or decrementing stock. Live Warehouse reservation still requires
   approved live order-create evidence.
+## Live Mutation Approval IDs
+
+Live env flags alone are not sufficient to mutate checkout state. Before any
+live order/payment/notification mutation can run, the corresponding approval id
+must also be present in runtime config:
+
+```text
+CLIPLOT_LIVE_ORDER_APPROVAL_ID
+CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
+CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+```
+
+The default deployed values are empty strings. Empty approval IDs intentionally
+keep `/api/checkout/submit` in `service_identity_required` guarded mode even if
+shared-service validation succeeds.

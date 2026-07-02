@@ -53,3 +53,11 @@ Use the previous image tag from deployment history:
 ```bash
 ssh alfares 'kubectl rollout undo deployment/cliplot-service -n statex-apps'
 ```
+## Live Mutation Approval Contract
+
+- `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, and
+  `ENABLE_LIVE_NOTIFICATIONS` remain `false` by default.
+- `CLIPLOT_LIVE_ORDER_APPROVAL_ID`, `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, and
+  `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` must stay empty until approved live
+  mutation evidence exists.
+- Deployment readiness now checks both false live flags and empty approval IDs.

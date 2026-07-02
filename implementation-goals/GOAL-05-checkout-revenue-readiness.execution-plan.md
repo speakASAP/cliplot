@@ -68,3 +68,20 @@ no-send notification payload validation.
 - `[MISSING: approved live order-create execution and Warehouse reservation evidence for Cliplot]`
 - `[MISSING: approved live payment-create execution evidence for Cliplot]`
 - `[MISSING: approved live notification send validation for Cliplot order confirmations]`
+## Live Mutation Approval Gate Lane
+
+Status: deployed and validated in guarded mode.
+
+Live order/payment/notification env flags are intentionally insufficient on
+their own. Runtime must also expose the corresponding approval IDs before any
+live mutation path is allowed:
+
+```text
+CLIPLOT_LIVE_ORDER_APPROVAL_ID
+CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
+CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+```
+
+Default values are empty. Guarded checkout must keep returning
+`service_identity_required` with approval blockers until approved live mutation
+evidence exists.

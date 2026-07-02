@@ -67,3 +67,17 @@ Do not print secret values. Validation may check presence by key name only.
 - `[MISSING: payment callback API key entry for cliplot-service]`
 - `[MISSING: Auth role contract for Cliplot token accepted by warehouse-microservice]`
 - `[MISSING: Payments API key/scope for cliplot-service]`
+## Live Mutation Approval Evidence
+
+Live mutation approvals are currently represented by non-secret runtime config
+IDs and default to empty strings in `k8s/configmap.yaml`:
+
+```text
+CLIPLOT_LIVE_ORDER_APPROVAL_ID
+CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
+CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+```
+
+If these approval IDs later become sensitive or centrally issued, promote them
+to Vault/ExternalSecret keys by name only. Do not commit or print approval token
+values.

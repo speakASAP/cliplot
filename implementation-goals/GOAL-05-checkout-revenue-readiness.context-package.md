@@ -53,3 +53,16 @@ validation can run, including Warehouse-derived payload enrichment, but order
 creation, Warehouse reservation, payment initiation, stock mutation, and customer
 notification sends remain guarded until explicit provider-backed validation and
 approval exist.
+## Live Mutation Approval Evidence
+
+Current runtime validates order/payment/notification payloads and Warehouse
+reservation readiness without mutation. Live mutation requires separate approval
+IDs in addition to live env flags:
+
+```text
+CLIPLOT_LIVE_ORDER_APPROVAL_ID
+CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
+CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+```
+
+The deployed default is empty for all three IDs, so checkout remains guarded.
