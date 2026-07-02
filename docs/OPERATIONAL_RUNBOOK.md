@@ -124,3 +124,9 @@ The smoke must return `ok=true`, HTTP `202`, `status=service_identity_required`,
 preserved `checkoutIntent.externalOrderId`, order/payment/Warehouse
 `validated_no_mutation`, notification `validated_no_send`, and `mutation=false`.
 This script is safe while live mutation approvals remain absent.
+
+
+The smoke also verifies checkout totals: item subtotal plus delivery cost plus
+payment fee must equal the guarded checkout total, Orders preview total, and
+Payments preview amount. If this fails, do not enable live order/payment
+mutation.

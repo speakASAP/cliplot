@@ -60,6 +60,7 @@ no-send notification payload validation.
 | Payment validation lane | done | main orchestrator | Cliplot checkout/payment code and payments validate endpoint | checkout returned `paymentValidation.status=validated_no_mutation` |
 | Notification validation lane | done | main orchestrator | Cliplot checkout notification code and notifications validate endpoint | checkout returned `notificationValidation.status=validated_no_send` |
 | Guarded checkout intent and smoke lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke preserves `externalOrderId` and proves no-mutation/no-send statuses |
+| Checkout review totals lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke proves subtotal, shipping cost, payment fee, total, and no-mutation preview compatibility |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
@@ -101,3 +102,17 @@ public path with `scripts/guarded-checkout-smoke.js`.
 This lane does not enable live order, payment, warehouse, or notification
 mutation. It reduces duplicate-submit risk before the approval-gated live
 checkout lane.
+
+
+## Checkout Review Totals Lane
+
+Status: deployed and validated in guarded mode.
+
+Checkout now presents a buyer-safe review before submission with item lines,
+delivery/payment choices, subtotal, delivery cost, payment fee, and final total
+in Kč. Backend checkout ignores client-provided totals as authority and
+recalculates the same breakdown before building Orders and Payments previews.
+
+This lane does not enable live order, payment, warehouse, or notification
+mutation. It reduces hidden-fee and duplicate-total risk before the
+approval-gated live checkout lane.

@@ -106,6 +106,19 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `notificationValidation=validated_no_send`,
   `warehouseReservationReadiness=validated_no_mutation`, and `mutation=false`.
 
+- GOAL-05 checkout review totals lane deployed as
+  `localhost:5000/cliplot-service:7128c33`. Checkout now shows a buyer-facing
+  review block before submit with item lines, `Mezisoučet`, delivery cost,
+  payment fee, and final `Celkem k úhradě`; public copy no longer exposes
+  internal `[MISSING: ...]` blockers. Server-side checkout recalculates
+  subtotal, shipping, payment fee, and total before building Orders and
+  Payments previews. Public guarded smoke returned HTTP `202` with
+  `subtotal=1590`, `shippingCost=69`, `paymentFee=0`, `total=1659`,
+  `orderValidation=validated_no_mutation`,
+  `paymentValidation=validated_no_mutation`,
+  `notificationValidation=validated_no_send`, and
+  `warehouseReservationReadiness=validated_no_mutation`.
+
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
 ### Objective
