@@ -631,6 +631,23 @@ live payment creation, Warehouse reservation, notification sends,
 provider-refresh reads, and Cliplot-local payment status storage remain disabled.
 
 
+### 2026-07-03 - Controlled Orders/Warehouse CREATE_REPLAY_CANCEL smoke
+
+The approved bounded Orders/Warehouse smoke was executed once with
+`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true` only for the rollout window and then
+returned to `false`. Executor evidence returned
+`live_order_warehouse_smoke_completed` for external order
+`cliplot-live-smoke-1783034121293` and order
+`cd311dc8-d13a-4daa-81a8-c7d63b9dcbad`: create produced one reserved
+Warehouse handoff, idempotent replay returned the same order id, cancel through
+Orders changed the order to `cancelled`, and Warehouse reservation readback
+reported `activeReservationCount=0`. The run reported `paymentCreated=false`
+and `notificationSent=false`. Post-run production validation returned the
+executor to `approval_required` with `mutation=false`, `providerCall=false`,
+`persistence=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`. This proves
+the Orders/Warehouse create-replay-cancel lane only; live checkout order,
+payment, and notification approvals remain separate blockers.
+
 ### 2026-07-02 - Live-smoke Vault projection readiness gate
 
 Added `npm run readiness:vault-live-smoke` as a read-only projection gate for the

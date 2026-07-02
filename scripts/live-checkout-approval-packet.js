@@ -8,12 +8,36 @@ function assert(condition, message, evidence = {}) {
   }
 }
 
-const response = await fetch(new URL('/api/checkout/approval-packet', baseUrl));
-const packet = await response.json();
+async function fetchJson(path) {
+  const response = await fetch(new URL(path, baseUrl));
+  const text = await response.text();
+  let packet = null;
+  try {
+    packet = text ? JSON.parse(text) : {};
+  } catch {
+    assert(false, `approval packet ${path} returned non-json response`, {
+      httpStatus: response.status,
+      body: text.slice(0, 300),
+    });
+  }
+  return { response, packet };
+}
+
+const { response, packet } = await fetchJson('/api/checkout/approval-packet');
 
 assert(response.status === 200 && packet.success, 'approval packet request failed', {
   httpStatus: response.status,
   status: packet.status,
+});
+
+const { response: aliasResponse, packet: aliasPacket } = await fetchJson('/api/checkout/live-checkout-approval-packet');
+assert(aliasResponse.status === 200 && aliasPacket.success, 'live checkout approval alias request failed', {
+  httpStatus: aliasResponse.status,
+  status: aliasPacket.status,
+});
+assert(aliasPacket.status === packet.status && aliasPacket.mode === packet.mode, 'live checkout approval alias diverged from canonical packet', {
+  canonical: { status: packet.status, mode: packet.mode },
+  alias: { status: aliasPacket.status, mode: aliasPacket.mode },
 });
 assert(packet.mutation === false && packet.providerCall === false && packet.persistence === false, 'approval packet is not read-only', packet);
 assert(packet.catalog?.catalogSource === 'catalog', 'approval packet does not prove Catalog product source', packet.catalog || {});

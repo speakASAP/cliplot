@@ -154,12 +154,12 @@ const server = createServer(async (req, res) => {
     }
 
 
-    if (url.pathname === '/api/checkout/approval-packet' && req.method === 'GET') {
+    if ((url.pathname === '/api/checkout/approval-packet' || url.pathname === '/api/checkout/live-checkout-approval-packet') && req.method === 'GET') {
       sendJson(res, 200, await liveCheckoutApprovalPacket());
       return;
     }
 
-    if (url.pathname === '/api/checkout/approval-packet') {
+    if (url.pathname === '/api/checkout/approval-packet' || url.pathname === '/api/checkout/live-checkout-approval-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

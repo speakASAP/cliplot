@@ -110,6 +110,18 @@ Do not run the normal publication command until preflight passes and ingestion
 is intentionally approved.
 
 
+## Controlled Orders/Warehouse Smoke Evidence
+
+Production has one bounded Orders/Warehouse smoke proof from 2026-07-03:
+external order `cliplot-live-smoke-1783034121293`, order
+`cd311dc8-d13a-4daa-81a8-c7d63b9dcbad`, idempotent replay to the same order,
+cancel through Orders, and post-cancel Warehouse reservation
+`activeReservationCount=0`. This evidence does not authorize normal live
+checkout mutation; deployment readiness still requires
+`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
+`ENABLE_LIVE_PAYMENT_CREATE=false`, and `ENABLE_LIVE_NOTIFICATIONS=false`
+outside a separately approved execution window.
+
 ## Revenue Closure Packet
 
 `GET /api/checkout/revenue-closure-packet` is the read-only operator packet for

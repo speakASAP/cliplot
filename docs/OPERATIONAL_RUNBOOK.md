@@ -494,6 +494,19 @@ through Payments and must continue returning `mutation=false`,
 `callbackPersistence=false`. `GET /payments/{paymentId}` remains forbidden for
 Cliplot passive customer status.
 
+## Controlled Orders/Warehouse Smoke Evidence
+
+The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with
+`status=live_order_warehouse_smoke_completed`, external order
+`cliplot-live-smoke-1783034121293`, and order
+`cd311dc8-d13a-4daa-81a8-c7d63b9dcbad`. Required cleanup evidence was present:
+same order id on replay, order readback `status=cancelled`, Warehouse handoff
+`status=cancelled`, and reservation readback `activeReservationCount=0`.
+Payment creation and notification send remained outside scope and returned
+`false`. After the run, `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` must be verified
+back to `false` and `npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz`
+must return `approval_required` with no mutation.
+
 ## Operator Readiness Bundle
 
 Run the read-only bundle before handoff or live-mutation approval reviews:
