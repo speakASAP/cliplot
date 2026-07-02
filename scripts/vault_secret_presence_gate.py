@@ -18,7 +18,6 @@ REQUIRED_KEYS = [
 
 LIVE_SMOKE_KEYS = [
     "ORDERS_STATUS_SERVICE_TOKEN",
-    "CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID",
 ]
 
 
@@ -28,15 +27,16 @@ def emit_live_smoke_projection(path: str, missing_live_smoke: list[str]) -> None
     print("projection_keys=" + ",".join(LIVE_SMOKE_KEYS))
     print("external_secret_projection=" + ("ready_to_add_after_owner_review" if ready else "deferred_missing_vault_keys"))
     print("runtime_flag=ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false")
+    print("approval_id_source=CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID")
     print("mutation=false")
     print("providerCall=false")
     print("persistence=false")
     if missing_live_smoke:
         for key in missing_live_smoke:
             print(f"PROJECTION_BLOCKER [MISSING: {key} in Vault path {path}]")
-        print("next=Populate the missing Vault keys before adding live-smoke ExternalSecret refs.")
+        print("next=Populate ORDERS_STATUS_SERVICE_TOKEN before adding live-smoke ExternalSecret refs.")
     else:
-        print("next=Add live-smoke ExternalSecret refs only in a reviewed deploy while keeping ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false until owner-approved execution.")
+        print("next=Project ORDERS_STATUS_SERVICE_TOKEN while keeping ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false until owner-approved execution.")
 
 
 def main() -> int:

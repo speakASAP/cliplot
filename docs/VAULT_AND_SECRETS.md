@@ -47,21 +47,21 @@ values.
 
 The dedicated Orders/Warehouse live smoke executor is disabled by default. These
 keys are tracked by the Vault presence gate for a future owner-approved smoke
-window, but their values must remain absent or empty until approval exists:
+window, but token values must remain absent or empty until approval exists:
 
 ```text
 ORDERS_STATUS_SERVICE_TOKEN
-CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID
 ```
 
 `ORDERS_STATUS_SERVICE_TOKEN` is separated from the normal
-`ORDERS_SERVICE_TOKEN` because Orders status cancellation can require a stronger
-admin/status-transition identity than order creation. The approval ID must never
-be committed or printed.
+`ORDERS_SERVICE_TOKEN` because Orders status cancellation requires a stronger
+admin/status-transition identity than order creation. The approval ID remains a
+non-secret runtime approval string in `k8s/configmap.yaml` unless it is later
+promoted to Vault by owner decision.
 
-Do not add these keys to `k8s/external-secret.yaml` until they exist in Vault.
-Adding missing remote properties can break ExternalSecret sync for the currently
-working `cliplot-secret`.
+Do not add live-smoke token keys to `k8s/external-secret.yaml` until they exist
+in Vault. Adding missing remote properties can break ExternalSecret sync for the
+currently working `cliplot-secret`.
 
 ## Kubernetes Projection
 
@@ -113,9 +113,8 @@ Run the read-only projection gate before adding live-smoke keys to
 npm run readiness:vault-live-smoke
 ```
 
-The gate checks `ORDERS_STATUS_SERVICE_TOKEN` and
-`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` in `secret/prod/cliplot`
-without printing values. `LIVE_SMOKE_PROJECTION=ready` only means the Vault
-properties exist and can be reviewed for ExternalSecret projection. It does not
-authorize `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true` and does not authorize live
-Orders/Warehouse execution.
+The gate checks `ORDERS_STATUS_SERVICE_TOKEN` in
+`secret/prod/cliplot` without printing values. `LIVE_SMOKE_PROJECTION=ready`
+only means the Vault property exists and can be reviewed for ExternalSecret
+projection. It does not authorize `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true` and
+does not authorize live Orders/Warehouse execution.

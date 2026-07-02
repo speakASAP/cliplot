@@ -837,7 +837,7 @@ async function cancelOrderThroughOrders(orderId, approval) {
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
-      'x-internal-service-token': serviceConfig.ordersStatusServiceToken,
+      authorization: `Bearer ${serviceConfig.ordersStatusServiceToken}`,
       'x-service-name': serviceConfig.ordersStatusServiceName,
     },
     body: JSON.stringify({ status: 'cancelled', approval }),
