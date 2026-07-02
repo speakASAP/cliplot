@@ -8,11 +8,14 @@ Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding P
 
 Dependency-gated Cliplot readiness for the Auth customer data wallet rollout.
 Cliplot has checkout/cart/customer contact surfaces, but Auth live wallet
-endpoints are currently reported as 404 for:
+endpoints are now deployed and protected. The Auth coordinator recorded
+Source Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d` with
+`/health` returning HTTP 200 and the wallet endpoints returning HTTP 401
+unauthenticated for:
 
 - `/auth/profile/checkout-data`
-- `/delivery-addresses`
-- `/invoice-profiles`
+- `/auth/profile/delivery-addresses`
+- `/auth/profile/invoice-profiles`
 
 This lane is source-only planning and verification. It must not fetch Auth
 wallet data, render wallet selectors, create orders, reserve Warehouse stock,
@@ -67,7 +70,9 @@ approved Auth wallet contract covering:
 
 ## Dependency Gates
 
-- `[MISSING: Auth live wallet endpoints for checkout-data, delivery-addresses, and invoice-profiles return non-404 with approved contract]`
+- Auth live wallet endpoint presence gate is complete: the endpoints above
+  return HTTP 401 unauthenticated, proving the wallet routes are deployed and
+  protected without exposing wallet data.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
@@ -77,10 +82,10 @@ approved Auth wallet contract covering:
 
 | Workstream | Status | Owner | Files | Validation |
 | --- | --- | --- | --- | --- |
-| Auth wallet endpoint contract | dependency-gated | Auth owner | Auth service/API docs | Auth endpoint contract and live 2xx/4xx non-404 evidence without secrets |
+| Auth wallet endpoint presence | complete | Auth owner | Auth service/API docs | Auth `/health` 200 and wallet endpoint HTTP 401 evidence without secrets |
 | Cliplot source readiness verifier | ready now | Cliplot worker | `scripts/auth-wallet-checkout-readiness.js`, `package.json` | `npm run readiness:auth-wallet-checkout` |
 | Checkout wallet UX plan | dependency-gated | product/checkout owner | future checkout UI files | owner-approved selector behavior and guest fallback |
-| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after Auth contract and checkout approval exist |
+| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after selector, session, PII, and response-contract approvals exist |
 | Final integration | blocked | Cliplot orchestrator | checkout/frontend/backend files | guarded checkout smoke plus wallet-specific no-mutation tests |
 
 ## Execution Plan
@@ -118,4 +123,5 @@ git diff --cached --name-only | xargs -r rg -n "(JWT|Bearer|password|secret|toke
 ```
 
 Expected result: no committed secrets/tokens/customer data and no live wallet
-integration until Auth endpoints and owner approvals are ready.
+integration until selector behavior, browser session, PII exposure, and response
+contract approvals are ready.

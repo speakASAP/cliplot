@@ -10,12 +10,24 @@ const sourceFiles = {
 
 const walletEndpoints = [
   '/auth/profile/checkout-data',
-  '/delivery-addresses',
-  '/invoice-profiles',
+  '/auth/profile/delivery-addresses',
+  '/auth/profile/invoice-profiles',
 ];
 
+const authWalletPresenceGate = {
+  status: 'complete',
+  sourcePreflightHead: '2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d',
+  healthStatusCode: 200,
+  unauthenticatedWalletStatusCode: 401,
+  sendsAuthorizationHeader: false,
+  sendsCookies: false,
+  sendsRequestBody: false,
+  printsResponseBody: false,
+  readsDatabase: false,
+  evidence: 'Auth coordinator Goal 10.25 runtime verifier passed after live SQL/deploy.',
+};
+
 const blockers = [
-  '[MISSING: Auth live wallet endpoints for checkout-data, delivery-addresses, and invoice-profiles return non-404 with approved contract]',
   '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
   '[MISSING: authenticated browser session contract for wallet reads]',
   '[MISSING: no-PII logging and frontend exposure review for wallet data]',
@@ -103,6 +115,7 @@ console.log(JSON.stringify({
   },
   runtimeWalletIntegrationPresent: false,
   requiredWalletEndpoints: walletEndpoints,
+  authWalletPresenceGate,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until Auth wallet endpoints and checkout selector approval are available.',
+  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, PII exposure, and response-contract approvals are available.',
 }, null, 2));

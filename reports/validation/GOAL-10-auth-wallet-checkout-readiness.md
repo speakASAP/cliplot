@@ -23,12 +23,17 @@ Status: dependency-gated.
 
 Cliplot has checkout/cart/customer surfaces where Auth wallet delivery and
 invoice selectors may eventually apply, but runtime integration is intentionally
-not implemented in this lane because the required Auth wallet endpoints are not
-live and checkout selector behavior is not approved.
+not implemented in this lane. The upstream Auth wallet presence gate is now
+complete: Source Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`
+is deployed, `/health` returned HTTP 200, and
+`/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
+`/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated. Cliplot
+checkout wallet work remains blocked because selector behavior, authenticated
+browser/session handling, PII exposure rules, and response-contract details are
+not approved.
 
 ## Remaining Blockers
 
-- `[MISSING: Auth live wallet endpoints for checkout-data, delivery-addresses, and invoice-profiles return non-404 with approved contract]`
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
@@ -46,7 +51,7 @@ git diff --cached --name-only | xargs -r rg -n "(Bearer [A-Za-z0-9._-]+|eyJ[A-Za
 
 ## Validation Results
 
-- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
 - `node --check scripts/auth-wallet-checkout-readiness.js`: PASS.
 - `npm run check`: PASS; repository syntax-check chain includes the new verifier.
 - `git diff --check`: PASS.
@@ -61,7 +66,8 @@ git diff --cached --name-only | xargs -r rg -n "(Bearer [A-Za-z0-9._-]+|eyJ[A-Za
 - System: Auth owns customer wallet/profile data; Cliplot remains storefront and
   guarded checkout renderer.
 - Feature: Dependency-gated Auth wallet checkout readiness.
-- Task: Add source-only plan and verifier.
+- Task: Add and refresh source-only plan and verifier after the upstream Auth
+  wallet 401 gate.
 - Execution Plan: `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`.
 - Coding Prompt: Source-only verifier, no live calls, fail on premature runtime
   wallet endpoint usage.

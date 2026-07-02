@@ -72,9 +72,13 @@ Before that separate approval, all of the following remain false:
   `callbackPersistence=false`, `callbackReplayEnabled=false`,
   `mutation=false`, `persistence=false`, and `providerCall=false` when the
   metadata approval ID is configured.
+- `npm run readiness:payment-callback-persistence -- https://cliplot.alfares.cz`
+  returns `approval_required_callback_persistence_storage_backend` with
+  `callbackPersistence=false`, `callbackReplayEnabled=false`,
+  `mutation=false`, `persistence=false`, and `providerCall=false`.
 - `npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz`
-  keeps runtime status reads disabled until owner approval and flags exist
-  together.
+  uses approved passive Payments DB snapshot reads without enabling callback
+  persistence or replay execution.
 
 ## Not Approved
 

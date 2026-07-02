@@ -19,6 +19,7 @@ import {
   revenueClosurePacket,
   paymentCallbackReadiness,
   paymentCallbackReplayPolicyReadiness,
+  paymentCallbackPersistenceApprovalPacket,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
@@ -342,6 +343,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/callback-replay-policy') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-persistence-approval-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentCallbackPersistenceApprovalPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-persistence-approval-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

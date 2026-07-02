@@ -319,10 +319,16 @@ and `providerCall=false`, and it must never print the webhook key. Run it with:
 npm run readiness:payment-callback -- https://cliplot.alfares.cz
 ```
 
-`GET /api/payments/callback-replay-policy` is the approval gate for future callback persistence and replay. It must return `approval_required_callback_replay_policy`, `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. It records the proposed ADR-005 policy surface and keeps storage writes, provider calls, order updates, payment updates, and replay disabled until owner approval exists.
+`GET /api/payments/callback-replay-policy` is the approval gate for future callback persistence and replay policy metadata. It may return `approved_callback_replay_policy_metadata_execution_disabled`, but it must keep `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. It keeps storage writes, provider calls, order updates, payment updates, and replay disabled until separate storage and replay rollout approvals exist.
 
 ```bash
 npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz
+```
+
+`GET /api/payments/callback-persistence-approval-packet` is the read-only approval packet for the future callback persistence storage backend. It aggregates guarded callback ACK evidence, ADR-005 policy metadata, Payments-owned passive status storage, idempotency keys, duplicate/conflict handling, retention metadata, rollback owner, validation owner, and exact storage/replay blockers. It must return `approval_required_callback_persistence_storage_backend` with `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
+
+```bash
+npm run readiness:payment-callback-persistence -- https://cliplot.alfares.cz
 ```
 
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
