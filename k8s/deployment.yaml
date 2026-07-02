@@ -24,7 +24,7 @@ spec:
       containers:
         - name: app
           image: localhost:5000/cliplot:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
