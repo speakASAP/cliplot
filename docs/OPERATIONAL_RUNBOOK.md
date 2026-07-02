@@ -232,7 +232,12 @@ status copy, and owner approval for Payments `GET /payments/{paymentId}` reads
 with `payments:read` scope. Payments status reads are not guaranteed DB-only:
 pending Stripe/card records can refresh provider status. Cliplot must not call
 Payments, refresh provider status, persist status, or update an order in the
-current guarded deployment. Run it with:
+current guarded deployment. The readiness body exposes a non-authoritative
+`customerSafeStatusContract` with `source=static_customer_safe_mapping`,
+`labelsLocale=cs-CZ`, and Czech labels for `pending`, `processing`,
+`completed`, `failed`, `cancelled`, and `refunded`; these labels are readiness
+metadata only until persisted payment status storage and approved
+`payments:read` access exist. Run it with:
 
 ```bash
 npm run readiness:payment-status -- https://cliplot.alfares.cz

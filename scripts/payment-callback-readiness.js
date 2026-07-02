@@ -33,7 +33,10 @@ assert(readiness.mutation === false, 'payment callback readiness reported mutati
 assert(readiness.persistence === false, 'payment callback readiness reported persistence', readiness);
 assert(readiness.providerCall === false, 'payment callback readiness reported provider call', readiness);
 assert(readiness.callbackState?.orderStatus === 'not_updated_guarded', 'callback readiness order state changed', readiness);
+assert(readiness.callbackState?.customerSafePaymentStatus?.code === 'payment_received', 'customer-safe payment status mapping changed', readiness);
+assert(readiness.callbackState?.customerSafePaymentStatus?.label === 'Platba přijata', 'customer-safe payment label changed', readiness);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no webhook key value'), 'sensitive data policy missing', readiness);
+assert(readiness.sensitiveDataPolicy.includes('customer-safe payment status labels only'), 'customer-safe status policy missing', readiness);
 
 console.log(JSON.stringify({
   ok: true,
@@ -47,4 +50,5 @@ console.log(JSON.stringify({
   persistence: readiness.persistence,
   providerCall: readiness.providerCall,
   orderStatus: readiness.callbackState.orderStatus,
+  customerSafePaymentStatus: readiness.callbackState.customerSafePaymentStatus,
 }, null, 2));

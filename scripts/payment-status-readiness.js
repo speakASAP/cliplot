@@ -31,12 +31,22 @@ assert(readiness.providerCall === false, 'payment status readiness reported prov
 assert(readiness.currentStatusContract?.status === 'payment_status_guarded_no_persistence', 'current payment status contract changed', readiness);
 assert(readiness.currentStatusContract?.providerCall === false, 'current payment status would call provider', readiness);
 assert(readiness.callbackReadiness?.status === 'validated_guarded_ack_no_persistence', 'callback readiness is not validated', readiness);
+assert(readiness.callbackReadiness?.customerSafePaymentStatus?.code === 'payment_received', 'callback customer-safe status mapping missing', readiness);
+assert(readiness.currentStatusContract?.customerSafePaymentStatus?.code === 'payment_status_unknown', 'current unknown status fallback missing', readiness);
+assert(readiness.customerSafeStatusContract?.authoritative === false, 'customer-safe status contract should be non-authoritative', readiness);
+assert(readiness.customerSafeStatusContract?.source === 'static_customer_safe_mapping', 'customer-safe status source missing', readiness);
+assert(readiness.customerSafeStatusContract?.labelsLocale === 'cs-CZ', 'customer-safe status locale missing', readiness);
+assert(readiness.customerSafeStatusContract?.fallback?.code === 'payment_status_unknown', 'customer-safe fallback missing', readiness);
+assert(Array.isArray(readiness.customerSafeStatusContract?.sourceStatuses) && readiness.customerSafeStatusContract.sourceStatuses.includes('completed'), 'customer-safe source statuses missing', readiness);
+assert(readiness.customerSafeStatusContract?.values?.failed === 'Platba se nezdařila', 'customer-safe failed label changed', readiness);
+assert(readiness.customerSafeStatusContract?.values?.cancelled === 'Platba byla zrušena', 'customer-safe cancelled label changed', readiness);
+assert(readiness.customerSafeStatusContract?.values?.refunded === 'Platba byla vrácena', 'customer-safe refunded label changed', readiness);
 assert(readiness.futureProviderBackedRead?.paymentsEndpoint === '/payments/{paymentId}', 'future payment read endpoint missing', readiness);
 assert(readiness.futureProviderBackedRead?.requiredScope === 'payments:read', 'future payment read scope missing', readiness);
 assert(readiness.futureProviderBackedRead?.providerRefreshRisk === 'stripe_card_pending_reads_may_call_provider', 'provider refresh risk missing', readiness);
 assert(readiness.futureProviderBackedRead?.supportsPaymentIdRead === true, 'payment id read support missing', readiness);
 assert(readiness.futureProviderBackedRead?.supportsOrderIdRead === false, 'order id read support should remain false', readiness);
-assert(Array.isArray(readiness.blockers) && readiness.blockers.length >= 4, 'payment status blockers missing', readiness);
+assert(Array.isArray(readiness.blockers) && readiness.blockers.length >= 3, 'payment status blockers missing', readiness);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no provider call'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({
@@ -46,6 +56,10 @@ console.log(JSON.stringify({
   livePaymentCreate: readiness.livePaymentCreate,
   currentStatus: readiness.currentStatusContract.status,
   callbackReadiness: readiness.callbackReadiness.status,
+  customerSafePaymentStatus: readiness.callbackReadiness.customerSafePaymentStatus,
+  customerSafeSource: readiness.customerSafeStatusContract.source,
+  customerSafeSourceStatuses: readiness.customerSafeStatusContract.sourceStatuses,
+  customerSafeValues: readiness.customerSafeStatusContract.values,
   futureEndpoint: readiness.futureProviderBackedRead.paymentsEndpoint,
   requiredScope: readiness.futureProviderBackedRead.requiredScope,
   providerRefreshRisk: readiness.futureProviderBackedRead.providerRefreshRisk,

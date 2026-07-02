@@ -920,6 +920,21 @@ function normalizeStatusIdentifier(value) {
   return /^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,127}$/.test(normalized) ? normalized : '';
 }
 
+const customerSafePaymentStatusMap = {
+  pending: { code: 'waiting_for_payment', label: 'Čeká na platbu', severity: 'info' },
+  processing: { code: 'payment_processing', label: 'Platba se zpracovává', severity: 'info' },
+  completed: { code: 'payment_received', label: 'Platba přijata', severity: 'success' },
+  failed: { code: 'payment_failed', label: 'Platba se nezdařila', severity: 'warning' },
+  cancelled: { code: 'payment_cancelled', label: 'Platba byla zrušena', severity: 'neutral' },
+  refunded: { code: 'payment_refunded', label: 'Platba byla vrácena', severity: 'neutral' },
+  unknown: { code: 'payment_status_unknown', label: 'Stav platby zatím neznáme', severity: 'info' },
+};
+
+function customerSafePaymentStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  return customerSafePaymentStatusMap[normalized] || customerSafePaymentStatusMap.unknown;
+}
+
 export function paymentStatus(input = {}) {
   const orderId = normalizeExternalOrderId(input.orderId || input.externalOrderId);
   const paymentId = normalizeStatusIdentifier(input.paymentId);
@@ -946,6 +961,7 @@ export function paymentStatus(input = {}) {
       orderId: orderId || undefined,
       paymentId: paymentId || undefined,
       paymentStatus: 'unknown',
+      customerSafePaymentStatus: customerSafePaymentStatus('unknown'),
       mutation: false,
       persistence: false,
       providerCall: false,
@@ -1006,6 +1022,8 @@ export function handlePaymentCallback(input, headers = {}) {
     };
   }
 
+  const safePaymentStatus = customerSafePaymentStatus(status);
+
   return {
     httpStatus: 202,
     body: {
@@ -1015,12 +1033,14 @@ export function handlePaymentCallback(input, headers = {}) {
       paymentId,
       orderId,
       paymentStatus: status,
+      customerSafePaymentStatus: safePaymentStatus,
       event: event || 'unknown',
       mutation: false,
       persistence: false,
       callbackState: {
         orderStatus: 'not_updated_guarded',
         paymentStatus: status,
+        customerSafePaymentStatus: safePaymentStatus,
         event: event || 'unknown',
       },
       next: 'Persist order/payment status only after GOAL-05 live checkout storage is approved.',
@@ -1077,6 +1097,7 @@ export function paymentCallbackReadiness() {
     callbackState: {
       orderStatus: body.callbackState?.orderStatus || null,
       paymentStatus: body.callbackState?.paymentStatus || null,
+      customerSafePaymentStatus: body.callbackState?.customerSafePaymentStatus || null,
       event: body.callbackState?.event || null,
     },
     sensitiveDataPolicy: [
@@ -1084,6 +1105,7 @@ export function paymentCallbackReadiness() {
       'synthetic callback payload only',
       'no provider call',
       'no order or payment persistence',
+      'customer-safe payment status labels only',
     ],
     blockers: accepted ? [] : ['payment_callback_guarded_ack_failed'],
     next: accepted
@@ -1125,6 +1147,7 @@ export function paymentStatusReadiness() {
       persistence: statusBody.persistence,
       providerCall: statusBody.providerCall,
       paymentStatus: statusBody.paymentStatus || null,
+      customerSafePaymentStatus: statusBody.customerSafePaymentStatus || null,
     },
     callbackReadiness: {
       endpoint: '/api/payments/callback-readiness',
@@ -1133,6 +1156,7 @@ export function paymentStatusReadiness() {
       mutation: callback.mutation,
       persistence: callback.persistence,
       providerCall: callback.providerCall,
+      customerSafePaymentStatus: callback.callbackState?.customerSafePaymentStatus || null,
     },
     futureProviderBackedRead: {
       paymentsEndpoint: '/payments/{paymentId}',
@@ -1153,11 +1177,25 @@ export function paymentStatusReadiness() {
       ],
       riskNote: 'Payments GET /payments/{paymentId} reads persisted payment state and may refresh provider status for pending/processing records; Cliplot must not call it until live payment storage/status approval exists.',
     },
+    customerSafeStatusContract: {
+      authoritative: false,
+      source: 'static_customer_safe_mapping',
+      sourceStatuses: Object.keys(customerSafePaymentStatusMap).filter((statusName) => statusName !== 'unknown'),
+      values: Object.fromEntries(
+        Object.entries(customerSafePaymentStatusMap)
+          .filter(([statusName]) => statusName !== 'unknown')
+          .map(([statusName, copy]) => [statusName, copy.label]),
+      ),
+      fallback: customerSafePaymentStatus('unknown'),
+      labelsLocale: 'cs-CZ',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
     blockers: [
       '[MISSING: approved Cliplot persisted payment id storage contract]',
       '[MISSING: approved mapping from Cliplot externalOrderId/orderId to Payments paymentId]',
       '[MISSING: owner approval for provider-backed payment status reads]',
-      '[MISSING: customer-safe status copy for provider-backed pending/failed/completed states]',
     ],
     sensitiveDataPolicy: [
       'no payment API key value',
@@ -1165,6 +1203,7 @@ export function paymentStatusReadiness() {
       'no persisted payment read',
       'no order or payment state mutation',
       'synthetic order id only',
+      'customer-safe Czech labels only',
     ],
     next: guarded
       ? 'Design and approve persisted payment id storage before Cliplot calls Payments status read endpoints.'
