@@ -2084,13 +2084,15 @@ export async function paymentStatusStorageReadiness() {
     },
     blockers: [
       ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
-      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
-      '[MISSING: owner approval for provider-backed payment status reads]',
+      ...(paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
+        ? ['[DONE: owner-approved passive Payments DB snapshot read is active]']
+        : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
+      '[MISSING: approved storage ownership decision before Cliplot-local payment status reads]',
       '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
       '[MISSING: approved migration or managed storage resource for cliplot.payment_status.v1]',
       '[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]',
       '[MISSING: approved callback persistence rollout plan]',
-      '[MISSING: owner approval before enabling live status writes or reads]',
+      '[MISSING: owner approval before enabling live status writes]',
     ],
     sensitiveDataPolicy: [
       'no payment API key value',
@@ -2108,6 +2110,13 @@ export async function paymentStatusStorageReadiness() {
 export async function paymentStatusPersistenceDecisionPacket() {
   const paymentReadiness = await paymentStatusReadiness();
   const storageReadiness = await paymentStatusStorageReadiness();
+  const runtime = passivePaymentSnapshotRuntimeState();
+  const approvedPassiveSnapshotRead = paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
+    && paymentReadiness.readScopeReadiness?.scopeValidated === true
+    && runtime.runtimeReadEnabled === true
+    && runtime.paymentsSnapshotReadEnabled === true
+    && runtime.statusRuntimeApprovalPresent === true
+    && runtime.liveMutationRequested === false;
   const decisionRecord = {
     id: 'ADR-002-payment-status-persistence-ownership',
     title: 'Payment Status Persistence Ownership',
@@ -2134,8 +2143,12 @@ export async function paymentStatusPersistenceDecisionPacket() {
         paymentReadiness.readScopeReadiness?.scopeValidated
           ? '[DONE: Cliplot PAYMENT_API_KEY payments:read runtime scope validated by /api/payments/read-scope-readiness]'
           : '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
-        '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
-        '[MISSING: customer-safe status copy reviewed for pending/processing/failed/cancelled/refunded states]',
+        approvedPassiveSnapshotRead
+          ? '[DONE: owner-approved passive Payments DB snapshot read is active]'
+          : '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+        approvedPassiveSnapshotRead
+          ? '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]'
+          : '[MISSING: customer-safe status copy reviewed for pending/processing/failed/cancelled/refunded states]',
       ],
       cliplotRuntimeChange: 'Proxy or render approved read model only after payments:read runtime evidence and owner approval exist.',
       mutation: false,
@@ -2220,6 +2233,11 @@ export async function paymentStatusPersistenceDecisionPacket() {
       callbackPersistence: storageReadiness.callbackContract.currentPersistence,
       providerRefreshRisk: storageReadiness.readContract.providerRefreshRisk,
       readScopeStatus: paymentReadiness.readScopeReadiness?.status || null,
+      passiveSnapshotReadApproved: approvedPassiveSnapshotRead,
+      runtimeReadEnabled: runtime.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: runtime.paymentsSnapshotReadEnabled,
+      statusRuntimeApprovalPresent: runtime.statusRuntimeApprovalPresent,
+      liveMutationRequested: runtime.liveMutationRequested,
     },
     approvalPacket: {
       requiredDecisionRecord: 'ADR-002-payment-status-persistence-ownership',
@@ -2244,9 +2262,15 @@ export async function paymentStatusPersistenceDecisionPacket() {
       '[DONE: ADR-002-payment-status-persistence-ownership recorded and proposed for owner approval]',
       '[DONE: Payments read-by-orderId DB snapshot contract deployed as payments-microservice:fc42e72]',
       ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
-      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+      ...(approvedPassiveSnapshotRead
+        ? [
+            '[DONE: owner-approved passive Payments DB snapshot read is active]',
+            '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]',
+            '[DONE: passive snapshot reads limited to Payments DB-only by-order-id route]',
+          ]
+        : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
       '[MISSING: approved callback persistence/replay plan]',
-      '[MISSING: owner approval before live status reads or writes]',
+      '[MISSING: owner approval before live status writes]',
     ],
     sensitiveDataPolicy: [
       'no payment API key value',
@@ -2376,9 +2400,17 @@ export async function paymentStatusMappingOwnershipPacket() {
     },
     requiredOwnerApprovals: [
       'approved order/payment status mapping ownership',
-      'owner approval to enable Cliplot passive Payments status snapshot reads',
-      'customer-safe Czech status copy approval',
-      'explicit approval that passive reads use only Payments DB-only by-order-id route',
+      ...(approvedRuntimeRead
+        ? [
+            'owner-approved passive Payments DB snapshot read is active',
+            'customer-safe Czech status copy approval recorded',
+            'passive reads limited to Payments DB-only by-order-id route',
+          ]
+        : [
+            'owner approval to enable Cliplot passive Payments status snapshot reads',
+            'customer-safe Czech status copy approval',
+            'explicit approval that passive reads use only Payments DB-only by-order-id route',
+          ]),
       'runtime rollout owner and rollback owner recorded',
     ],
     forbiddenOperations: [
@@ -2396,9 +2428,17 @@ export async function paymentStatusMappingOwnershipPacket() {
     ],
     blockers: [
       '[MISSING: approved order/payment status mapping ownership]',
-      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
-      '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
-      '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
+      ...(approvedRuntimeRead
+        ? [
+            '[DONE: owner-approved passive Payments DB snapshot read is active]',
+            '[DONE: customer-safe status copy approved for pending/processing/completed/failed/cancelled/refunded states]',
+            '[DONE: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID recorded for read-only customer status rollout]',
+          ]
+        : [
+            '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+            '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+            '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
+          ]),
       '[MISSING: runtime rollout owner and rollback owner recorded]',
     ],
     sensitiveDataPolicy: [
@@ -3942,7 +3982,7 @@ export async function revenueClosurePacket() {
       ...(customerStatusApproval.blockers || []),
       ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
       ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
-    ]),
+    ].filter((item) => !String(item).startsWith('[DONE:'))),
   ];
 
   const readyForLiveMutation = preflight.status === 'ready_for_approved_live_mutation'

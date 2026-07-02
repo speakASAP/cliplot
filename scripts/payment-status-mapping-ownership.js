@@ -76,7 +76,13 @@ for (const field of requiredFields) {
 assert(Array.isArray(packet.forbiddenOperations) && packet.forbiddenOperations.includes('read /payments/{paymentId}'), 'forbidden payment read missing', packet);
 assert(packet.forbiddenOperations.includes('persist callback state'), 'forbidden callback persistence missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.some((item) => item.includes('approved order/payment status mapping ownership')), 'mapping ownership approval blocker missing', packet);
-assert(packet.blockers.some((item) => item.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'snapshot-read owner approval blocker missing', packet);
+if (packet.runtimeReadEnabled === true) {
+  assert(packet.blockers.some((item) => item.includes('owner-approved passive Payments DB snapshot read is active')), 'approved passive snapshot read evidence missing', packet);
+  assert(packet.blockers.some((item) => item.includes('CLIPLOT_STATUS_RUNTIME_APPROVAL_ID recorded')), 'status runtime approval evidence missing', packet);
+  assert(!packet.blockers.some((item) => item.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'approved passive snapshot read still reported missing', packet);
+} else {
+  assert(packet.blockers.some((item) => item.includes('owner approval to enable Cliplot passive Payments status snapshot reads')), 'snapshot-read owner approval blocker missing', packet);
+}
 assert(Array.isArray(packet.sensitiveDataPolicy) && packet.sensitiveDataPolicy.includes('ownership metadata only'), 'sensitive data policy missing', packet);
 
 console.log(JSON.stringify({
