@@ -563,3 +563,33 @@ mutation=false
 providerCall=false
 persistence=false
 ```
+
+
+## Configured Cliplot SKU Scope Approval
+
+Status: implemented as read-only product-scope evidence.
+
+`CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID` approves the configured `CLIPLOT_PRODUCT_IDS`
+selection only when the product filter gate proves Catalog source,
+Warehouse-backed product evidence, no raw configured product ID exposure,
+`mutation=false`, `persistence=false`, and `providerCall=false`.
+
+Expected validation:
+
+```bash
+npm run readiness:product-filter -- https://cliplot.alfares.cz
+npm run readiness:order-warehouse -- https://cliplot.alfares.cz
+npm run readiness:revenue-closure -- https://cliplot.alfares.cz
+```
+
+Expected evidence:
+
+```text
+productFilter.status=approved_cliplot_product_filter_scope
+approvedCliplotSkuScope=true
+catalogSource=catalog
+warehouseBackedProductCount=8
+mutation=false
+persistence=false
+providerCall=false
+```

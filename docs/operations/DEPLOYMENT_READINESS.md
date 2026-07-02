@@ -143,3 +143,11 @@ Before deployment:
 npm run readiness:k8s -- https://cliplot.alfares.cz
 kubectl apply --dry-run=server -f k8s/readiness-cronjob.yaml -n statex-apps
 ```
+
+
+### Configured SKU Scope Approval
+
+The Cliplot ConfigMap carries `CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID` for the
+configured `CLIPLOT_PRODUCT_IDS` lane. Deployment readiness still requires
+`ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`,
+`ENABLE_LIVE_NOTIFICATIONS=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.

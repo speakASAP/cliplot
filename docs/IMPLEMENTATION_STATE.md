@@ -631,3 +631,16 @@ and reports whether adding ExternalSecret refs is safe. Current production is
 expected to remain `LIVE_SMOKE_PROJECTION=blocked` until those Vault keys exist.
 No ExternalSecret refs were added for missing keys, and
 `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false` remains the required runtime state.
+
+
+### 2026-07-02 - Configured Cliplot SKU scope approval
+
+The configured `CLIPLOT_PRODUCT_IDS` scope is approved for Cliplot storefront
+readiness through `CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID`. The product filter gate
+now reports `approved_cliplot_product_filter_scope` only when configured Catalog
+products resolve, every checkout-enabled product has Warehouse-backed evidence,
+raw configured product IDs are not exposed, and mutation/persistence/provider
+calls remain false. This closes the SKU-scope blocker only; live order creation,
+Warehouse reservation, payment creation, notification sends, callback
+persistence, provider-refresh reads, and live smoke execution remain separately
+guarded.

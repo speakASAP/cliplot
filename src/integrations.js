@@ -102,6 +102,7 @@ export const serviceConfig = {
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
   paymentApiKey: process.env.PAYMENT_API_KEY || '',
   paymentWebhookApiKey: process.env.PAYMENT_WEBHOOK_API_KEY || '',
+  productScopeApprovalId: process.env.CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID || '',
 };
 
 function isApprovalPresent(value) {
@@ -346,9 +347,19 @@ function productFilterScopeEvidence(products) {
     ? createHash('sha256').update(configuredProductIds.slice().sort().join('|')).digest('hex')
     : null;
 
+  const configuredProductScope = configuredProductIds.length > 0
+    && items.length === configuredProductIds.length
+    && warehouseBackedProducts.length === items.length
+    && productCatalogSource(items) === 'catalog';
+  const productScopeApprovalPresent = isApprovalPresent(serviceConfig.productScopeApprovalId);
+  const approvedCliplotSkuScope = configuredProductScope && productScopeApprovalPresent;
+
   return {
     selectionMode,
-    approvedCliplotSkuScope: false,
+    approvedCliplotSkuScope,
+    productScopeApprovalPresent,
+    configuredProductScope,
+    productScopeApprovalIdPresent: productScopeApprovalPresent,
     configuredProductIdCount: configuredProductIds.length,
     configuredProductIdFingerprint,
     catalogSource: productCatalogSource(items),
@@ -380,7 +391,9 @@ function productFilterScopeEvidence(products) {
       productSource: product.productSource,
     })),
     blockers: [
-      '[MISSING: approved Cliplot product SKU list/filtering rule]',
+      ...(approvedCliplotSkuScope ? [] : ['[MISSING: approved Cliplot product SKU list/filtering rule]']),
+      ...(configuredProductScope ? [] : ['[MISSING: configured Cliplot product IDs all resolve to Warehouse-backed Catalog products]']),
+      ...(productScopeApprovalPresent ? [] : ['[MISSING: CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID for configured Cliplot SKU scope]']),
     ],
   };
 }
@@ -395,7 +408,7 @@ export async function catalogProductFilterReadiness() {
   return {
     success: true,
     status: catalogGuarded
-      ? 'approval_required_catalog_product_filter_rule'
+      ? (scopeEvidence.approvedCliplotSkuScope ? 'approved_cliplot_product_filter_scope' : 'approval_required_catalog_product_filter_rule')
       : 'blocked_catalog_product_filter_evidence_missing',
     mode: 'guarded_catalog_product_filter_readiness',
     generatedAt: new Date().toISOString(),
@@ -408,6 +421,8 @@ export async function catalogProductFilterReadiness() {
     warehouseBackedProductCount: scopeEvidence.warehouseBackedProductCount,
     selectionMode: scopeEvidence.selectionMode,
     approvedCliplotSkuScope: scopeEvidence.approvedCliplotSkuScope,
+    productScopeApprovalPresent: scopeEvidence.productScopeApprovalPresent,
+    configuredProductScope: scopeEvidence.configuredProductScope,
     configuredProductIdCount: scopeEvidence.configuredProductIdCount,
     configuredProductIdFingerprint: scopeEvidence.configuredProductIdFingerprint,
     currentQueryContract: scopeEvidence.currentQueryContract,
@@ -415,6 +430,8 @@ export async function catalogProductFilterReadiness() {
     approvalRequest: {
       requiredDecision: 'approved Cliplot product SKU list/filtering rule',
       recommendedDecisionPath: '07_decisions/ADR-004-cliplot-product-filter-scope.md',
+      requiredApprovalId: 'CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID',
+      approvalRecorded: scopeEvidence.productScopeApprovalPresent,
       acceptableOptions: [
         'explicit CLIPLOT_PRODUCT_IDS list approved by owner',
         'approved Catalog collection/tag/marketplace rule for Cliplot',
@@ -436,17 +453,16 @@ export async function catalogProductFilterReadiness() {
       'send notification',
       'print service token values',
     ],
-    blockers: [
-      '[MISSING: approved Cliplot product SKU list/filtering rule]',
-      '[MISSING: owner decision whether Cliplot uses explicit CLIPLOT_PRODUCT_IDS or a Catalog-side collection/tag rule]',
-    ],
+    blockers: scopeEvidence.blockers,
     sensitiveDataPolicy: [
       'no Catalog token value',
       'no Warehouse token value',
       'no customer PII',
       'sample product metadata only',
     ],
-    next: 'Record the approved Cliplot SKU/filtering rule before live checkout mutation is enabled.',
+    next: scopeEvidence.approvedCliplotSkuScope
+      ? 'Configured Cliplot SKU scope is approved; live checkout mutation remains blocked by separate order, payment, notification, live-smoke, callback, and mapping approvals.'
+      : 'Record the approved Cliplot SKU/filtering rule before live checkout mutation is enabled.',
   };
 }
 

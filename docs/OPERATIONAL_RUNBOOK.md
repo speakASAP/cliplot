@@ -470,3 +470,13 @@ Inspect it with:
 kubectl get cronjob cliplot-readiness-monitor -n statex-apps
 kubectl get jobs -n statex-apps -l component=readiness-monitor
 ```
+
+
+### Configured SKU Scope Approval
+
+`GET /api/products/filter-readiness` may return
+`approved_cliplot_product_filter_scope` when `CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID`
+is configured and the configured Catalog products are Warehouse-backed. This is
+read-only scope evidence only. It does not authorize live order creation,
+Warehouse reservation, payment creation, notification sends, callback
+persistence, provider-refresh reads, or live smoke execution.

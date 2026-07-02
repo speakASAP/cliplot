@@ -43,7 +43,7 @@ assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_A
 assert(Array.isArray(packet.requiredRuntimeKeys) && packet.requiredRuntimeKeys.includes('ORDERS_STATUS_SERVICE_TOKEN'), 'orders status runtime key missing', packet);
 assert(packet.catalog?.catalogSource === 'catalog', 'catalog source evidence missing', packet);
 assert(packet.catalog?.warehouseBackedProductCount > 0, 'warehouse-backed product evidence missing', packet);
-assert(packet.catalog?.approvedCliplotSkuScope === false, 'SKU scope should remain approval-gated', packet);
+assert(packet.catalog?.approvedCliplotSkuScope === true, 'approved SKU scope evidence missing', packet);
 assert(packet.orderWarehouse?.status === 'validated_no_mutation', 'order/Warehouse readiness not validated', packet);
 assert(packet.orderWarehouse?.mutation === false, 'order/Warehouse readiness reported mutation', packet);
 assert(packet.payment?.statusReadiness === 'ready_for_approved_payment_status_runtime_read', 'payment status readiness missing', packet);

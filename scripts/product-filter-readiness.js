@@ -37,7 +37,7 @@ for (let attempt = 2; attempt <= 4 && Number(report.warehouseBackedProductCount 
   await sleep(300 * attempt);
   report = await loadReadinessReport();
 }
-assert(report.status === 'approval_required_catalog_product_filter_rule', 'product filter readiness should remain approval-required', report);
+assert(['approval_required_catalog_product_filter_rule', 'approved_cliplot_product_filter_scope'].includes(report.status), 'product filter readiness status unexpected', report);
 assert(report.mode === 'guarded_catalog_product_filter_readiness', 'product filter readiness mode changed', report);
 assert(report.mutation === false, 'product filter readiness reported mutation', report);
 assert(report.persistence === false, 'product filter readiness reported persistence', report);
@@ -46,7 +46,13 @@ assert(report.catalogSource === 'catalog', 'product filter readiness is not usin
 assert(Number(report.productCount) > 0, 'product filter readiness has no products', report);
 assert(Number(report.warehouseBackedProductCount) > 0, 'product filter readiness has no Warehouse-backed products', report);
 assert(['active_catalog_query', 'configured_product_ids'].includes(report.selectionMode), 'unknown product selection mode', report);
-assert(report.approvedCliplotSkuScope === false, 'product SKU scope should not be approved without owner decision', report);
+if (report.status === 'approved_cliplot_product_filter_scope') {
+  assert(report.approvedCliplotSkuScope === true, 'approved product SKU scope flag missing', report);
+  assert(report.productScopeApprovalPresent === true, 'product scope approval id missing', report);
+  assert(report.configuredProductScope === true, 'configured product scope evidence missing', report);
+} else {
+  assert(report.approvedCliplotSkuScope === false, 'product SKU scope should not be approved without owner decision', report);
+}
 assert(Number.isInteger(report.configuredProductIdCount), 'configured product ID count missing', report);
 assert(!Array.isArray(report.configuredProductIds), 'raw configured product IDs must not be exposed', report);
 assert(report.currentQueryContract?.requiresOwnerApproval === true, 'query contract should still require owner approval', report);
@@ -57,7 +63,11 @@ assert(report.approvalRequest?.requiredDecision === 'approved Cliplot product SK
 assert(Array.isArray(report.approvalRequest?.acceptableOptions) && report.approvalRequest.acceptableOptions.length >= 3, 'approval options missing', report);
 assert(Array.isArray(report.forbiddenOperations) && report.forbiddenOperations.includes('reserve Warehouse stock'), 'Warehouse mutation guard missing', report);
 assert(report.forbiddenOperations.includes('create payment'), 'payment mutation guard missing', report);
-assert(Array.isArray(report.blockers) && report.blockers.some((item) => item.includes('approved Cliplot product SKU list/filtering rule')), 'product filter blocker missing', report);
+if (report.status === 'approved_cliplot_product_filter_scope') {
+  assert(Array.isArray(report.blockers) && report.blockers.length === 0, 'approved product filter should have no blockers', report);
+} else {
+  assert(Array.isArray(report.blockers) && report.blockers.some((item) => item.includes('approved Cliplot product SKU list/filtering rule')), 'product filter blocker missing', report);
+}
 
 console.log(JSON.stringify({
   ok: true,
@@ -68,6 +78,7 @@ console.log(JSON.stringify({
   warehouseBackedProductCount: report.warehouseBackedProductCount,
   selectionMode: report.selectionMode,
   configuredProductIdCount: report.configuredProductIdCount,
+  approvedCliplotSkuScope: report.approvedCliplotSkuScope,
   configuredProductIdFingerprintPresent: Boolean(report.configuredProductIdFingerprint),
   sampleProductId: report.sampleProducts[0]?.id || null,
   sampleWarehouseId: report.sampleProducts[0]?.warehouseId || null,

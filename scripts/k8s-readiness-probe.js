@@ -60,7 +60,7 @@ async function main() {
   assertFalse(preflight?.mutationPlan?.wouldSendNotification, 'live_preflight_would_send_notification', { preflight: preflightResponse.body });
 
   const productFilter = await getJson('/api/products/filter-readiness');
-  assertEqual(productFilter.body?.status, 'approval_required_catalog_product_filter_rule', 'product_filter_readiness_unexpected', { productFilter: productFilter.body });
+  if (!['approval_required_catalog_product_filter_rule', 'approved_cliplot_product_filter_scope'].includes(productFilter.body?.status)) fail('product_filter_readiness_unexpected', { productFilter: productFilter.body });
   assertEqual(productFilter.body?.catalogSource, 'catalog', 'product_filter_catalog_source_unexpected', { productFilter: productFilter.body });
   assertFalse(productFilter.body?.mutation, 'product_filter_mutation_enabled', { productFilter: productFilter.body });
   assertFalse(productFilter.body?.persistence, 'product_filter_persistence_enabled', { productFilter: productFilter.body });
