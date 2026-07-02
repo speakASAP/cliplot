@@ -52,6 +52,7 @@ readiness.
 | Operational docs | ready now | main orchestrator | `docs/OPERATIONAL_RUNBOOK.md`, `docs/operations/DEPLOYMENT_READINESS.md` | strict doc audit |
 | Live approval packet | ready now | main orchestrator | approval packet endpoint/script/docs | `npm run readiness:approval -- https://cliplot.alfares.cz` |
 | Passive payment snapshot-read approval packet | ready now | main orchestrator | payment snapshot-read approval endpoint/script/docs | `npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz` |
+| Customer status surface contract | ready now | main orchestrator | checkout status surface contract endpoint/script/docs | `npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz` |
 | Final live revenue closure | dependency-gated | main orchestrator | checkout/order/payment/notification config | approved live evidence and approval IDs |
 | Kubernetes readiness monitor | ready now | main orchestrator | `scripts/k8s-readiness-probe.js`, `k8s/readiness-cronjob.yaml`, `scripts/deploy.sh` | `npm run readiness:k8s -- https://cliplot.alfares.cz`, server dry-run, deployed CronJob inspect |
 | Docs/RAG publication | dependency-gated | main orchestrator | docs-rag service | preflight pass then intentional ingestion approval |

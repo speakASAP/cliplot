@@ -4,6 +4,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   authLinks,
+  customerStatusSurfaceReadiness,
   fetchCatalogProducts,
   productCatalogSource,
   handlePaymentCallback,
@@ -161,6 +162,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/order-warehouse-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/status-surface-contract' && req.method === 'GET') {
+      sendJson(res, 200, await customerStatusSurfaceReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/status-surface-contract') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

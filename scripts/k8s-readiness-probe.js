@@ -115,6 +115,15 @@ async function main() {
   assertFalse(snapshotReadApproval.body?.persistence, 'payment_status_snapshot_read_approval_persistence_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.providerCall, 'payment_status_snapshot_read_approval_provider_call_enabled', { snapshotReadApproval: snapshotReadApproval.body });
 
+  const checkoutStatusSurface = await getJson('/api/checkout/status-surface-contract');
+  assertEqual(checkoutStatusSurface.body?.status, 'guarded_customer_status_surface_contract', 'checkout_status_surface_unexpected', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertEqual(checkoutStatusSurface.body?.runtimeReadEnabled, false, 'checkout_status_surface_runtime_read_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertEqual(checkoutStatusSurface.body?.paymentsSnapshotReadEnabled, false, 'checkout_status_surface_snapshot_read_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertEqual(checkoutStatusSurface.body?.storageRead, false, 'checkout_status_surface_storage_read_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertFalse(checkoutStatusSurface.body?.mutation, 'checkout_status_surface_mutation_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertFalse(checkoutStatusSurface.body?.persistence, 'checkout_status_surface_persistence_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+  assertFalse(checkoutStatusSurface.body?.providerCall, 'checkout_status_surface_provider_call_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -130,6 +139,7 @@ async function main() {
     paymentStatusStorageReadiness: paymentStatusStorage.body.status,
     paymentStatusPersistenceDecision: paymentDecision.body.status,
     paymentStatusSnapshotReadApproval: snapshotReadApproval.body.status,
+    checkoutStatusSurface: checkoutStatusSurface.body.status,
   }, null, 2));
 }
 

@@ -51,6 +51,12 @@ present.
   must remain `approval_required_passive_payments_snapshot_read` with
   `runtimeReadEnabled=false`, `mutation=false`, `persistence=false`, and
   `providerCall=false` until owner approval and runtime rollout evidence exist.
+- The customer status surface contract must remain
+  `guarded_customer_status_surface_contract` with
+  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+  `storageRead=false`, `mutation=false`, `persistence=false`, and
+  `providerCall=false` until the approved read-only customer status rollout
+  exists.
 
 ## Deploy Command
 

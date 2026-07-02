@@ -371,6 +371,39 @@ persistence=false
 providerCall=false
 ```
 
+## Customer Status Surface Contract
+
+Status: implemented and guarded.
+
+The customer status surface contract protects `/objednavka/stav`,
+`/checkout/success`, and `/checkout/cancelled` from becoming authoritative
+order/payment status surfaces before owner approval. It proves the current
+surface uses only the browser-local checkout snapshot plus guarded payment
+status metadata.
+
+Expected validation:
+
+```bash
+npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz
+```
+
+Expected evidence:
+
+```text
+status=guarded_customer_status_surface_contract
+currentDataSource=browser_local_checkout_snapshot
+paymentStatusContract=payment_status_guarded_no_persistence
+snapshotReadApproval=approval_required_passive_payments_snapshot_read
+runtimeReadEnabled=false
+paymentsSnapshotReadEnabled=false
+storageRead=false
+authoritativeOrderStatus=false
+authoritativePaymentStatus=false
+mutation=false
+persistence=false
+providerCall=false
+```
+
 
 ## Live Notification Send Path Wiring
 

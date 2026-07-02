@@ -1725,6 +1725,106 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
   };
 }
 
+export async function customerStatusSurfaceReadiness() {
+  const syntheticOrderId = 'cliplot-status-surface-readiness';
+  const currentPaymentStatus = paymentStatus({ orderId: syntheticOrderId }).body || {};
+  const paymentReadiness = await paymentStatusReadiness();
+  const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
+  const guarded = currentPaymentStatus.status === 'payment_status_guarded_no_persistence'
+    && currentPaymentStatus.mutation === false
+    && currentPaymentStatus.persistence === false
+    && currentPaymentStatus.providerCall === false
+    && snapshotReadApproval.runtimeReadEnabled === false
+    && snapshotReadApproval.mutation === false
+    && snapshotReadApproval.persistence === false
+    && snapshotReadApproval.providerCall === false;
+
+  return {
+    success: true,
+    status: guarded ? 'guarded_customer_status_surface_contract' : 'blocked_customer_status_surface_contract_drift',
+    mode: 'guarded_customer_status_surface_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    runtimeReadEnabled: false,
+    paymentsSnapshotReadEnabled: false,
+    storageRead: false,
+    authoritativeOrderStatus: false,
+    authoritativePaymentStatus: false,
+    routes: [
+      '/objednavka/stav',
+      '/checkout/success',
+      '/checkout/cancelled',
+    ],
+    currentSurface: {
+      source: 'browser_local_checkout_snapshot',
+      statusLabel: 'Čeká na kontrolu',
+      paymentCopy: 'Platba se zatím nespustila. Po kontrole objednávky pošleme další pokyny k platbě.',
+      reservationCopy: 'Zboží zatím není rezervované a objednávka není zaplacená.',
+      storesProviderStatus: false,
+      storesOrderTruth: false,
+      storesPaymentTruth: false,
+    },
+    currentPaymentStatusContract: {
+      endpoint: '/api/payments/status?orderId={externalOrderId}',
+      status: currentPaymentStatus.status,
+      paymentStatus: currentPaymentStatus.paymentStatus,
+      customerSafePaymentStatus: currentPaymentStatus.customerSafePaymentStatus,
+      mutation: currentPaymentStatus.mutation,
+      persistence: currentPaymentStatus.persistence,
+      providerCall: currentPaymentStatus.providerCall,
+    },
+    futureSnapshotReadApproval: {
+      endpoint: '/api/payments/status-snapshot-read-approval-packet',
+      status: snapshotReadApproval.status,
+      runtimeReadEnabled: snapshotReadApproval.runtimeReadEnabled,
+      readEndpoint: snapshotReadApproval.readContract?.endpoint,
+      requiredScope: snapshotReadApproval.readContract?.requiredScope,
+      forbiddenEndpoint: snapshotReadApproval.readContract?.forbiddenEndpoint,
+      providerRefreshRisk: snapshotReadApproval.readContract?.providerRefreshRisk,
+    },
+    customerSafeStatusContract: paymentReadiness.customerSafeStatusContract,
+    forbiddenClaimsBeforeApproval: [
+      'paid',
+      'confirmed',
+      'reserved',
+      'shipped',
+      'invoiced',
+      'completed',
+      'zaplaceno',
+      'potvrzeno',
+      'rezervováno',
+      'odesláno',
+      'fakturováno',
+      'dokončeno',
+    ],
+    allowedCurrentClaims: [
+      'Čeká na kontrolu',
+      'Platba se zatím nespustila',
+      'Zboží zatím není rezervované',
+      'objednávka není zaplacená',
+    ],
+    blockers: [
+      ...snapshotReadApproval.blockers,
+      '[MISSING: approved customer status surface rollout using provider-refresh-free Payments DB snapshot reads]',
+      '[MISSING: approved UX copy for live payment status transitions on /objednavka/stav]',
+      '[MISSING: callback persistence/replay policy]',
+      '[MISSING: approved order/payment status mapping ownership]',
+    ],
+    sensitiveDataPolicy: [
+      'no payment API key value',
+      'no webhook key value',
+      'no payment rows',
+      'no customer PII in readiness output',
+      'no provider transaction id',
+      'no raw provider payload',
+    ],
+    next: 'After owner approval, add a read-only customer status surface that uses only the Payments DB snapshot read contract and keeps Cliplot non-authoritative.',
+  };
+}
+
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
     .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)

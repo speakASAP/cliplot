@@ -215,6 +215,18 @@ evidence and approval IDs exist.
 guarded. It must return `payment_status_guarded_no_persistence`,
 `mutation=false`, `persistence=false`, and `providerCall=false`.
 
+`GET /api/checkout/status-surface-contract` is the metadata-only contract for
+the guarded customer status surface. It must return
+`guarded_customer_status_surface_contract`, `currentDataSource=browser_local_checkout_snapshot`,
+`runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+`storageRead=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`. It must not accept or return real order/payment rows,
+customer PII, provider transaction IDs, or raw provider payloads.
+
+```bash
+npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/callback-readiness` validates the configured webhook key
 through an internal synthetic callback ACK. It must return
 `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`,
