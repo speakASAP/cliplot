@@ -35,6 +35,7 @@ present.
 ## Current Safety Contract
 
 - `ENABLE_LIVE_ORDER_SUBMIT` remains `false`.
+- `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` remains `false`.
 - `cliplot-secret` is mounted as optional.
 - `k8s/external-secret.yaml` maps planned keys from
   `secret/prod/cliplot`.
@@ -58,6 +59,9 @@ ssh alfares 'kubectl rollout undo deployment/cliplot -n statex-apps'
 
 - `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, and
   `ENABLE_LIVE_NOTIFICATIONS` remain `false` by default.
+- `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` remains `false` by default, with
+  `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` projected by name only for a
+  future owner-approved smoke window.
 - `CLIPLOT_LIVE_ORDER_APPROVAL_ID`, `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, and
   `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` must stay empty until approved live
   mutation evidence exists.

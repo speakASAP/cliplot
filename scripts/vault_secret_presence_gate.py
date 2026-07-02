@@ -16,11 +16,17 @@ REQUIRED_KEYS = [
     "DOCS_RAG_SERVICE_TOKEN",
 ]
 
+LIVE_SMOKE_KEYS = [
+    "ORDERS_STATUS_SERVICE_TOKEN",
+    "CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID",
+]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", default="secret/prod/cliplot")
     parser.add_argument("--allow-missing", action="store_true")
+    parser.add_argument("--require-live-smoke", action="store_true")
     args = parser.parse_args()
 
     env = os.environ.copy()
@@ -44,6 +50,7 @@ def main() -> int:
     payload = json.loads(result.stdout)
     data = payload.get("data", {}).get("data", {})
     missing = [key for key in REQUIRED_KEYS if not str(data.get(key, "")).strip()]
+    missing_live_smoke = [key for key in LIVE_SMOKE_KEYS if not str(data.get(key, "")).strip()]
     if missing:
         print("VAULT_SECRET_PRESENCE=blocked")
         print(f"path={args.path}")
@@ -52,10 +59,23 @@ def main() -> int:
         if args.allow_missing:
             return 0
         return 2
+    if missing_live_smoke:
+        print("VAULT_SECRET_PRESENCE=pass")
+        print(f"path={args.path}")
+        print("checked_keys=" + ",".join(REQUIRED_KEYS))
+        print("LIVE_SMOKE_SECRET_PRESENCE=blocked")
+        for key in missing_live_smoke:
+            print(f"MISSING_LIVE_SMOKE {key}")
+        print("note=secret values intentionally not printed")
+        if args.require_live_smoke and not args.allow_missing:
+            return 2
+        return 0
 
     print("VAULT_SECRET_PRESENCE=pass")
     print(f"path={args.path}")
     print("checked_keys=" + ",".join(REQUIRED_KEYS))
+    print("LIVE_SMOKE_SECRET_PRESENCE=pass")
+    print("checked_live_smoke_keys=" + ",".join(LIVE_SMOKE_KEYS))
     print("note=secret values intentionally not printed")
     return 0
 

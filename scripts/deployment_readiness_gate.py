@@ -49,9 +49,11 @@ def main() -> int:
         'ENABLE_LIVE_ORDER_SUBMIT: "false"',
         'ENABLE_LIVE_PAYMENT_CREATE: "false"',
         'ENABLE_LIVE_NOTIFICATIONS: "false"',
+        'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: "false"',
         'CLIPLOT_LIVE_ORDER_APPROVAL_ID: ""',
         'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: ""',
         'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: ""',
+        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID: ""',
         'AUTH_PUBLIC_URL: "https://auth.alfares.cz"',
     ]
     missing_config = [item for item in required_config if item not in configmap]

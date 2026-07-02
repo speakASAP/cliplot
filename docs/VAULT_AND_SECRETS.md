@@ -43,6 +43,26 @@ ssh alfares 'cd /home/ssf/Documents/Github/cliplot && python3 scripts/vault_secr
 The gate prints key presence only and intentionally does not print secret
 values.
 
+## Guarded Live Orders/Warehouse Smoke Keys
+
+The dedicated Orders/Warehouse live smoke executor is disabled by default. These
+keys are tracked by the Vault presence gate for a future owner-approved smoke
+window, but their values must remain absent or empty until approval exists:
+
+```text
+ORDERS_STATUS_SERVICE_TOKEN
+CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID
+```
+
+`ORDERS_STATUS_SERVICE_TOKEN` is separated from the normal
+`ORDERS_SERVICE_TOKEN` because Orders status cancellation can require a stronger
+admin/status-transition identity than order creation. The approval ID must never
+be committed or printed.
+
+Do not add these keys to `k8s/external-secret.yaml` until they exist in Vault.
+Adding missing remote properties can break ExternalSecret sync for the currently
+working `cliplot-secret`.
+
 ## Kubernetes Projection
 
 Planned ExternalSecret:
@@ -76,6 +96,7 @@ IDs and default to empty strings in `k8s/configmap.yaml`:
 CLIPLOT_LIVE_ORDER_APPROVAL_ID
 CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
 CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID
 ```
 
 If these approval IDs later become sensitive or centrally issued, promote them

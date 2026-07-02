@@ -32,8 +32,15 @@ The live env flags are not sufficient by themselves:
 ENABLE_LIVE_ORDER_SUBMIT=true requires CLIPLOT_LIVE_ORDER_APPROVAL_ID
 ENABLE_LIVE_PAYMENT_CREATE=true requires CLIPLOT_LIVE_PAYMENT_APPROVAL_ID
 ENABLE_LIVE_NOTIFICATIONS=true requires CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true requires CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID and ORDERS_STATUS_SERVICE_TOKEN
 ```
 
 Until those approval IDs are present, checkout must stay guarded and return
 approval blockers without creating orders, reservations, payments, or customer
 notifications.
+
+The dedicated Orders/Warehouse smoke executor is narrower than normal checkout:
+it still mutates live Orders/Warehouse state if enabled, so it must stay blocked
+until the dedicated smoke approval ID, status-transition service token, explicit
+`CREATE_REPLAY_CANCEL` body confirmation, `approvedBy`, and `reasonCode` are all
+present.
