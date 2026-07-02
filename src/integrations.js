@@ -1159,23 +1159,29 @@ export function paymentStatusReadiness() {
       customerSafePaymentStatus: callback.callbackState?.customerSafePaymentStatus || null,
     },
     futureProviderBackedRead: {
-      paymentsEndpoint: '/payments/{paymentId}',
+      paymentsEndpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      deployedBy: 'payments-microservice:fc42e72',
       requiredScope: 'payments:read',
       requiredRuntimeKey: 'PAYMENT_API_KEY',
-      supportsPaymentIdRead: true,
-      supportsOrderIdRead: false,
-      providerRefreshRisk: 'stripe_card_pending_reads_may_call_provider',
+      supportsPaymentIdRead: false,
+      supportsOrderIdRead: true,
+      providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
+      providerCall: false,
+      persistence: false,
+      mutation: false,
       requiredStoredFields: [
-        'paymentId',
         'orderId',
+        'applicationId',
         'status',
         'amount',
         'currency',
         'paymentMethod',
         'createdAt',
+        'updatedAt',
         'completedAt',
+        'refundedAt',
       ],
-      riskNote: 'Payments GET /payments/{paymentId} reads persisted payment state and may refresh provider status for pending/processing records; Cliplot must not call it until live payment storage/status approval exists.',
+      riskNote: 'Payments GET /payments/status/by-order-id reads the persisted DB snapshot and explicitly returns providerCall=false, persistence=false, and mutation=false; Cliplot must not call it until payments:read runtime evidence and owner approval exist.',
     },
     customerSafeStatusContract: {
       authoritative: false,
@@ -1211,8 +1217,8 @@ export function paymentStatusReadiness() {
       providerCall: false,
     },
     blockers: [
-      '[MISSING: approved Cliplot persisted payment id storage contract]',
-      '[MISSING: approved mapping from Cliplot externalOrderId/orderId to Payments paymentId]',
+      '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       '[MISSING: owner approval for provider-backed payment status reads]',
       '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
     ],
@@ -1295,8 +1301,8 @@ export function paymentStatusStorageReadiness() {
       requiredScope: paymentReadiness.futureProviderBackedRead.requiredScope,
     },
     blockers: [
-      '[MISSING: approved Cliplot persisted payment id storage contract]',
-      '[MISSING: approved mapping from Cliplot externalOrderId/orderId to Payments paymentId]',
+      '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       '[MISSING: owner approval for provider-backed payment status reads]',
       '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
       '[MISSING: approved migration or managed storage resource for cliplot.payment_status.v1]',
@@ -1331,12 +1337,12 @@ export function paymentStatusPersistenceDecisionPacket() {
         'Cliplot should store or cache only customer-facing checkout intent state after explicit approval, not provider-backed status truth.',
       ],
       requiredBeforeApproval: [
-        '[MISSING: Payments DB-only status read endpoint or provider-refresh-free mode]',
-        '[MISSING: Payments read-by-orderId or approved Cliplot paymentId persistence mapping]',
+        '[DONE: Payments DB-only read-by-orderId endpoint deployed as payments-microservice:fc42e72]',
         '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+        '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
         '[MISSING: customer-safe status copy reviewed for pending/processing/failed/cancelled/refunded states]',
       ],
-      cliplotRuntimeChange: 'Proxy or render approved read model only after provider-refresh-free read and mapping contract exist.',
+      cliplotRuntimeChange: 'Proxy or render approved read model only after payments:read runtime evidence and owner approval exist.',
       mutation: false,
       persistence: false,
       providerCall: false,
@@ -1394,8 +1400,9 @@ export function paymentStatusPersistenceDecisionPacket() {
     evidence: {
       paymentsAuthoritativeState: [
         'payments-microservice stores payment id, orderId, amount, currency, method, provider transaction, and status',
-        'payments-microservice indexes orderId but currently exposes public status read by paymentId only',
-        'payments-microservice GET /payments/{paymentId} can refresh pending/processing Stripe/card provider state',
+        'payments-microservice:fc42e72 exposes GET /payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+        'the deployed read-by-orderId endpoint returns a DB snapshot with providerCall=false, persistence=false, and mutation=false',
+        'payments-microservice GET /payments/{paymentId} can still refresh pending/processing Stripe/card provider state and must not be used for passive Cliplot status reads',
       ],
       ordersBoundary: [
         'orders-microservice owns order lifecycle and externalOrderId idempotency',
@@ -1418,7 +1425,7 @@ export function paymentStatusPersistenceDecisionPacket() {
       requiredRuntimeEvidence: [
         'payment-status-readiness pass with mutation=false persistence=false providerCall=false',
         'payment-storage-readiness pass with mutation=false persistence=false providerCall=false',
-        'provider-refresh-free Payments read evidence before any live status reads',
+        'deployed Payments read-by-orderId DB snapshot endpoint evidence before any live status reads',
         'approved owner decision before any storage writes',
       ],
       mustRemainFalseBeforeApproval: [
@@ -1430,9 +1437,9 @@ export function paymentStatusPersistenceDecisionPacket() {
     },
     blockers: [
       '[MISSING: ADR-payment-status-persistence-ownership]',
-      '[MISSING: provider-refresh-free Payments status read contract]',
-      '[MISSING: read-by-orderId or approved paymentId persistence mapping]',
+      '[DONE: Payments read-by-orderId DB snapshot contract deployed as payments-microservice:fc42e72]',
       '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       '[MISSING: approved callback persistence/replay plan]',
       '[MISSING: owner approval before live status reads or writes]',
     ],
@@ -1444,7 +1451,7 @@ export function paymentStatusPersistenceDecisionPacket() {
       'no storage read',
       'decision metadata only',
     ],
-    next: 'Record ADR-payment-status-persistence-ownership before implementing any live status persistence or provider-backed reads.',
+    next: 'Record ADR-payment-status-persistence-ownership and prove Cliplot payments:read runtime access before implementing any live status persistence or passive Payments snapshot reads.',
   };
 }
 

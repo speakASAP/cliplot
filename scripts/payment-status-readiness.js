@@ -41,17 +41,17 @@ assert(Array.isArray(readiness.customerSafeStatusContract?.sourceStatuses) && re
 assert(readiness.customerSafeStatusContract?.values?.failed === 'Platba se nezdařila', 'customer-safe failed label changed', readiness);
 assert(readiness.customerSafeStatusContract?.values?.cancelled === 'Platba byla zrušena', 'customer-safe cancelled label changed', readiness);
 assert(readiness.customerSafeStatusContract?.values?.refunded === 'Platba byla vrácena', 'customer-safe refunded label changed', readiness);
-assert(readiness.futureProviderBackedRead?.paymentsEndpoint === '/payments/{paymentId}', 'future payment read endpoint missing', readiness);
+assert(readiness.futureProviderBackedRead?.paymentsEndpoint === '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'future payment read endpoint missing', readiness);
 assert(readiness.futureProviderBackedRead?.requiredScope === 'payments:read', 'future payment read scope missing', readiness);
-assert(readiness.futureProviderBackedRead?.providerRefreshRisk === 'stripe_card_pending_reads_may_call_provider', 'provider refresh risk missing', readiness);
-assert(readiness.futureProviderBackedRead?.supportsPaymentIdRead === true, 'payment id read support missing', readiness);
-assert(readiness.futureProviderBackedRead?.supportsOrderIdRead === false, 'order id read support should remain false', readiness);
+assert(readiness.futureProviderBackedRead?.providerRefreshRisk === 'db_snapshot_endpoint_no_provider_refresh', 'provider refresh risk missing', readiness);
+assert(readiness.futureProviderBackedRead?.supportsPaymentIdRead === false, 'payment id read support should remain false for passive Cliplot reads', readiness);
+assert(readiness.futureProviderBackedRead?.supportsOrderIdRead === true, 'order id read support missing', readiness);
 assert(readiness.mappingContract?.authoritative === false, 'mapping contract should be non-authoritative', readiness);
 assert(readiness.mappingContract?.source === 'approved_persistence_contract_required', 'mapping contract source missing', readiness);
 assert(readiness.mappingContract?.proposedFields?.includes('externalOrderId'), 'mapping externalOrderId missing', readiness);
 assert(readiness.mappingContract?.proposedFields?.includes('paymentId'), 'mapping paymentId missing', readiness);
 assert(readiness.mappingContract?.persistence === false, 'mapping contract unexpectedly persists', readiness);
-assert(Array.isArray(readiness.blockers) && readiness.blockers.length >= 4, 'payment status blockers missing', readiness);
+assert(Array.isArray(readiness.blockers) && readiness.blockers.some((item) => item.includes('payments:read scope')), 'payment status runtime scope blocker missing', readiness);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no provider call'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({

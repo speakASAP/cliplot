@@ -43,8 +43,8 @@ assert(readiness.schemaContract?.allowedPaymentStatuses?.includes('processing'),
 assert(readiness.schemaContract?.customerSafeStatusContract?.source === 'static_customer_safe_mapping', 'customer-safe status contract missing', readiness);
 assert(readiness.callbackContract?.currentPersistence === false, 'callback persistence unexpectedly enabled', readiness);
 assert(readiness.readContract?.currentPersistence === false, 'status read persistence unexpectedly enabled', readiness);
-assert(readiness.readContract?.providerRefreshRisk === 'stripe_card_pending_reads_may_call_provider', 'provider refresh risk missing', readiness);
-assert(Array.isArray(readiness.blockers) && readiness.blockers.length >= 5, 'storage blockers missing', readiness);
+assert(readiness.readContract?.providerRefreshRisk === 'db_snapshot_endpoint_no_provider_refresh', 'provider refresh risk missing', readiness);
+assert(Array.isArray(readiness.blockers) && readiness.blockers.some((item) => item.includes('payments:read scope')), 'storage runtime scope blocker missing', readiness);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no storage write'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({

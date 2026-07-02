@@ -226,13 +226,16 @@ npm run readiness:payment-callback -- https://cliplot.alfares.cz
 
 `GET /api/payments/status-readiness` is the read-only go/no-go contract for
 future provider-backed payment status. It must remain
-`blocked_pending_provider_backed_status_contract` until Cliplot has approved
-persisted `paymentId` storage, an external-order/payment mapping, customer-safe
-status copy, and owner approval for Payments `GET /payments/{paymentId}` reads
-with `payments:read` scope. Payments status reads are not guaranteed DB-only:
-pending Stripe/card records can refresh provider status. Cliplot must not call
-Payments, refresh provider status, persist status, or update an order in the
-current guarded deployment. The readiness body exposes a non-authoritative
+`blocked_pending_provider_backed_status_contract` until Cliplot has owner
+approval, customer-safe status copy approval, and runtime evidence that its
+Payments API key has `payments:read` scope. Payments `fc42e72` now exposes the
+DB-only snapshot route
+`GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` with
+`providerCall=false`, `persistence=false`, and `mutation=false`; Cliplot must use
+that route instead of `GET /payments/{paymentId}`, which can still refresh
+pending Stripe/card records. Cliplot must not call Payments, refresh provider
+status, persist status, or update an order in the current guarded deployment.
+The readiness body exposes a non-authoritative
 `customerSafeStatusContract` with `source=static_customer_safe_mapping`,
 `labelsLocale=cs-CZ`, and Czech labels for `pending`, `processing`,
 `completed`, `failed`, `cancelled`, and `refunded`; these labels are readiness

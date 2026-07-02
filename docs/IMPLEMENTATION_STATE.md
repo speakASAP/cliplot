@@ -560,3 +560,8 @@ behavior until those approvals are present.
   `livePreflight.status=blocked`, `wouldMutate=false`, all mutation-plan
   booleans false, all live flags and approval booleans false, and guarded
   checkout `mutation=false`.
+
+### 2026-07-02 - Payments DB-only status snapshot contract wired into readiness
+
+Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` as a DB-only status snapshot with `payments:read`, `providerCall=false`, `persistence=false`, and `mutation=false`. Cliplot readiness now references that endpoint and no longer lists DB-only/read-by-orderId as missing. Runtime status remains blocked until Cliplot proves `PAYMENT_API_KEY` has `payments:read` in its own runtime evidence and receives owner approval for passive Payments snapshot reads.
+

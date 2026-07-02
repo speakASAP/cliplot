@@ -36,8 +36,9 @@ assert(packet.currentReadiness?.paymentStatus === 'blocked_pending_provider_back
 assert(packet.currentReadiness?.paymentStorage === 'blocked_storage_backend_not_approved', 'payment storage readiness unexpected', packet);
 assert(packet.currentReadiness?.callbackPersistence === false, 'callback persistence unexpectedly enabled', packet);
 assert(packet.currentReadiness?.currentStatusPersistence === false, 'current status persistence unexpectedly enabled', packet);
-assert(packet.currentReadiness?.providerRefreshRisk === 'stripe_card_pending_reads_may_call_provider', 'provider refresh risk missing', packet);
+assert(packet.currentReadiness?.providerRefreshRisk === 'db_snapshot_endpoint_no_provider_refresh', 'provider refresh risk missing', packet);
 assert(packet.evidence?.paymentsAuthoritativeState?.some((item) => item.includes('stores payment id')), 'payments ownership evidence missing', packet);
+assert(packet.evidence?.paymentsAuthoritativeState?.some((item) => item.includes('/payments/status/by-order-id')), 'payments snapshot endpoint evidence missing', packet);
 assert(packet.evidence?.ordersBoundary?.some((item) => item.includes('bounded payment references')), 'orders boundary evidence missing', packet);
 assert(packet.evidence?.cliplotBoundary?.some((item) => item.includes('guarded_no_persistence')), 'cliplot boundary evidence missing', packet);
 assert(packet.approvalPacket?.requiredDecisionRecord === 'ADR-payment-status-persistence-ownership', 'required ADR missing', packet);
