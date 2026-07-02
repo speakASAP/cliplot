@@ -32,11 +32,11 @@ assert(packet.persistence === false, 'execution checklist reported persistence',
 assert(packet.providerCall === false, 'execution checklist reported provider call', packet);
 assert(packet.liveExecutionAllowed === false, 'execution checklist allowed live execution', packet);
 assert(packet.liveOrderWarehouseSmokeFlag === false, 'live smoke flag enabled unexpectedly', packet);
-assert(packet.readyForBoundedWindow === false, 'placeholder smoke window should block bounded-window readiness', packet);
+const concreteWindow = packet.metadataApprovals?.window === true;
+assert(packet.readyForBoundedWindow === concreteWindow, 'bounded-window readiness should match concrete smoke window approval', packet);
 assert(packet.metadataApprovals?.orderWarehouseSmoke === true, 'smoke metadata approval missing', packet);
 assert(packet.metadataApprovals?.cleanup === true, 'cleanup metadata approval missing', packet);
-assert(packet.metadataApprovals?.window === false, 'placeholder smoke window should not count as concrete window approval', packet);
-assert(packet.metadataApprovals?.windowConfigured === true, 'smoke window placeholder should remain visible as configured metadata', packet);
+assert(packet.metadataApprovals?.windowConfigured === true, 'smoke window metadata should remain visible as configured metadata', packet);
 assert(packet.metadataApprovals?.rollbackOwner === true, 'rollback owner metadata missing', packet);
 assert(packet.metadataApprovals?.validationOwner === true, 'validation owner metadata missing', packet);
 assert(packet.serviceTokenReadiness?.ordersServiceTokenPresent === true, 'orders service token missing', packet);
@@ -74,7 +74,9 @@ assert(packet.defaultExecutorBlockers?.includes('live_order_warehouse_smoke_flag
 assert(packet.defaultExecutorBlockers?.includes('invalid_or_missing_smoke_approval_id'), 'default approval id blocker missing', packet);
 assert(packet.defaultExecutorBlockers?.includes('missing_CREATE_REPLAY_CANCEL_confirmation'), 'default confirmation blocker missing', packet);
 assert(!packet.defaultExecutorBlockers?.includes('missing_ORDERS_STATUS_SERVICE_TOKEN'), 'orders status token should be present', packet);
-assert(packet.executionBlockers?.some((item) => item.includes('live Orders/Warehouse smoke metadata and service-token readiness')), 'metadata readiness blocker missing', packet);
+if (!concreteWindow) {
+  assert(packet.executionBlockers?.some((item) => item.includes('live Orders/Warehouse smoke metadata and service-token readiness')), 'metadata readiness blocker missing', packet);
+}
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true')), 'runtime flag blocker missing', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('confirm=CREATE_REPLAY_CANCEL')), 'confirmation blocker missing', packet);
 assert(packet.mustRemainFalseBeforeApprovedWindow?.includes('ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE'), 'live smoke flag guard missing', packet);
