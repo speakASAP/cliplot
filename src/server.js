@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   authLinks,
   fetchCatalogProducts,
+  productCatalogSource,
   handlePaymentCallback,
   liveCheckoutPreflight,
   paymentStatus,
@@ -98,7 +99,7 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/products') {
       const products = await fetchCatalogProducts();
-      sendJson(res, 200, { success: true, items: products });
+      sendJson(res, 200, { success: true, catalogSource: productCatalogSource(products), items: products });
       return;
     }
 

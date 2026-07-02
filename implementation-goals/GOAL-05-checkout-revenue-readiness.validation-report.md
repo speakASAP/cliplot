@@ -796,3 +796,23 @@ livePreflightEndpoint.validation.paymentCreate=enabled_no_mutation
 livePreflightEndpoint.validation.notificationSend=enabled_no_send
 livePreflightEndpoint.validation.paymentStatus=guarded_no_persistence
 livePreflightEndpoint.missingApprovalCount=3
+
+
+## Catalog Source Contract Evidence
+
+Status: implemented and validated.
+
+Cliplot product responses now expose `catalogSource` on `/api/products` and
+`productSource` on each item. `scripts/guarded-checkout-smoke.js` fails closed
+unless public products are Catalog-sourced and the selected smoke product has a
+Warehouse `warehouseId`.
+
+Expected public evidence:
+
+```text
+GET /api/products
+success=true
+catalogSource=catalog
+items[0].productSource=catalog
+items[0].warehouseId=<non-empty>
+```

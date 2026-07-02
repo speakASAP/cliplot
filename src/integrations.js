@@ -16,6 +16,7 @@ export const fallbackProducts = [
     delivery: 'Doručení 1-2 dny',
     image: '/assets/product-clips.svg',
     description: 'Praktická sada pro rychlé upevnění kabelů, dekorací a drobných věcí doma i v dílně.',
+    productSource: 'fallback',
   },
   {
     id: 'clip-workshop-box',
@@ -27,6 +28,7 @@ export const fallbackProducts = [
     delivery: 'Doručení 1-2 dny',
     image: '/assets/product-workshop.svg',
     description: 'Pevný organizér s přehlednými přihrádkami pro nářadí, šroubky a příslušenství.',
+    productSource: 'fallback',
   },
   {
     id: 'clip-travel-pack',
@@ -38,6 +40,7 @@ export const fallbackProducts = [
     delivery: 'Doručení 1-2 dny',
     image: '/assets/product-travel.svg',
     description: 'Lehké balení pro kabely, tašky a drobnosti na cestách.',
+    productSource: 'fallback',
   },
   {
     id: 'clip-family-set',
@@ -50,6 +53,7 @@ export const fallbackProducts = [
     delivery: 'Doručení 1-2 dny',
     image: '/assets/product-family.svg',
     description: 'Výhodný set pro domácnost, garáž i školní tašku.',
+    productSource: 'fallback',
   },
 ];
 
@@ -176,6 +180,7 @@ function normalizeCatalogItem(item, index, availabilityByProductId = new Map()) 
     warehouseType: reservationWarehouse?.warehouseType || undefined,
     supplierId: reservationWarehouse?.supplierId || undefined,
     availableStock: reservationWarehouse ? Number(reservationWarehouse.available || 0) : undefined,
+    productSource: 'catalog',
   };
 }
 
@@ -225,6 +230,14 @@ function normalizeCatalogDescription(item) {
   const plain = item.shortDescription ?? item.description;
   if (typeof plain === 'string' && plain.trim()) return plain;
   return normalizeRichDescription(item.descriptionRich);
+}
+
+export function productCatalogSource(products) {
+  const items = Array.isArray(products) ? products : [];
+  if (items.length === 0) return 'empty';
+  return items.every((item) => item?.productSource === 'catalog')
+    ? 'catalog'
+    : 'fallback';
 }
 
 export async function fetchCatalogProducts() {

@@ -179,10 +179,11 @@ smoke evidence.
 - Payments allowlists include `cliplot-service` and `https://cliplot.alfares.cz`.
 - Cliplot has required secret keys projected, but `ENABLE_LIVE_ORDER_SUBMIT`
   remains `false`.
-- Catalog product APIs are Auth-guarded, but Catalog supports the existing
+- Catalog product APIs are Auth-guarded, and Cliplot uses the existing
   `x-internal-service-token` plus `x-service-name` machine-auth contract backed
   by Auth-owned `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
-  Cliplot is being wired to that existing read path.
+  Public `/api/products` now reports `catalogSource=catalog` and smoke requires
+  Catalog-sourced products with Warehouse `warehouseId` evidence.
 - Docs/RAG publication tooling now uses repoName `cliplot`. Controlled ingestion passed after Docs/RAG chunking was capped by character length; retrieval and agent-context both return Cliplot sources without printing secrets.
 - Warehouse stocked product selection, notification preview, and guarded
   payment-create payload generation have runtime smoke evidence.
@@ -215,8 +216,7 @@ order payload shape while keeping live commerce disabled.
 - Docs/RAG can trigger repoName `cliplot` ingestion from the pod. The old `cliplot-service`/`192.168.88.53:11434` blocker is superseded by current `DOCS_RAG_PUBLICATION=pass` evidence for repoName `cliplot`.
 - Auth validates `https://cliplot.alfares.cz/auth/callback`, but
   `cliplot-service` is not documented in the hosted-auth client registry.
-- Catalog is Auth-guarded, has no `cliplot` marketplace key, and Cliplot is
-  currently serving fallback products.
+- Catalog is Auth-guarded and has no approved Cliplot-specific marketplace/SKU scope yet; Cliplot currently reads active Catalog products through service auth and labels the source as `catalog`.
 - Orders accepts `cliplot-service` and channel `cliplot`.
 - Payments allowlists include `cliplot-service` and
   `https://cliplot.alfares.cz`.

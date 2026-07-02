@@ -34,7 +34,10 @@ const { response: productResponse, payload: productPayload } = await getJson('/a
 assert(productResponse.status === 200 && productPayload.success, 'products request failed', {
   httpStatus: productResponse.status,
 });
-const product = (productPayload.items || []).find((item) => item.warehouseId);
+assert(productPayload.catalogSource === 'catalog', 'products endpoint is not using authenticated Catalog data', {
+  catalogSource: productPayload.catalogSource,
+});
+const product = (productPayload.items || []).find((item) => item.warehouseId && item.productSource === 'catalog');
 assert(product, 'no warehouse-backed product available for guarded checkout smoke', {
   productCount: (productPayload.items || []).length,
 });
@@ -179,6 +182,8 @@ console.log(JSON.stringify({
   ok: true,
   baseUrl,
   productId: product.id,
+  catalogSource: productPayload.catalogSource,
+  productSource: product.productSource,
   detailStatus: detailResponse.status,
   cartFeedbackContract: true,
   cartEditContract: true,
