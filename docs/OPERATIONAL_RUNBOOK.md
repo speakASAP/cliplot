@@ -434,8 +434,8 @@ npm run readiness:payment-status -- https://cliplot.alfares.cz
 ```
 
 `GET /api/payments/status-storage-readiness` is the read-only schema/storage
-ownership proposal for future payment status persistence. It must return
-`blocked_storage_backend_not_approved`, `mutation=false`, `persistence=false`,
+ownership proposal for future payment status persistence. It may return `approved_payment_status_storage_metadata_execution_disabled` after callback storage, rollout, retention, uniqueness, replay, and live-status-write metadata approvals are recorded; otherwise it returns
+`blocked_storage_backend_not_approved`. In both cases it must keep `mutation=false`, `persistence=false`,
 and `providerCall=false`. It records shared Payments ownership for passive DB snapshot reads when approved, while callback persistence, Cliplot-local writes, and live status writes remain blocked.
 
 ```bash

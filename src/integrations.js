@@ -1806,12 +1806,14 @@ export function paymentCallbackReplayPolicyReadiness() {
     && callback.persistence === false
     && callback.providerCall === false;
   const approvalPresent = isApprovalPresent(serviceConfig.callbackReplayPolicyApprovalId);
+  const callbackStorageApprovalPresent = isApprovalPresent(serviceConfig.callbackPersistenceStorageApprovalId);
+  const callbackReplayExecutionApprovalPresent = isApprovalPresent(serviceConfig.callbackReplayExecutionApprovalId);
   const policyApproved = guarded && approvalPresent;
   const blockers = guarded
     ? (policyApproved
       ? [
-        '[MISSING: approved callback persistence storage backend approval]',
-        '[MISSING: callback replay execution rollout approval]',
+        ...(callbackStorageApprovalPresent ? [] : ['[MISSING: approved callback persistence storage backend approval]']),
+        ...(callbackReplayExecutionApprovalPresent ? [] : ['[MISSING: callback replay execution rollout approval]']),
       ]
       : [
         '[MISSING: CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID for callback persistence/replay policy metadata]',
@@ -1870,7 +1872,9 @@ export function paymentCallbackReplayPolicyReadiness() {
       orderingPolicy: 'completed/refunded terminal events win only after approved Payments-owned status source confirms them',
       retentionPolicy: policyApproved ? 'approved_metadata_only_90_days_minimum_until_storage_backend_approval' : '[MISSING: approved callback event retention window]',
       replaySource: 'payments-microservice webhook retry or operator-approved replay queue',
-      replayExecution: 'disabled_until_storage_backend_and_replay_execution_approval',
+      replayExecution: callbackReplayExecutionApprovalPresent ? 'metadata_approved_execution_disabled' : 'disabled_until_storage_backend_and_replay_execution_approval',
+      storageBackendApprovalPresent: callbackStorageApprovalPresent,
+      replayExecutionApprovalPresent: callbackReplayExecutionApprovalPresent,
       customerStatusImpact: 'customer-visible payment truth remains Payments DB snapshot read only; callback replay metadata does not mutate status',
       rollbackOwner: policyApproved ? 'cliplot-operator' : '[MISSING: rollback owner]',
       validationOwner: policyApproved ? 'cliplot-validation-owner' : '[MISSING: validation owner]',
@@ -1919,7 +1923,9 @@ export function paymentCallbackReplayPolicyReadiness() {
       'policy metadata only',
     ],
     next: policyApproved
-      ? 'Callback replay policy metadata is approved, but persistence and replay execution remain disabled until storage backend and execution rollout approval exist.'
+      ? (blockers.length === 0
+          ? 'Callback replay policy, storage backend, and replay execution metadata are approved; callback persistence and replay execution remain disabled until a separate runtime write window is approved.'
+          : 'Callback replay policy metadata is approved, but persistence and replay execution remain disabled until storage backend and execution rollout approval exist.')
       : 'Approve callback replay/persistence policy before enabling callback persistence or replay execution.',
   };
 }
@@ -2992,6 +2998,19 @@ export async function paymentStatusStorageReadiness() {
   const sharedPaymentsOwnershipApproved = storageOwnershipApprovalPresent
     && paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
     && paymentReadiness.readScopeReadiness?.scopeValidated === true;
+  const callbackStorageApprovalPresent = isApprovalPresent(serviceConfig.callbackPersistenceStorageApprovalId);
+  const callbackRolloutApprovalPresent = isApprovalPresent(serviceConfig.callbackPersistenceRolloutApprovalId);
+  const callbackRetentionApprovalPresent = isApprovalPresent(serviceConfig.callbackRetentionApprovalId);
+  const callbackUniquenessApprovalPresent = isApprovalPresent(serviceConfig.callbackUniquenessApprovalId);
+  const callbackReplayExecutionApprovalPresent = isApprovalPresent(serviceConfig.callbackReplayExecutionApprovalId);
+  const liveStatusWriteApprovalPresent = isApprovalPresent(serviceConfig.liveStatusWriteApprovalId);
+  const storageMetadataApproved = sharedPaymentsOwnershipApproved
+    && callbackStorageApprovalPresent
+    && callbackRolloutApprovalPresent
+    && callbackRetentionApprovalPresent
+    && callbackUniquenessApprovalPresent
+    && callbackReplayExecutionApprovalPresent
+    && liveStatusWriteApprovalPresent;
   const sampleRecord = {
     externalOrderId: 'cliplot-storage-readiness-order',
     paymentId: 'cliplot-storage-readiness-payment',
@@ -3013,6 +3032,24 @@ export async function paymentStatusStorageReadiness() {
           '[DONE: externalOrderId/paymentId uniqueness owned by Payments read model for passive status reads]',
         ]
       : []),
+    ...(callbackStorageApprovalPresent
+      ? ['[DONE: callback persistence storage backend approval metadata recorded with writes disabled]']
+      : []),
+    ...(callbackRolloutApprovalPresent
+      ? ['[DONE: callback persistence rollout approval metadata recorded with writes disabled]']
+      : []),
+    ...(callbackRetentionApprovalPresent
+      ? ['[DONE: callback retention/deletion approval metadata recorded]']
+      : []),
+    ...(callbackUniquenessApprovalPresent
+      ? ['[DONE: callback uniqueness/conflict approval metadata recorded]']
+      : []),
+    ...(callbackReplayExecutionApprovalPresent
+      ? ['[DONE: callback replay execution approval metadata recorded with execution disabled]']
+      : []),
+    ...(liveStatusWriteApprovalPresent
+      ? ['[DONE: live status write approval metadata recorded with writes disabled]']
+      : []),
   ];
   const storageBlockers = [
     ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
@@ -3024,16 +3061,19 @@ export async function paymentStatusStorageReadiness() {
       : [
           '[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for storage ownership decision]',
           '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
-          '[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]',
         ]),
-    '[MISSING: approved callback persistence storage backend approval]',
-    '[MISSING: approved callback persistence rollout plan]',
-    '[MISSING: owner approval before enabling live status writes]',
+    ...(callbackRetentionApprovalPresent && callbackUniquenessApprovalPresent
+      ? []
+      : ['[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]']),
+    ...(callbackStorageApprovalPresent ? [] : ['[MISSING: approved callback persistence storage backend approval]']),
+    ...(callbackRolloutApprovalPresent ? [] : ['[MISSING: approved callback persistence rollout plan]']),
+    ...(callbackReplayExecutionApprovalPresent ? [] : ['[MISSING: callback replay execution rollout approval]']),
+    ...(liveStatusWriteApprovalPresent ? [] : ['[MISSING: owner approval before enabling live status writes]']),
   ];
 
   return {
     success: true,
-    status: 'blocked_storage_backend_not_approved',
+    status: storageMetadataApproved ? 'approved_payment_status_storage_metadata_execution_disabled' : 'blocked_storage_backend_not_approved',
     mode: 'guarded_payment_status_storage_readiness',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -3046,6 +3086,13 @@ export async function paymentStatusStorageReadiness() {
       ownershipApproved: sharedPaymentsOwnershipApproved,
       ownershipApprovalPresent: storageOwnershipApprovalPresent,
       ownershipApprovalIdFingerprint: storageOwnershipApprovalPresent ? stableFingerprint(serviceConfig.paymentStorageOwnershipApprovalId) : null,
+      metadataApprovalComplete: storageMetadataApproved,
+      callbackStorageApprovalPresent,
+      callbackRolloutApprovalPresent,
+      callbackRetentionApprovalPresent,
+      callbackUniquenessApprovalPresent,
+      callbackReplayExecutionApprovalPresent,
+      liveStatusWriteApprovalPresent,
       owner: 'payments-microservice',
       cliplotLocalStorageApproved: false,
       liveWritesEnabled: false,
@@ -3103,9 +3150,11 @@ export async function paymentStatusStorageReadiness() {
       'no storage read',
       'synthetic sample record only',
     ],
-    next: sharedPaymentsOwnershipApproved
-      ? 'Payments-owned status storage is approved for passive DB snapshot reads; keep Cliplot-local writes, callback persistence, and live status writes disabled until separate approvals exist.'
-      : 'Approve storage ownership before callback persistence or provider-backed payment status reads are enabled.',
+    next: storageMetadataApproved
+      ? 'Storage metadata approvals are recorded; keep Cliplot-local writes, callback persistence, replay execution, live status writes, provider-backed reads, payment creation, and notifications disabled until a separate runtime write window is approved.'
+      : (sharedPaymentsOwnershipApproved
+          ? 'Payments-owned status storage is approved for passive DB snapshot reads; keep Cliplot-local writes, callback persistence, and live status writes disabled until separate approvals exist.'
+          : 'Approve storage ownership before callback persistence or provider-backed payment status reads are enabled.'),
   };
 }
 
@@ -3219,13 +3268,17 @@ export async function paymentStatusPersistenceDecisionPacket() {
     ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId)
       ? []
       : ['[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for shared Payments source-of-truth storage ownership]']),
-    '[MISSING: approved callback persistence storage backend approval]',
-    '[MISSING: owner approval before enabling live status writes]',
+    ...(storageReadiness.storage?.metadataApprovalComplete === true
+      ? []
+      : ['[MISSING: approved callback persistence storage backend approval]']),
+    ...(storageReadiness.storage?.liveStatusWriteApprovalPresent === true
+      ? []
+      : ['[MISSING: owner approval before enabling live status writes]']),
   ];
 
   return {
     success: true,
-    status: 'decision_recorded_approval_required',
+    status: decisionBlockers.length === 0 ? 'approved_payment_status_persistence_decision_metadata_execution_disabled' : 'decision_recorded_approval_required',
     mode: 'guarded_payment_status_persistence_decision_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,

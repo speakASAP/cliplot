@@ -46,7 +46,10 @@ if (policy.callbackPolicyApproved === true) {
   assert(policy.proposedReplayPolicy?.approvalIdPresent === true, 'callback policy approval evidence missing', policy);
   assert(policy.proposedReplayPolicy?.approvalIdFingerprint, 'callback policy approval fingerprint missing', policy);
   assert(!policy.blockers.some((item) => item.includes('callback event ownership decision')), 'approved callback ownership still reported missing', policy);
-  assert(policy.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'storage backend blocker missing after metadata approval', policy);
+  if (policy.blockers.length === 0) {
+    assert(policy.proposedReplayPolicy?.storageBackendApprovalPresent === true, 'callback storage metadata evidence missing after approval', policy);
+    assert(policy.proposedReplayPolicy?.replayExecutionApprovalPresent === true, 'callback replay execution metadata evidence missing after approval', policy);
+  }
 }
 assert(typeof policy.approvalRequest?.requiredBeforeRuntimeStatusReads === 'boolean', 'runtime status dependency missing', policy);
 assert(Array.isArray(policy.mustRemainFalseBeforeApproval) && policy.mustRemainFalseBeforeApproval.includes('callbackPersistence'), 'callback persistence guard missing', policy);
@@ -55,8 +58,12 @@ assert(Array.isArray(policy.forbiddenOperations) && policy.forbiddenOperations.i
 assert(policy.forbiddenOperations.includes('call payment provider'), 'provider call forbidden operation missing', policy);
 assert(Array.isArray(policy.blockers), 'callback policy blockers missing', policy);
 if (policy.callbackPolicyApproved === true) {
-  assert(policy.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'callback storage backend blocker missing', policy);
-  assert(policy.blockers.some((item) => item.includes('callback replay execution rollout approval')), 'callback replay execution blocker missing', policy);
+  if (policy.blockers.length === 0) {
+    assert(policy.proposedReplayPolicy?.storageBackendApprovalPresent === true, 'callback storage backend approval metadata missing', policy);
+    assert(policy.proposedReplayPolicy?.replayExecutionApprovalPresent === true, 'callback replay execution approval metadata missing', policy);
+  } else {
+    assert(policy.blockers.some((item) => item.includes('callback persistence storage backend approval') || item.includes('callback replay execution rollout approval')), 'callback storage/replay blocker missing', policy);
+  }
 } else {
   assert(policy.blockers.some((item) => item.includes('callback persistence/replay policy') || item.includes('CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID')), 'callback policy blocker missing', policy);
 }

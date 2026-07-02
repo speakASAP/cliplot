@@ -48,7 +48,7 @@ assert(packet.catalog?.approvedCliplotSkuScope === true, 'approved SKU scope evi
 assert(packet.orderWarehouse?.status === 'validated_no_mutation', 'order/Warehouse readiness not validated', packet);
 assert(packet.orderWarehouse?.mutation === false, 'order/Warehouse readiness reported mutation', packet);
 assert(packet.payment?.statusReadiness === 'ready_for_approved_payment_status_runtime_read', 'payment status readiness missing', packet);
-assert(packet.payment?.storageReadiness === 'blocked_storage_backend_not_approved', 'payment storage guard changed', packet);
+assert(['blocked_storage_backend_not_approved', 'approved_payment_status_storage_metadata_execution_disabled'].includes(packet.payment?.storageReadiness), 'payment storage guard changed', packet);
 assert(['approval_required_order_payment_status_mapping_ownership', 'approved_order_payment_status_mapping_ownership'].includes(packet.payment?.mappingOwnership), 'payment mapping ownership evidence missing', packet);
 assert(['approval_required_callback_replay_policy', 'approved_callback_replay_policy_metadata_execution_disabled'].includes(packet.callbackPolicy?.status), 'callback policy evidence missing', packet);
 assert(packet.callbackPolicy?.callbackPersistence === false, 'callback persistence enabled', packet);

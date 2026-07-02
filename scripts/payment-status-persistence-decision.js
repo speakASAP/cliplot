@@ -24,7 +24,7 @@ assert(response.status === 200 && packet.success, 'decision packet request faile
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'decision_recorded_approval_required', 'decision packet should remain approval-gated after ADR recording', packet);
+assert(['decision_recorded_approval_required', 'approved_payment_status_persistence_decision_metadata_execution_disabled'].includes(packet.status), 'decision packet status unexpected', packet);
 assert(packet.mutation === false, 'decision packet reported mutation', packet);
 assert(packet.persistence === false, 'decision packet reported persistence', packet);
 assert(packet.providerCall === false, 'decision packet reported provider call', packet);
@@ -37,7 +37,7 @@ assert(Array.isArray(packet.decisionOptions) && packet.decisionOptions.length ==
 assert(packet.decisionOptions.some((option) => option.id === 'shared-payments-source-of-truth'), 'shared payments option missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'cliplot-local-status-cache'), 'cliplot-local option missing', packet);
 assert(['blocked_pending_provider_backed_status_contract', 'ready_for_approved_payment_status_runtime_read'].includes(packet.currentReadiness?.paymentStatus), 'payment status readiness unexpected', packet);
-assert(packet.currentReadiness?.paymentStorage === 'blocked_storage_backend_not_approved', 'payment storage readiness unexpected', packet);
+assert(['blocked_storage_backend_not_approved', 'approved_payment_status_storage_metadata_execution_disabled'].includes(packet.currentReadiness?.paymentStorage), 'payment storage readiness unexpected', packet);
 assert(packet.currentReadiness?.callbackPersistence === false, 'callback persistence unexpectedly enabled', packet);
 assert(packet.currentReadiness?.currentStatusPersistence === false, 'current status persistence unexpectedly enabled', packet);
 assert(packet.currentReadiness?.providerRefreshRisk === 'db_snapshot_endpoint_no_provider_refresh', 'provider refresh risk missing', packet);
@@ -64,7 +64,12 @@ if (passiveSnapshotApproved) {
   assert(packet.blockers.some((item) => item.includes('owner approval')), 'owner approval blocker missing', packet);
 }
 assert(!packet.blockers.some((item) => item.includes('[MISSING: ADR-payment-status-persistence-ownership]')), 'stale missing ADR blocker still present', packet);
-assert(Array.isArray(packet.blockers) && packet.blockers.length >= 2, 'decision blockers missing', packet);
+assert(Array.isArray(packet.blockers), 'decision blockers missing', packet);
+if (packet.status === 'approved_payment_status_persistence_decision_metadata_execution_disabled') {
+  assert(packet.blockers.length === 0, 'approved decision metadata should clear blockers', packet);
+} else {
+  assert(packet.blockers.length >= 1, 'decision blockers missing before metadata approval', packet);
+}
 assert(!packet.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied decision evidence should not be counted as blockers', packet);
 assert(Array.isArray(packet.sensitiveDataPolicy) && packet.sensitiveDataPolicy.includes('decision metadata only'), 'sensitive data policy missing', packet);
 

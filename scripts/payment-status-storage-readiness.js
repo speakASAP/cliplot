@@ -24,7 +24,7 @@ assert(response.status === 200 && readiness.success, 'payment status storage rea
   httpStatus: response.status,
   status: readiness.status,
 });
-assert(readiness.status === 'blocked_storage_backend_not_approved', 'storage readiness should remain blocked', readiness);
+assert(['blocked_storage_backend_not_approved', 'approved_payment_status_storage_metadata_execution_disabled'].includes(readiness.status), 'storage readiness status unexpected', readiness);
 assert(readiness.mutation === false, 'storage readiness reported mutation', readiness);
 assert(readiness.persistence === false, 'storage readiness reported persistence', readiness);
 assert(readiness.providerCall === false, 'storage readiness reported provider call', readiness);
@@ -54,9 +54,14 @@ assert(!readiness.blockers.some((item) => item.includes('payments:read scope')),
 if (readiness.storage?.ownershipApproved === true) {
   assert(readiness.storage?.ownershipApprovalIdFingerprint, 'storage ownership approval fingerprint missing', readiness);
   assert(readiness.satisfiedEvidence?.some((item) => item.includes('approved storage ownership decision selects Payments DB snapshot read model')), 'approved storage ownership evidence missing', readiness);
-  assert(readiness.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'callback storage backend blocker missing', readiness);
   assert(!readiness.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied storage evidence should not be counted as blockers', readiness);
   assert(!readiness.blockers.some((item) => item.includes('decision whether persistence belongs')), 'stale storage ownership decision blocker present', readiness);
+  if (readiness.status === 'approved_payment_status_storage_metadata_execution_disabled') {
+    assert(readiness.storage?.metadataApprovalComplete === true, 'storage metadata approval evidence missing', readiness);
+    assert(readiness.blockers.length === 0, 'storage metadata approval should clear blockers', readiness);
+  } else {
+    assert(readiness.blockers.some((item) => item.includes('callback persistence storage backend approval') || item.includes('callback persistence rollout plan') || item.includes('live status writes')), 'callback/live storage blocker missing', readiness);
+  }
 } else {
   assert(readiness.blockers.some((item) => item.includes('CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID') || item.includes('decision whether persistence belongs')), 'storage ownership blocker missing', readiness);
 }
