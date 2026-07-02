@@ -448,6 +448,10 @@ behavior until those approvals are present.
   and idempotency key. No valid payment-create request was executed because it
   would write a live payment record; live payment creation remains gated by
   approved valid-body payment evidence.
+- Payments identity policy was aligned after the Cliplot rename: `cliplot` is
+  the canonical current payment `applicationId`, while `cliplot-service`
+  remains accepted only for legacy compatibility in payments-microservice
+  policy/config. Production Cliplot keeps `CLIPLOT_APPLICATION_ID=cliplot`.
 - GOAL-05 Warehouse routing propagation validation passed for commit
   `da5d9cf`: `npm run build`, `python3 scripts/pre_coding_gate.py`,
   `python3 scripts/strict_doc_audit.py`, `python3 scripts/deployment_readiness_gate.py`,
