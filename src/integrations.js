@@ -4789,7 +4789,10 @@ export async function liveOrderWarehouseSmokeExecutionChecklistPacket() {
     rollbackAndStopConditions: {
       rollbackOwner: plan.plan?.rollbackOwner,
       validationOwner: plan.plan?.validationOwner,
-      stopConditions: plan.plan?.stopConditions || [],
+      stopConditions: [
+        ...(plan.plan?.stopConditions || []),
+        'do not retry mutation after partial create without cleanup owner review',
+      ],
       cleanupThroughOrdersOnly: true,
       directWarehouseMutationAllowed: false,
       requiredPostCleanupEvidence: plan.plan?.afterCancelEvidenceChecklist || [],
