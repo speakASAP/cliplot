@@ -133,6 +133,19 @@ async function main() {
   assertFalse(customerStatusRollout.body?.persistence, 'customer_status_rollout_persistence_enabled', { customerStatusRollout: customerStatusRollout.body });
   assertFalse(customerStatusRollout.body?.providerCall, 'customer_status_rollout_provider_call_enabled', { customerStatusRollout: customerStatusRollout.body });
 
+  const customerStatusActivation = await getJson('/api/checkout/customer-status-runtime-activation-gate');
+  assertEqual(customerStatusActivation.body?.status, 'blocked_read_only_customer_status_runtime_activation', 'customer_status_activation_unexpected', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.runtimeReadEnabled, false, 'customer_status_activation_runtime_read_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.paymentsSnapshotReadEnabled, false, 'customer_status_activation_snapshot_read_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.storageRead, false, 'customer_status_activation_storage_read_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.callbackPersistence, false, 'customer_status_activation_callback_persistence_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.wouldReadPaymentsSnapshot, false, 'customer_status_activation_would_read_snapshot', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.wouldRenderRuntimeCustomerStatus, false, 'customer_status_activation_would_render_runtime_status', { customerStatusActivation: customerStatusActivation.body });
+  assertFalse(customerStatusActivation.body?.wouldMutate, 'customer_status_activation_mutation_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertFalse(customerStatusActivation.body?.persistence, 'customer_status_activation_persistence_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertFalse(customerStatusActivation.body?.providerCall, 'customer_status_activation_provider_call_enabled', { customerStatusActivation: customerStatusActivation.body });
+  assertEqual(customerStatusActivation.body?.approvedReadContract?.forbiddenEndpoint, '/payments/{paymentId}', 'customer_status_activation_forbidden_endpoint_missing', { customerStatusActivation: customerStatusActivation.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -150,6 +163,7 @@ async function main() {
     paymentStatusSnapshotReadApproval: snapshotReadApproval.body.status,
     checkoutStatusSurface: checkoutStatusSurface.body.status,
     customerStatusRollout: customerStatusRollout.body.status,
+    customerStatusActivation: customerStatusActivation.body.status,
   }, null, 2));
 }
 

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "build": "node --check src/server.js && node --check src/integrations.js && node scripts/verify-static-assets.js",
-    "check": "node --check src/server.js && node --check src/integrations.js && node --check public/app.js && node --check scripts/verify-static-assets.js && node --check scripts/guarded-checkout-smoke.js && node --check scripts/k8s-readiness-probe.js && node --check scripts/live-checkout-approval-packet.js && node --check scripts/live-checkout-activation-gate.js && node --check scripts/order-warehouse-readiness-report.js && node --check scripts/live-order-warehouse-smoke-plan.js && node --check scripts/live-order-warehouse-smoke-executor.js && node --check scripts/payment-callback-readiness.js && node --check scripts/payment-read-scope-readiness.js && node --check scripts/payment-status-readiness.js && node --check scripts/payment-status-storage-readiness.js && node --check scripts/payment-status-persistence-decision.js && node --check scripts/payment-status-snapshot-read-approval-packet.js && node --check scripts/checkout-status-surface-contract.js && node --check scripts/customer-status-runtime-rollout-plan.js",
+    "check": "node --check src/server.js && node --check src/integrations.js && node --check public/app.js && node --check scripts/verify-static-assets.js && node --check scripts/guarded-checkout-smoke.js && node --check scripts/k8s-readiness-probe.js && node --check scripts/live-checkout-approval-packet.js && node --check scripts/live-checkout-activation-gate.js && node --check scripts/order-warehouse-readiness-report.js && node --check scripts/live-order-warehouse-smoke-plan.js && node --check scripts/live-order-warehouse-smoke-executor.js && node --check scripts/payment-callback-readiness.js && node --check scripts/payment-read-scope-readiness.js && node --check scripts/payment-status-readiness.js && node --check scripts/payment-status-storage-readiness.js && node --check scripts/payment-status-persistence-decision.js && node --check scripts/payment-status-snapshot-read-approval-packet.js && node --check scripts/checkout-status-surface-contract.js && node --check scripts/customer-status-runtime-rollout-plan.js && node --check scripts/customer-status-runtime-activation-gate.js",
     "smoke:checkout": "node scripts/guarded-checkout-smoke.js",
     "readiness:bundle": "bash scripts/readiness_bundle.sh",
     "readiness:k8s": "node scripts/k8s-readiness-probe.js",
@@ -23,7 +23,8 @@
     "readiness:payment-decision": "node scripts/payment-status-persistence-decision.js",
     "readiness:payment-snapshot-read-approval": "node scripts/payment-status-snapshot-read-approval-packet.js",
     "readiness:checkout-status-surface": "node scripts/checkout-status-surface-contract.js",
-    "readiness:customer-status-rollout": "node scripts/customer-status-runtime-rollout-plan.js"
+    "readiness:customer-status-rollout": "node scripts/customer-status-runtime-rollout-plan.js",
+    "readiness:customer-status-activation": "node scripts/customer-status-runtime-activation-gate.js"
   },
   "engines": {
     "node": ">=20"

@@ -239,6 +239,21 @@ for owner approval only; it does not approve live reads or writes.
 npm run readiness:customer-status-rollout -- https://cliplot.alfares.cz
 ```
 
+`GET /api/checkout/customer-status-runtime-activation-gate` is the fail-closed
+activation gate for a future read-only customer status runtime. It must return
+`blocked_read_only_customer_status_runtime_activation`,
+`runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+`storageRead=false`, `callbackPersistence=false`, `wouldReadPaymentsSnapshot=false`,
+`wouldRenderRuntimeCustomerStatus=false`, `mutation=false`, `persistence=false`,
+and `providerCall=false` until owner approval, `CLIPLOT_STATUS_RUNTIME_APPROVAL_ID`,
+`ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`, and
+`ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true` exist together. It does not approve
+live order/payment/Warehouse/notification mutation.
+
+```bash
+npm run readiness:customer-status-activation -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/callback-readiness` validates the configured webhook key
 through an internal synthetic callback ACK. It must return
 `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`,

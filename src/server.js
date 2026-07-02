@@ -6,6 +6,7 @@ import {
   authLinks,
   customerStatusSurfaceReadiness,
   customerStatusRuntimeRolloutPlan,
+  customerStatusRuntimeActivationGate,
   fetchCatalogProducts,
   productCatalogSource,
   handlePaymentCallback,
@@ -193,6 +194,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/customer-status-runtime-rollout-plan') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/customer-status-runtime-activation-gate' && req.method === 'GET') {
+      sendJson(res, 200, await customerStatusRuntimeActivationGate());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/customer-status-runtime-activation-gate') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

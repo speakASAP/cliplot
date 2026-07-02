@@ -62,6 +62,13 @@ present.
   `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
   `storageRead=false`, `callbackPersistence=false`, `mutation=false`,
   `persistence=false`, and `providerCall=false` until ADR-003 is approved.
+- The customer status runtime activation gate must remain
+  `blocked_read_only_customer_status_runtime_activation` with
+  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+  `storageRead=false`, `callbackPersistence=false`,
+  `wouldReadPaymentsSnapshot=false`, `wouldRenderRuntimeCustomerStatus=false`,
+  `mutation=false`, `persistence=false`, and `providerCall=false` until all
+  read-only runtime approvals and flags exist together.
 
 ## Deploy Command
 
