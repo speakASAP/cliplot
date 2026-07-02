@@ -644,3 +644,14 @@ calls remain false. This closes the SKU-scope blocker only; live order creation,
 Warehouse reservation, payment creation, notification sends, callback
 persistence, provider-refresh reads, and live smoke execution remain separately
 guarded.
+
+
+### 2026-07-02 - Payments read-scope rate-limit stability
+
+Payments read-scope readiness now records an in-memory last-known-success proof
+for the DB-only by-order-id route. A fresh synthetic missing-order `404` remains
+the primary proof. If Payments returns `429`, Cliplot reports
+`validated_payments_read_scope_no_mutation_cached` only when a recent 404 proof
+exists in the running process, with `freshness.status=stale_rate_limited` and no
+mutation, persistence, provider call, secret value, or payment row output. A 429
+without recent proof remains blocked.

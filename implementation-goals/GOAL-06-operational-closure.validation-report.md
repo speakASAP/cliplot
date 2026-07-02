@@ -593,3 +593,21 @@ mutation=false
 persistence=false
 providerCall=false
 ```
+
+
+## Payments Read-Scope Rate-Limit Stability
+
+Status: implemented as read-only last-known-success evidence.
+
+The read-scope gate accepts two valid proof states:
+
+```text
+validated_payments_read_scope_no_mutation
+validated_payments_read_scope_no_mutation_cached
+```
+
+The cached state is only allowed after a recent fresh synthetic missing-order
+404 proof. It exposes `freshness.status=stale_rate_limited`, keeps
+`scopeValidated=true`, and preserves `mutation=false`, `persistence=false`, and
+`providerCall=false`. A 429 without a recent proof remains
+`temporarily_rate_limited_payments_read_scope` and blocks activation.

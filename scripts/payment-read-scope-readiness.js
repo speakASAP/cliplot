@@ -24,13 +24,20 @@ assert(response.status === 200 && readiness.success, 'payment read-scope readine
   httpStatus: response.status,
   status: readiness.status,
 });
-assert(readiness.status === 'validated_payments_read_scope_no_mutation', 'payments:read scope is not validated', readiness);
+assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(readiness.status), 'payments:read scope is not validated', readiness);
 assert(readiness.keyPresent === true, 'payment API key presence was not confirmed', readiness);
 assert(readiness.scopeValidated === true, 'payments:read scope validation missing', readiness);
 assert(readiness.routeValidated === true, 'Payments snapshot route validation missing', readiness);
 assert(readiness.requiredScope === 'payments:read', 'required scope changed', readiness);
-assert(readiness.httpStatus === 404, 'read-scope probe should use synthetic missing order 404', readiness);
-assert(['PAYMENT_STATUS_SNAPSHOT_NOT_FOUND', 'Not Found'].includes(String(readiness.observedErrorCode)), 'unexpected read-scope probe error code', readiness);
+if (readiness.status === 'validated_payments_read_scope_no_mutation_cached') {
+  assert(readiness.httpStatus === 429, 'cached read-scope evidence should expose current rate limit', readiness);
+  assert(readiness.freshness?.status === 'stale_rate_limited', 'cached read-scope freshness evidence missing', readiness);
+} else {
+  assert(readiness.httpStatus === 404, 'read-scope probe should use synthetic missing order 404', readiness);
+}
+if (readiness.status === 'validated_payments_read_scope_no_mutation') {
+  assert(['PAYMENT_STATUS_SNAPSHOT_NOT_FOUND', 'Not Found'].includes(String(readiness.observedErrorCode)), 'unexpected read-scope probe error code', readiness);
+}
 assert(readiness.mutation === false, 'read-scope probe reported mutation', readiness);
 assert(readiness.persistence === false, 'read-scope probe reported persistence', readiness);
 assert(readiness.providerCall === false, 'read-scope probe reported provider call', readiness);
@@ -48,6 +55,7 @@ console.log(JSON.stringify({
   routeValidated: readiness.routeValidated,
   httpStatus: readiness.httpStatus,
   observedErrorCode: readiness.observedErrorCode,
+  freshness: readiness.freshness?.status || 'fresh',
   mutation: readiness.mutation,
   persistence: readiness.persistence,
   providerCall: readiness.providerCall,

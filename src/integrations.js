@@ -729,6 +729,9 @@ async function guardedWarehouseReservationReadiness(checkout) {
     );
     return buildWarehouseReservationReadiness(checkout, availabilityByProductId);
   } catch (error) {
+    if (Number(error?.status || 0) === 429) {
+      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+    }
     return {
       status: "validation_failed_guarded",
       valid: false,
@@ -880,6 +883,9 @@ async function guardedOrderValidation(checkout, orderPayload) {
       eventPublished: false,
     };
   } catch (error) {
+    if (Number(error?.status || 0) === 429) {
+      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+    }
     return {
       status: 'validation_failed_guarded',
       httpStatus: error?.status || 0,
@@ -971,6 +977,9 @@ async function guardedPaymentValidation(checkout, paymentPayload) {
       providerCall: false,
     };
   } catch (error) {
+    if (Number(error?.status || 0) === 429) {
+      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+    }
     return {
       status: 'validation_failed_guarded',
       httpStatus: error?.status || 0,
@@ -982,7 +991,90 @@ async function guardedPaymentValidation(checkout, paymentPayload) {
 }
 
 let paymentReadScopeReadinessCache = null;
+let paymentReadScopeLastSuccess = null;
 const paymentReadScopeReadinessCacheTtlMs = 45_000;
+const paymentReadScopeLastSuccessTtlMs = Number(process.env.PAYMENT_READ_SCOPE_LAST_SUCCESS_TTL_MS || 900_000);
+
+function paymentReadScopeSuccessIsFresh(now = Date.now()) {
+  return paymentReadScopeLastSuccess && paymentReadScopeLastSuccess.expiresAt > now;
+}
+
+function cachePaymentReadScopeSuccess(result) {
+  const now = Date.now();
+  paymentReadScopeReadinessCache = {
+    expiresAt: now + paymentReadScopeReadinessCacheTtlMs,
+    payload: result,
+  };
+  paymentReadScopeLastSuccess = {
+    validatedAt: result.generatedAt,
+    expiresAt: now + paymentReadScopeLastSuccessTtlMs,
+    payload: result,
+  };
+}
+
+function paymentReadScopeRateLimitedResult(evidence = {}, now = Date.now()) {
+  const errorCode = evidence.payload?.error?.code || evidence.payload?.code || evidence.payload?.error || 'TOO_MANY_REQUESTS';
+  if (paymentReadScopeSuccessIsFresh(now)) {
+    return {
+      ...paymentReadScopeLastSuccess.payload,
+      status: 'validated_payments_read_scope_no_mutation_cached',
+      generatedAt: new Date().toISOString(),
+      httpStatus: evidence.httpStatus || 429,
+      observedErrorCode: errorCode,
+      scopeValidated: true,
+      routeValidated: true,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      databaseRead: true,
+      freshness: {
+        status: 'stale_rate_limited',
+        lastValidatedAt: paymentReadScopeLastSuccess.validatedAt,
+        ttlMs: paymentReadScopeLastSuccess.expiresAt - now,
+        currentHttpStatus: evidence.httpStatus || 429,
+        currentErrorCode: errorCode,
+        source: 'last_known_success',
+      },
+      cache: {
+        status: 'stale_success_hit',
+        ttlMs: paymentReadScopeLastSuccess.expiresAt - now,
+        purpose: 'avoid_treating_payments_rate_limit_as_scope_failure',
+      },
+      blockers: [],
+      next: 'Payments read-scope remains validated from recent last-known success; reduce probe frequency or tune Payments service-account throttling to restore fresh 404 evidence.',
+    };
+  }
+
+  return {
+    success: true,
+    status: 'temporarily_rate_limited_payments_read_scope',
+    mode: 'guarded_payment_read_scope_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness',
+    requiredScope: 'payments:read',
+    keyPresent: true,
+    scopeValidated: false,
+    routeValidated: false,
+    httpStatus: evidence.httpStatus || 429,
+    expectedHttpStatus: 404,
+    expectedErrorCode: 'PAYMENT_STATUS_SNAPSHOT_NOT_FOUND',
+    observedErrorCode: errorCode,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    databaseRead: false,
+    freshness: {
+      status: 'rate_limited_without_last_success',
+      currentHttpStatus: evidence.httpStatus || 429,
+      currentErrorCode: errorCode,
+      source: 'live_probe',
+    },
+    blockers: ['[MISSING: fresh or recent last-known Payments read-scope success evidence]'],
+    sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
+    next: 'Wait for Payments rate limit cooldown or tune service-account throttling, then collect fresh 404 missing-order evidence.',
+  };
+}
 
 async function validatePaymentReadScope() {
   const url = new URL('/payments/status/by-order-id', serviceConfig.paymentUrl);
@@ -1055,6 +1147,9 @@ export async function paymentReadScopeReadiness() {
   try {
     const evidence = await validatePaymentReadScope();
     const errorCode = evidence.payload?.error?.code || evidence.payload?.code || evidence.payload?.error || null;
+    if (evidence.httpStatus === 429) {
+      return paymentReadScopeRateLimitedResult(evidence, Date.now());
+    }
     const scopeValidated = evidence.httpStatus === 404 && ['PAYMENT_STATUS_SNAPSHOT_NOT_FOUND', 'Not Found'].includes(String(errorCode));
     const result = {
       success: true,
@@ -1089,13 +1184,13 @@ export async function paymentReadScopeReadiness() {
         : 'Fix PAYMENT_API_KEY scope or Payments route availability before enabling passive status reads.',
     };
     if (scopeValidated) {
-      paymentReadScopeReadinessCache = {
-        expiresAt: Date.now() + paymentReadScopeReadinessCacheTtlMs,
-        payload: result,
-      };
+      cachePaymentReadScopeSuccess(result);
     }
     return result;
   } catch (error) {
+    if (Number(error?.status || 0) === 429) {
+      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+    }
     return {
       success: true,
       status: 'blocked_payments_read_scope_request_failed',
@@ -1174,6 +1269,9 @@ async function guardedNotificationValidation(checkout, notificationPayload) {
       providerCall: false,
     };
   } catch (error) {
+    if (Number(error?.status || 0) === 429) {
+      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+    }
     return {
       status: 'validation_failed_guarded',
       httpStatus: error?.status || 0,
@@ -2707,7 +2805,7 @@ export async function customerStatusRuntimeActivationGate() {
     || statusRuntimeApprovalPresent !== (requestedRuntimeRead && requestedSnapshotRead)
     || liveMutationRequested;
 
-  const paymentReadScopeValidated = rollout.dependencyStatuses?.paymentReadScope === 'validated_payments_read_scope_no_mutation';
+  const paymentReadScopeValidated = ['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(rollout.dependencyStatuses?.paymentReadScope);
   if (!paymentReadScopeValidated) blockers.push('[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]');
 
   const readyForApprovedRuntimeRead = baselineGuarded

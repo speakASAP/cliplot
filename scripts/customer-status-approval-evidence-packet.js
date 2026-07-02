@@ -39,7 +39,7 @@ assert(['approval_required_read_only_customer_status_runtime_rollout', 'approved
 assert(['blocked_read_only_customer_status_runtime_activation', 'ready_for_approved_read_only_customer_status_runtime'].includes(packet.currentEvidence?.activationGate), 'activation gate evidence missing', packet);
 assert(['blocked_payments_snapshot_runtime_read', 'ready_for_approved_payments_snapshot_runtime_read'].includes(packet.currentEvidence?.paymentRuntimeReadiness), 'payment runtime readiness evidence missing', packet);
 assert(['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(packet.currentEvidence?.snapshotReadApproval), 'snapshot approval evidence missing', packet);
-assert(packet.currentEvidence?.paymentReadScope === 'validated_payments_read_scope_no_mutation', 'payment read-scope evidence missing', packet);
+assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.currentEvidence?.paymentReadScope), 'payment read-scope evidence missing', packet);
 assert(packet.currentEvidence?.frontendStatusFetch === 'deployed_guarded_fetch', 'frontend guarded fetch evidence missing', packet);
 assert(packet.runtimeFlags?.liveOrderSubmit === false, 'live order submit unexpectedly enabled', packet);
 assert(packet.runtimeFlags?.livePaymentCreate === false, 'live payment create unexpectedly enabled', packet);

@@ -44,7 +44,7 @@ assert(readiness.schemaContract?.customerSafeStatusContract?.source === 'static_
 assert(readiness.callbackContract?.currentPersistence === false, 'callback persistence unexpectedly enabled', readiness);
 assert(readiness.readContract?.currentPersistence === false, 'status read persistence unexpectedly enabled', readiness);
 assert(readiness.readContract?.providerRefreshRisk === 'db_snapshot_endpoint_no_provider_refresh', 'provider refresh risk missing', readiness);
-assert(readiness.readContract?.readScopeStatus === 'validated_payments_read_scope_no_mutation', 'payment read-scope readiness missing from storage contract', readiness);
+assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(readiness.readContract?.readScopeStatus), 'payment read-scope readiness missing from storage contract', readiness);
 assert(readiness.readContract?.scopeValidated === true, 'payment read scope is not validated in storage contract', readiness);
 assert(Array.isArray(readiness.blockers), 'storage blockers missing', readiness);
 assert(!readiness.blockers.some((item) => item.includes('payments:read scope')), 'payments:read scope blocker should be closed after runtime evidence', readiness);

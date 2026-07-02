@@ -40,7 +40,7 @@ assert(plan.targetSurface?.routes?.includes('/objednavka/stav'), 'customer statu
 assert(['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(plan.dependencyStatuses?.statusSurface), 'status surface dependency missing', plan);
 assert(['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(plan.dependencyStatuses?.snapshotReadApproval), 'snapshot-read dependency missing', plan);
 assert(plan.dependencyStatuses?.paymentDecision === 'decision_recorded_approval_required', 'payment decision dependency missing', plan);
-assert(plan.dependencyStatuses?.paymentReadScope === 'validated_payments_read_scope_no_mutation', 'payment read-scope dependency missing', plan);
+assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(plan.dependencyStatuses?.paymentReadScope), 'payment read-scope dependency missing', plan);
 assert(Array.isArray(plan.rolloutSteps) && plan.rolloutSteps.length >= 5, 'rollout steps missing', plan);
 assert(Array.isArray(plan.rollbackPlan) && plan.rollbackPlan.some((item) => item.includes('runtimeReadEnabled=false')), 'rollback plan missing runtime guard', plan);
 assert(Array.isArray(plan.mustRemainFalseDuringRollout) && plan.mustRemainFalseDuringRollout.includes('ENABLE_LIVE_PAYMENT_CREATE'), 'live payment false guard missing', plan);

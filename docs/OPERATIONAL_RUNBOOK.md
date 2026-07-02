@@ -480,3 +480,13 @@ is configured and the configured Catalog products are Warehouse-backed. This is
 read-only scope evidence only. It does not authorize live order creation,
 Warehouse reservation, payment creation, notification sends, callback
 persistence, provider-refresh reads, or live smoke execution.
+
+
+### Payments Read-Scope Rate Limits
+
+`npm run readiness:payment-read-scope` prefers fresh synthetic missing-order 404
+evidence from Payments. If Payments returns 429, Cliplot may use
+`validated_payments_read_scope_no_mutation_cached` only when the running process
+has a recent successful proof. Treat `freshness.status=stale_rate_limited` as a
+signal to reduce probe frequency or tune service-account throttling; it is not a
+provider-backed payment read and does not enable live mutations.

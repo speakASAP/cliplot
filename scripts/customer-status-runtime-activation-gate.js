@@ -39,7 +39,7 @@ assert(gate.liveMutationGuards?.liveNotifications === false, 'live notifications
 assert(['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(gate.currentBaseline?.rollout), 'rollout baseline missing', gate);
 assert(['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(gate.currentBaseline?.surface), 'status surface baseline missing', gate);
 assert(['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(gate.currentBaseline?.snapshotReadApproval), 'snapshot read approval baseline missing', gate);
-assert(gate.currentBaseline?.paymentReadScope === 'validated_payments_read_scope_no_mutation', 'payment read scope baseline missing', gate);
+assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(gate.currentBaseline?.paymentReadScope), 'payment read scope baseline missing', gate);
 assert(gate.approvedReadContract?.endpoint === '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'approved read contract endpoint changed', gate);
 assert(gate.approvedReadContract?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider-refresh endpoint missing', gate);
 assert(gate.approvedReadContract?.requiredScope === 'payments:read', 'payments:read scope missing', gate);
