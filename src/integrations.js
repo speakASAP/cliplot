@@ -77,6 +77,9 @@ export const serviceConfig = {
   statusRuntimeApprovalId: process.env.CLIPLOT_STATUS_RUNTIME_APPROVAL_ID || '',
   callbackReplayPolicyApprovalId: process.env.CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID || '',
   paymentStorageOwnershipApprovalId: process.env.CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID || '',
+  statusMappingOwnershipApprovalId: process.env.CLIPLOT_STATUS_MAPPING_OWNERSHIP_APPROVAL_ID || '',
+  statusMappingRollbackOwner: process.env.CLIPLOT_STATUS_MAPPING_ROLLBACK_OWNER || 'cliplot-operator',
+  statusMappingValidationOwner: process.env.CLIPLOT_STATUS_MAPPING_VALIDATION_OWNER || 'cliplot-validation-owner',
   catalogUrl: process.env.CATALOG_SERVICE_URL || 'http://catalog-microservice:3200',
   warehouseUrl: process.env.WAREHOUSE_SERVICE_URL || 'http://warehouse-microservice:3201',
   ordersUrl: process.env.ORDERS_SERVICE_URL || 'http://orders-microservice:3203',
@@ -2361,6 +2364,12 @@ export async function paymentStatusMappingOwnershipPacket() {
   const runtimeReadiness = paymentStatusRuntimeReadiness();
   const approvedRuntimeRead = runtimeReadiness.runtimeReadEnabled === true
     && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
+  const mappingApprovalPresent = isApprovalPresent(serviceConfig.statusMappingOwnershipApprovalId);
+  const mappingOwnershipApproved = mappingApprovalPresent
+    && approvedRuntimeRead
+    && decisionPacket.decisionRecord?.status === 'owner_approved_shared_payments_source_of_truth'
+    && callbackPolicy.callbackPersistence === false
+    && storageReadiness.readContract?.currentPersistence === false;
 
   return {
     success: true,
@@ -2380,9 +2389,13 @@ export async function paymentStatusMappingOwnershipPacket() {
       id: 'ADR-006-order-payment-status-mapping-ownership',
       title: 'Order And Payment Status Mapping Ownership',
       path: '07_decisions/ADR-006-order-payment-status-mapping-ownership.md',
-      status: 'proposed_for_owner_approval',
+      status: mappingOwnershipApproved ? 'owner_approved_non_authoritative_renderer' : 'proposed_for_owner_approval',
       recorded: true,
       runtimeApproval: approvedRuntimeRead,
+      approvalIdPresent: mappingApprovalPresent,
+      approvalIdFingerprint: mappingApprovalPresent ? stableFingerprint(serviceConfig.statusMappingOwnershipApprovalId) : null,
+      rollbackOwner: mappingOwnershipApproved ? serviceConfig.statusMappingRollbackOwner : '[MISSING: rollback owner]',
+      validationOwner: mappingOwnershipApproved ? serviceConfig.statusMappingValidationOwner : '[MISSING: validation owner]',
     },
     ownership: {
       orders: {
@@ -2410,14 +2423,14 @@ export async function paymentStatusMappingOwnershipPacket() {
       cliplot: {
         owner: 'cliplot',
         authoritative: false,
-        role: 'customer_safe_renderer_after_owner_approval',
-        mayRenderOnlyAfterApproval: true,
+        role: mappingOwnershipApproved ? 'approved_customer_safe_renderer_non_authoritative' : 'customer_safe_renderer_after_owner_approval',
+        mayRenderOnlyAfterApproval: !mappingOwnershipApproved,
         mayPersistStatusTruth: false,
       },
     },
     mappingContract: {
       authoritative: false,
-      source: 'owner_approval_required',
+      source: mappingOwnershipApproved ? 'approved_payments_db_snapshot_renderer_contract' : 'owner_approval_required',
       proposedFields: [
         'externalOrderId',
         'orderId',
@@ -2467,7 +2480,13 @@ export async function paymentStatusMappingOwnershipPacket() {
       storageRead: runtimeReadiness.storageRead,
     },
     requiredOwnerApprovals: [
-      'approved order/payment status mapping ownership',
+      ...(mappingOwnershipApproved
+        ? [
+            'approved order/payment status mapping ownership recorded',
+            `runtime rollout owner recorded: ${serviceConfig.statusMappingValidationOwner}`,
+            `rollback owner recorded: ${serviceConfig.statusMappingRollbackOwner}`,
+          ]
+        : ['approved order/payment status mapping ownership']),
       ...(approvedRuntimeRead
         ? [
             'owner-approved passive Payments DB snapshot read is active',
@@ -2495,7 +2514,14 @@ export async function paymentStatusMappingOwnershipPacket() {
       'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
     ],
     blockers: [
-      '[MISSING: approved order/payment status mapping ownership]',
+      ...(mappingOwnershipApproved
+        ? [
+            '[DONE: approved order/payment status mapping ownership recorded]',
+            '[DONE: Cliplot remains non-authoritative customer-safe renderer]',
+            `[DONE: runtime rollout owner recorded: ${serviceConfig.statusMappingValidationOwner}]`,
+            `[DONE: rollback owner recorded: ${serviceConfig.statusMappingRollbackOwner}]`,
+          ]
+        : ['[MISSING: approved order/payment status mapping ownership]']),
       ...(approvedRuntimeRead
         ? [
             '[DONE: owner-approved passive Payments DB snapshot read is active]',
@@ -2507,7 +2533,7 @@ export async function paymentStatusMappingOwnershipPacket() {
             '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
             '[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]',
           ]),
-      '[MISSING: runtime rollout owner and rollback owner recorded]',
+      ...(mappingOwnershipApproved ? [] : ['[MISSING: runtime rollout owner and rollback owner recorded]']),
     ],
     sensitiveDataPolicy: [
       'ownership metadata only',
@@ -2518,7 +2544,9 @@ export async function paymentStatusMappingOwnershipPacket() {
       'no provider transaction id',
       'no raw provider payload',
     ],
-    next: 'Collect owner approval for ADR-006 before enabling any customer-facing runtime order/payment status correlation.',
+    next: mappingOwnershipApproved
+      ? 'ADR-006 ownership is approved for non-authoritative customer-safe rendering; live writes, provider refresh reads, callback persistence, payment creation, and notifications remain disabled.'
+      : 'Collect owner approval for ADR-006 before enabling any customer-facing runtime order/payment status correlation.',
   };
 }
 
@@ -3037,9 +3065,9 @@ export async function customerStatusApprovalEvidencePacket() {
         ...(callbackPolicy.status === 'approval_required_callback_replay_policy'
           ? ['[MISSING: approved callback persistence/replay policy before callback persistence or replay]']
           : []),
-        ...(paymentMapping.status === 'approval_required_order_payment_status_mapping_ownership'
-          ? ['[MISSING: approved order/payment status mapping ownership before Cliplot stores or correlates payment truth]']
-          : []),
+        ...(paymentMapping.decisionRecord?.status === 'owner_approved_non_authoritative_renderer'
+          ? []
+          : ['[MISSING: approved order/payment status mapping ownership before Cliplot stores or correlates payment truth]']),
       ]
     : [
         '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',

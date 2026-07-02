@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed for owner approval. Runtime remains guarded.
+Approved for non-authoritative customer-safe rendering. Runtime mutation remains guarded.
 
 ## Context
 
@@ -23,7 +23,14 @@ truth model:
 
 ## Decision
 
-Use shared service ownership for the future status map:
+Use shared service ownership for the status map. Owner approval is recorded by
+`CLIPLOT_STATUS_MAPPING_OWNERSHIP_APPROVAL_ID=owner-approved-2026-07-02-order-payment-status-mapping-renderer`.
+Rollback owner is `cliplot-operator`; validation owner is
+`cliplot-validation-owner`. This approval covers non-authoritative rendering only
+and does not approve live payment creation, callback persistence, provider-refresh
+reads, Cliplot-local status writes, Warehouse reservation, or notification sends.
+
+Approved ownership:
 
 1. `orders-microservice` remains authoritative for order lifecycle and
    `externalOrderId`/order idempotency.
@@ -46,15 +53,17 @@ The proposed future mapping fields are:
 - `createdAt`
 - `completedAt`
 
-This ADR does not approve runtime reads, callback persistence, local storage, or
-live checkout mutation.
+This ADR approves read-only customer-safe rendering through the Payments DB-only
+snapshot route after the existing runtime flags and approval IDs are present. It
+does not approve callback persistence, local storage writes, provider-refresh
+reads, live checkout mutation, payment creation, Warehouse reservation, or
+notification sends.
 
 ## Guardrails
 
-Until owner approval exists, Cliplot must keep all of the following false:
+Until separate live mutation approvals exist, Cliplot must keep all of the
+following false:
 
-- `ENABLE_CUSTOMER_STATUS_RUNTIME_READ`
-- `ENABLE_PAYMENT_STATUS_SNAPSHOT_READ`
 - callback persistence
 - Cliplot-local payment status writes
 - provider-backed `/payments/{paymentId}` reads
@@ -68,9 +77,9 @@ Until owner approval exists, Cliplot must keep all of the following false:
 - `npm run readiness:payment-mapping -- https://cliplot.alfares.cz` returns
   `approval_required_order_payment_status_mapping_ownership`.
 - `npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz`
-  returns `approval_required_callback_replay_policy` with callback persistence
-  and replay disabled.
+  returns `approved_callback_replay_policy_metadata_execution_disabled` with
+  callback persistence and replay disabled.
 - `npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz`
-  returns `approval_required_passive_payments_snapshot_read`.
+  returns `approved_passive_payments_snapshot_read`.
 - Owner approval explicitly confirms Orders owner, Payments owner, Cliplot
   renderer role, customer-safe Czech copy, rollback owner, and validation owner.
