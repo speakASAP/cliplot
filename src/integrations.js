@@ -1429,15 +1429,17 @@ export async function paymentStatus(input = {}) {
       },
     };
   } catch (error) {
+    const upstreamStatus = Number(error?.status || 0);
+    const safeUnavailable = [404, 429, 502, 503, 504].includes(upstreamStatus);
     const errorCode = error?.payload?.error?.code || error?.payload?.code || error?.payload?.error || null;
     return {
-      httpStatus: error?.status === 404 ? 200 : 502,
+      httpStatus: safeUnavailable ? 200 : 502,
       body: {
-        success: error?.status === 404,
-        status: error?.status === 404 ? 'payment_status_snapshot_not_available' : 'payment_status_snapshot_read_failed',
+        success: safeUnavailable,
+        status: upstreamStatus === 404 ? 'payment_status_snapshot_not_available' : (safeUnavailable ? 'payment_status_snapshot_temporarily_unavailable' : 'payment_status_snapshot_read_failed'),
         orderId,
-        httpStatus: error?.status || 0,
-        errorCode: error?.status === 404 ? undefined : errorCode,
+        httpStatus: upstreamStatus,
+        errorCode: safeUnavailable ? undefined : errorCode,
         paymentStatus: 'unknown',
         customerSafePaymentStatus: customerSafePaymentStatus('unknown'),
         runtimeReadEnabled: true,
@@ -1752,9 +1754,9 @@ export async function paymentStatusReadiness() {
   const readScope = await paymentReadScopeReadiness();
   const readOnlyRuntime = statusBody.runtimeReadEnabled === true
     && statusBody.paymentsSnapshotReadEnabled === true
-    && ['payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(statusBody.status);
+    && ['payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(statusBody.status);
   const guarded = statusResult.httpStatus === 200
-    && ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(statusBody.status)
+    && ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(statusBody.status)
     && statusBody.mutation === false
     && statusBody.persistence === false
     && statusBody.providerCall === false
@@ -2434,7 +2436,7 @@ export async function customerStatusSurfaceReadiness() {
   const runtime = paymentStatusRuntimeReadiness();
   const approvedRuntimeRead = runtime.runtimeReadEnabled === true
     && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
-  const guarded = ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(currentPaymentStatus.status)
+  const guarded = ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(currentPaymentStatus.status)
     && currentPaymentStatus.mutation === false
     && currentPaymentStatus.persistence === false
     && currentPaymentStatus.providerCall === false

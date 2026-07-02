@@ -28,7 +28,7 @@ assert(['blocked_pending_provider_backed_status_contract', 'ready_for_approved_p
 assert(readiness.mutation === false, 'payment status readiness reported mutation', readiness);
 assert(readiness.persistence === false, 'payment status readiness reported persistence', readiness);
 assert(readiness.providerCall === false, 'payment status readiness reported provider call', readiness);
-assert(['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(readiness.currentStatusContract?.status), 'current payment status contract changed', readiness);
+assert(['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(readiness.currentStatusContract?.status), 'current payment status contract changed', readiness);
 assert(readiness.currentStatusContract?.providerCall === false, 'current payment status would call provider', readiness);
 assert(readiness.callbackReadiness?.status === 'validated_guarded_ack_no_persistence', 'callback readiness is not validated', readiness);
 assert(readiness.callbackReadiness?.customerSafePaymentStatus?.code === 'payment_received', 'callback customer-safe status mapping missing', readiness);

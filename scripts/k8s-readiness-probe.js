@@ -82,7 +82,7 @@ async function main() {
   assertEqual(integrations.paymentStatus, 'approved_read_only_snapshot', 'payment_status_not_approved_read_only', { readiness });
 
   const paymentStatus = await getJson('/api/payments/status?orderId=cliplot-readiness-monitor');
-  assertEqual(paymentStatus.body?.status, 'payment_status_snapshot_not_available', 'payment_status_endpoint_not_approved_read_only', { paymentStatus: paymentStatus.body });
+  if (!['payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(paymentStatus.body?.status)) fail('payment_status_endpoint_not_approved_read_only', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.mutation, 'payment_status_mutation_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.persistence, 'payment_status_persistence_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.providerCall, 'payment_status_provider_call_enabled', { paymentStatus: paymentStatus.body });

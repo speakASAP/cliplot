@@ -43,7 +43,7 @@ assert(Array.isArray(readiness.routes) && readiness.routes.includes('/objednavka
 assert(readiness.currentSurface?.storesProviderStatus === false, 'status surface stores provider status', readiness);
 assert(readiness.currentSurface?.storesOrderTruth === false, 'status surface stores order truth', readiness);
 assert(readiness.currentSurface?.storesPaymentTruth === false, 'status surface stores payment truth', readiness);
-assert(['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(readiness.currentPaymentStatusContract?.status), 'payment status contract changed', readiness);
+assert(['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(readiness.currentPaymentStatusContract?.status), 'payment status contract changed', readiness);
 assert(readiness.currentPaymentStatusContract?.mutation === false, 'payment status contract reported mutation', readiness);
 assert(readiness.currentPaymentStatusContract?.persistence === false, 'payment status contract reported persistence', readiness);
 assert(readiness.currentPaymentStatusContract?.providerCall === false, 'payment status contract reported provider call', readiness);

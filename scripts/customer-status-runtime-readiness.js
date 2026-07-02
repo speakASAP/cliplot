@@ -42,7 +42,7 @@ assert(statusResponse.status === 200 && status.success, 'payment status request 
   httpStatus: statusResponse.status,
   status: status.status,
 });
-assert(['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(status.status), 'payment status runtime response unexpected', status);
+assert(['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(status.status), 'payment status runtime response unexpected', status);
 assert(status.storageRead === false, 'payment status storage read unexpectedly enabled', status);
 assert(status.providerCall === false, 'payment status reported provider call', status);
 assert(status.mutation === false, 'payment status reported mutation', status);
