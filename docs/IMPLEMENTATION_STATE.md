@@ -161,6 +161,17 @@ notification sends, and Docs/RAG ingestion gated.
 - The live Orders/Warehouse smoke executor is wired as `POST /api/checkout/live-order-warehouse-smoke-executor` and `npm run readiness:live-smoke-executor`. In default production it returns `approval_required` with `mutation=false`, `providerCall=false`, and `persistence=false`; execution additionally requires `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true`, `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, `ORDERS_STATUS_SERVICE_TOKEN`, body `confirm=CREATE_REPLAY_CANCEL`, `approvedBy`, and `reasonCode`.
 - The Cliplot ConfigMap and Vault gate now expose dedicated live-smoke readiness while keeping execution disabled by default: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, smoke metadata IDs/owners are recorded, `ORDERS_STATUS_SERVICE_NAME=cliplot`, and `LIVE_SMOKE_SECRET_PRESENCE=pass` when `ORDERS_STATUS_SERVICE_TOKEN` is present. The smoke approval metadata is not an execution switch; execution still requires opening the flag for the approved window plus executor confirmation.
 - The guarded payment callback readiness endpoint is wired as `GET /api/payments/callback-readiness` and `npm run readiness:payment-callback`. It validates the configured webhook key through an internal synthetic callback ACK and returns `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing the key or updating payment/order state.
+- The revenue closure packet includes a read-only blocker classification that
+  separates metadata-packet-eligible readiness work from actions requiring true
+  owner live mutation approval. The classifier explicitly keeps mutation,
+  persistence, provider calls, and notification sends false.
+- The live checkout approval packet is now an aggregated read-only execution
+  readiness packet. It returns `approval_required_live_checkout_execution` in
+  guarded production, includes Catalog/SKU scope, Orders/Warehouse readiness,
+  live-smoke metadata, payment status runtime-read evidence, callback
+  persistence blockers, read-only customer status evidence, and live preflight
+  state, while preserving `mutation=false`, `persistence=false`,
+  `providerCall=false`, and `wouldMutateNow=false`.
 - The payment callback replay policy gate is wired as `GET /api/payments/callback-replay-policy` and `npm run readiness:payment-callback-policy`. It records ADR-005 callback replay policy metadata approval through `CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID` while keeping `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. The callback persistence approval packet is wired as `GET /api/payments/callback-persistence-approval-packet` and `npm run readiness:payment-callback-persistence`; it records storage/replay approval requirements, idempotency keys, conflict handling, retention metadata, rollback owner, and validation owner without persisting callbacks, replaying callbacks, updating orders/payments, or calling the payment provider.
 - The read-only customer status runtime is approved and deployed through
   `ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`,

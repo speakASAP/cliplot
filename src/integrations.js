@@ -4301,41 +4301,120 @@ export async function runLiveOrderWarehouseSmoke(input = {}) {
 
 
 export async function liveCheckoutApprovalPacket() {
-  const products = await fetchCatalogProducts();
-  const catalogSource = productCatalogSource(products);
-  const warehouseBackedProducts = products.filter((item) => item?.warehouseId);
+  const productFilter = await catalogProductFilterReadiness();
+  const orderWarehouse = await orderWarehouseReadinessReport();
+  const liveSmokePlan = await liveOrderWarehouseSmokePlan();
+  const paymentStatusPacket = await paymentStatusReadiness();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
+  const customerStatusActivation = await customerStatusRuntimeActivationGate();
+  const customerStatusApproval = await customerStatusApprovalEvidencePacket();
   const readiness = serviceReadiness();
   const preflight = readiness.liveCheckoutPreflight;
   const auth = authLinks();
 
+  const readinessEvidence = {
+    catalogProductFilter: productFilter.status,
+    orderWarehouse: orderWarehouse.status,
+    liveSmokePlan: liveSmokePlan.status,
+    paymentStatus: paymentStatusPacket.status,
+    callbackReplayPolicy: callbackPolicy.status,
+    callbackPersistence: callbackPersistence.status,
+    customerStatusActivation: customerStatusActivation.status,
+    customerStatusApproval: customerStatusApproval.status,
+    livePreflight: preflight.status,
+  };
+
+  const blockers = [
+    ...new Set([
+      ...(preflight.missing || []),
+      ...(productFilter.blockers || []),
+      ...(liveSmokePlan.liveExecutionBlockers || []),
+      ...(paymentStatusPacket.blockers || []),
+      ...(callbackPersistence.blockers || []),
+      ...(customerStatusApproval.blockers || []),
+      ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
+      ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? [] : ['[MISSING: customer status activation gate is not ready]']),
+      ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
+    ].filter((item) => !String(item).startsWith('[DONE:'))),
+  ];
+
+  const satisfiedEvidence = [
+    ...(productFilter.approvedCliplotSkuScope === true ? ['[DONE: owner-approved Cliplot SKU scope is recorded]'] : []),
+    ...(orderWarehouse.status === 'validated_no_mutation' ? ['[DONE: order/Warehouse readiness validated with no mutation]'] : []),
+    ...(liveSmokePlan.status === 'approved_live_order_warehouse_smoke_metadata_execution_disabled' ? ['[DONE: live Orders/Warehouse smoke metadata approved with execution disabled]'] : []),
+    ...(paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' ? ['[DONE: payment status runtime read is approved and no-persistence]'] : []),
+    ...(callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? ['[DONE: callback replay policy metadata approved with execution disabled]'] : []),
+    ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),
+  ];
+
+  const readyForLiveMutation = preflight.status === 'ready_for_approved_live_mutation'
+    && preflight.wouldMutate === true
+    && productFilter.approvedCliplotSkuScope === true
+    && orderWarehouse.status === 'validated_no_mutation'
+    && paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read'
+    && callbackPersistence.callbackPersistence === false
+    && callbackPersistence.callbackReplayEnabled === false
+    && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
+    && blockers.length === 0;
+
   return {
     success: true,
-    status: preflight.status === 'blocked' ? 'approval_required' : 'ready_for_owner_review',
+    status: readyForLiveMutation ? 'ready_for_owner_live_checkout_execution' : 'approval_required_live_checkout_execution',
+    mode: 'read_only_live_checkout_approval_packet',
     generatedAt: new Date().toISOString(),
     mutation: false,
     providerCall: false,
     persistence: false,
+    wouldMutateNow: preflight.wouldMutate === true,
     service: serviceConfig.serviceName,
     host: 'https://cliplot.alfares.cz',
     catalog: {
-      status: readiness.integrations.catalog,
-      catalogSource,
-      productCount: products.length,
-      warehouseBackedProductCount: warehouseBackedProducts.length,
-      sampleProduct: warehouseBackedProducts[0]
-        ? {
-            id: warehouseBackedProducts[0].id,
-            productSource: warehouseBackedProducts[0].productSource,
-            warehouseId: warehouseBackedProducts[0].warehouseId,
-            warehouseType: warehouseBackedProducts[0].warehouseType,
-            availableStock: warehouseBackedProducts[0].availableStock,
-          }
-        : null,
+      status: productFilter.status,
+      catalogSource: productFilter.catalogSource,
+      productCount: productFilter.productCount,
+      warehouseBackedProductCount: productFilter.warehouseBackedProductCount,
+      approvedCliplotSkuScope: productFilter.approvedCliplotSkuScope,
+      selectionMode: productFilter.selectionMode,
+      sampleProduct: productFilter.sampleProduct || null,
     },
     liveCheckoutPreflight: preflight,
-    liveOrderWarehouseSmokePlan: await liveOrderWarehouseSmokePlan(),
+    liveOrderWarehouseSmokePlan: {
+      status: liveSmokePlan.status,
+      liveExecutionAllowed: liveSmokePlan.liveExecutionAllowed,
+      blockerCount: liveSmokePlan.liveExecutionBlockers?.length || 0,
+      stepCount: liveSmokePlan.plan?.steps?.length || 0,
+    },
     validation: preflight.validation,
     integrations: readiness.integrations,
+    readinessEvidence,
+    paymentBoundary: {
+      statusReadiness: paymentStatusPacket.status,
+      callbackReplayPolicy: callbackPolicy.status,
+      callbackPersistence: callbackPersistence.status,
+      callbackPersistenceEnabled: callbackPersistence.callbackPersistence,
+      callbackReplayEnabled: callbackPersistence.callbackReplayEnabled,
+      livePaymentCreate: serviceConfig.livePaymentCreate,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      forbiddenEndpoint: '/payments/{paymentId}',
+    },
+    notificationBoundary: {
+      validation: readiness.integrations.notificationValidation,
+      liveSend: readiness.integrations.notifications,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    customerStatus: {
+      activation: customerStatusActivation.status,
+      approvalEvidence: customerStatusApproval.status,
+      runtimeReadEnabled: customerStatusApproval.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: customerStatusApproval.paymentsSnapshotReadEnabled,
+      storageRead: customerStatusApproval.storageRead,
+      callbackPersistence: customerStatusApproval.callbackPersistence,
+    },
     auth: {
       status: auth.status,
       missing: auth.missing,
@@ -4344,6 +4423,7 @@ export async function liveCheckoutApprovalPacket() {
       'CATALOG_INTERNAL_SERVICE_TOKEN',
       'ORDERS_SERVICE_TOKEN',
       'WAREHOUSE_SERVICE_TOKEN',
+      'ORDERS_STATUS_SERVICE_TOKEN',
       'NOTIFICATIONS_SERVICE_TOKEN',
       'PAYMENT_API_KEY',
       'PAYMENT_WEBHOOK_API_KEY',
@@ -4352,12 +4432,40 @@ export async function liveCheckoutApprovalPacket() {
       'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
       'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
       'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+      'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
     ],
-    missing: preflight.missing,
-    next: 'Owner approval must provide approved live order/Warehouse, payment, and notification evidence before enabling live flags or approval IDs.',
+    mustRemainFalseUntilApproved: [
+      'ENABLE_LIVE_ORDER_SUBMIT',
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'ENABLE_LIVE_NOTIFICATIONS',
+      'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+      'callbackPersistence',
+      'callbackReplayEnabled',
+      'Cliplot-local callback storage writes',
+      'provider-backed /payments/{paymentId} reads',
+    ],
+    forbiddenOperations: [
+      'create order',
+      'reserve Warehouse stock',
+      'create payment',
+      'send notification',
+      'persist callback state',
+      'replay callback into storage',
+      'update order status',
+      'update payment status',
+      'read /payments/{paymentId}',
+      'call payment provider',
+      'print API keys or webhook keys',
+      'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
+    ],
+    satisfiedEvidence,
+    missing: blockers,
+    blockerCount: blockers.length,
+    next: readyForLiveMutation
+      ? 'Owner must execute the approved live checkout runbook; this packet itself remains read-only.'
+      : 'Resolve the listed live checkout approvals, smoke execution flag/window, callback persistence, replay, and live write blockers before enabling live checkout mutation.',
   };
 }
-
 
 export async function revenueClosurePacket() {
   const approvalPacket = await liveCheckoutApprovalPacket();
@@ -4413,6 +4521,35 @@ export async function revenueClosurePacket() {
     && callbackPolicy.callbackPersistence === false
     && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
     && blockers.length === 0;
+
+  const blockerClassification = {
+    mode: 'read_only_blocker_classification',
+    metadataPacketEligible: [
+      'callback persistence storage backend proposal',
+      'callback persistence rollout plan',
+      'callback replay dry-run procedure',
+      'operator rollback procedure for persisted callback/status writes',
+      'validation owner checklist',
+    ],
+    requiresOwnerLiveMutationApproval: [
+      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
+      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+      'ENABLE_LIVE_ORDER_SUBMIT=true',
+      'ENABLE_LIVE_PAYMENT_CREATE=true',
+      'ENABLE_LIVE_NOTIFICATIONS=true',
+      'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true',
+      'CREATE_REPLAY_CANCEL live smoke executor run',
+      'callback persistence enablement',
+      'callback replay execution enablement',
+      'live order/payment status writes',
+    ],
+    currentPacketMayMutate: false,
+    currentPacketMayPersist: false,
+    currentPacketMayCallProvider: false,
+    currentPacketMaySendNotification: false,
+    classificationOnly: true,
+  };
 
   return {
     success: true,
@@ -4501,6 +4638,7 @@ export async function revenueClosurePacket() {
       payloadFingerprint: liveSmokePlan.plan?.payloadPreview?.fingerprintSha256 || null,
       stepCount: liveSmokePlan.plan?.steps?.length || 0,
     },
+    blockerClassification,
     forbiddenOperations: [
       'create order',
       'create payment',

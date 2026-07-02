@@ -179,10 +179,14 @@ npm run readiness:approval -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/checkout/approval-packet
 ```
 
-The packet must report `mutation=false`, `providerCall=false`,
-`persistence=false`, `catalogSource=catalog`, at least one Warehouse-backed
-product, blocked live preflight, and the exact approval ID names still missing.
-It must never print secret values.
+The packet must report `approval_required_live_checkout_execution`,
+`mutation=false`, `providerCall=false`, `persistence=false`,
+`catalogSource=catalog`, at least one Warehouse-backed product, blocked live
+preflight, and the exact approval ID names still missing. It aggregates
+Catalog/SKU scope, Orders/Warehouse no-mutation readiness, live smoke metadata,
+payment status runtime-read evidence, callback persistence blockers,
+read-only customer status evidence, and live preflight state. It must never
+print secret values.
 
 ## Product Filter Readiness
 
@@ -204,7 +208,9 @@ curl -s https://cliplot.alfares.cz/api/checkout/revenue-closure-packet
 The packet aggregates live checkout approval, product-filter scope, order and
 Warehouse readiness, live smoke planning, payment status/storage/decision/mapping
 evidence, callback replay policy, and approved read-only customer status
-evidence. Current production must return
+evidence. It also classifies blockers into metadata-packet-eligible readiness
+work versus items that require true owner live mutation approval, while keeping
+the classification itself read-only. Current production must return
 `approval_required_live_revenue_closure`, `wouldMutateNow=false`,
 `mutation=false`, `persistence=false`, and `providerCall=false` until the live
 approval IDs, product scope, live Orders/Warehouse smoke, payment, and

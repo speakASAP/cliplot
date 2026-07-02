@@ -30,6 +30,7 @@ assert(packet.mutation === false, 'revenue closure reported mutation', packet);
 assert(packet.persistence === false, 'revenue closure reported persistence', packet);
 assert(packet.providerCall === false, 'revenue closure reported provider call', packet);
 assert(packet.wouldMutateNow === false, 'revenue closure would mutate before approvals', packet);
+assert(packet.approvalPacket?.status === 'approval_required_live_checkout_execution', 'approval packet aggregation status missing', packet.approvalPacket || {});
 assert(packet.liveCheckoutPreflight?.status === 'blocked', 'live preflight should remain blocked', packet);
 assert(packet.liveCheckoutPreflight?.wouldMutate === false, 'live preflight would mutate', packet);
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, 'live preflight would create order', packet);
@@ -56,6 +57,14 @@ assert(packet.customerStatus?.runtimeReadEnabled === true, 'read-only customer s
 assert(packet.customerStatus?.storageRead === false, 'customer status storage read enabled', packet);
 assert(['approval_required', 'approved_live_order_warehouse_smoke_metadata_execution_disabled'].includes(packet.liveSmokePlan?.status), 'live smoke plan should remain approval-required or metadata-approved execution-disabled', packet);
 assert(packet.liveSmokePlan?.liveExecutionAllowed === false, 'live smoke execution unexpectedly allowed', packet);
+assert(packet.blockerClassification?.mode === 'read_only_blocker_classification', 'blocker classification missing', packet.blockerClassification || {});
+assert(packet.blockerClassification?.classificationOnly === true, 'blocker classification is not metadata-only', packet.blockerClassification || {});
+assert(packet.blockerClassification?.currentPacketMayMutate === false, 'blocker classification would mutate', packet.blockerClassification || {});
+assert(packet.blockerClassification?.currentPacketMayPersist === false, 'blocker classification would persist', packet.blockerClassification || {});
+assert(packet.blockerClassification?.currentPacketMayCallProvider === false, 'blocker classification would call provider', packet.blockerClassification || {});
+assert(packet.blockerClassification?.metadataPacketEligible?.includes('callback persistence storage backend proposal'), 'metadata-eligible callback storage proposal missing', packet.blockerClassification || {});
+assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('ENABLE_LIVE_ORDER_SUBMIT=true'), 'live order mutation approval classifier missing', packet.blockerClassification || {});
+assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('CREATE_REPLAY_CANCEL live smoke executor run'), 'live smoke execution classifier missing', packet.blockerClassification || {});
 assert(Array.isArray(packet.forbiddenOperations) && packet.forbiddenOperations.includes('create payment'), 'forbidden payment operation missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length > 0, 'revenue closure blockers missing', packet);
 
@@ -73,6 +82,7 @@ console.log(JSON.stringify({
   callbackPolicy: packet.callbackPolicy.status,
   customerStatusActivation: packet.customerStatus.activation,
   liveSmokePlan: packet.liveSmokePlan.status,
+  blockerClassification: packet.blockerClassification.mode,
   blockerCount: packet.blockers.length,
   mutation: packet.mutation,
   persistence: packet.persistence,

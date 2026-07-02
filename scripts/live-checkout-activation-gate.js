@@ -24,7 +24,9 @@ assert(preflight.mutationPlan?.wouldCreatePayment === false, 'live activation wo
 assert(preflight.mutationPlan?.wouldSendNotification === false, 'live activation would send notification in guarded deployment', preflight);
 assert(preflight.liveFlags?.order === false && preflight.liveFlags?.payment === false && preflight.liveFlags?.notification === false, 'live flags are not all false', preflight.liveFlags || {});
 assert(preflight.approvals?.order === false && preflight.approvals?.payment === false && preflight.approvals?.notification === false, 'approval IDs are unexpectedly present', preflight.approvals || {});
-assert(Array.isArray(packet.requiredApprovalIds) && packet.requiredApprovalIds.length === 3, 'approval ID names are missing', packet);
+assert(Array.isArray(packet.requiredApprovalIds) && packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_APPROVAL_ID'), 'order approval ID name is missing', packet);
+assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_PAYMENT_APPROVAL_ID'), 'payment approval ID name is missing', packet);
+assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID'), 'notification approval ID name is missing', packet);
 assert(Array.isArray(packet.missing) && packet.missing.length >= 3, 'activation blockers are missing', packet);
 
 
