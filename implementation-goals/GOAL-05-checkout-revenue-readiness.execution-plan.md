@@ -59,6 +59,7 @@ no-send notification payload validation.
 | Order validation lane | done | main orchestrator | Orders validate endpoint and Cliplot checkout order validation | checkout returned `orderValidation.status=validated_no_mutation` with Warehouse `warehouseId` in `orderPreview.items[0]` |
 | Payment validation lane | done | main orchestrator | Cliplot checkout/payment code and payments validate endpoint | checkout returned `paymentValidation.status=validated_no_mutation` |
 | Notification validation lane | done | main orchestrator | Cliplot checkout notification code and notifications validate endpoint | checkout returned `notificationValidation.status=validated_no_send` |
+| Guarded checkout intent and smoke lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke preserves `externalOrderId` and proves no-mutation/no-send statuses |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
@@ -85,3 +86,18 @@ CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 Default values are empty. Guarded checkout must keep returning
 `service_identity_required` with approval blockers until approved live mutation
 evidence exists.
+
+
+## Guarded Checkout Intent Lane
+
+Status: deployed and validated in guarded mode.
+
+The storefront now creates a stable cart-scoped checkout intent and passes it
+as `externalOrderId` to `/api/checkout/submit`. Cliplot normalizes that ID,
+derives order/payment/notification idempotency keys from it, returns the
+non-secret checkout intent evidence in guarded responses, and validates the
+public path with `scripts/guarded-checkout-smoke.js`.
+
+This lane does not enable live order, payment, warehouse, or notification
+mutation. It reduces duplicate-submit risk before the approval-gated live
+checkout lane.

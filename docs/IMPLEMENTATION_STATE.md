@@ -92,6 +92,20 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `orderPreview.items[0]`, and kept `orderValidation.status=validated_no_mutation`,
   `orderCreated=false`, `warehouseMutation=false`, and `eventPublished=false`.
 
+- GOAL-05 guarded checkout intent lane deployed as
+  `localhost:5000/cliplot-service:07a3bfe`. Frontend checkout now sends a
+  stable cart-scoped `externalOrderId`; backend normalizes that ID, derives
+  order/payment/notification idempotency keys from it, and returns non-secret
+  checkout intent evidence in guarded responses. Buyer-facing checkout copy no
+  longer exposes Vault/Orders/provider blocker language. Public
+  `npm run smoke:checkout -- https://cliplot.alfares.cz` returned HTTP `202`,
+  preserved `externalOrderId=cliplot-smoke-1782964759958`, kept
+  `status=service_identity_required`, and verified
+  `orderValidation=validated_no_mutation`,
+  `paymentValidation=validated_no_mutation`,
+  `notificationValidation=validated_no_send`,
+  `warehouseReservationReadiness=validated_no_mutation`, and `mutation=false`.
+
 ## Active Goal: GOAL-05-checkout-revenue-readiness
 
 ### Objective

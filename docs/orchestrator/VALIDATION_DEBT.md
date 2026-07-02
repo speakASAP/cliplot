@@ -179,3 +179,19 @@ availabilityUnchanged=true
 Resolution target: resolved for no-mutation readiness. Live order-create and
 Warehouse reservation execution evidence remains intentionally blocked until
 approved live mutation validation exists.
+
+
+Guarded checkout intent smoke evidence:
+
+```text
+cliplot-service commit=07a3bfe
+npm run smoke:checkout -- https://cliplot.alfares.cz
+checkoutHttpStatus=202
+checkoutStatus=service_identity_required
+externalOrderId preserved
+orderValidation=validated_no_mutation
+paymentValidation=validated_no_mutation
+notificationValidation=validated_no_send
+warehouseReservationReadiness=validated_no_mutation
+mutation=false
+```

@@ -110,3 +110,17 @@ CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 The default deployed values are empty strings. Empty approval IDs intentionally
 keep `/api/checkout/submit` in `service_identity_required` guarded mode even if
 shared-service validation succeeds.
+
+
+## Guarded Checkout Smoke
+
+After a Cliplot checkout deploy, run:
+
+```bash
+npm run smoke:checkout -- https://cliplot.alfares.cz
+```
+
+The smoke must return `ok=true`, HTTP `202`, `status=service_identity_required`,
+preserved `checkoutIntent.externalOrderId`, order/payment/Warehouse
+`validated_no_mutation`, notification `validated_no_send`, and `mutation=false`.
+This script is safe while live mutation approvals remain absent.
