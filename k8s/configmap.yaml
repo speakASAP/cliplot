@@ -34,7 +34,7 @@ data:
   CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: ""
   CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID: "owner-approved-2026-07-02-live-order-warehouse-smoke-metadata"
   CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_CLEANUP_APPROVAL_ID: "owner-approved-2026-07-02-live-order-warehouse-smoke-cleanup"
-  CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_WINDOW: "owner-approved-window-required-before-enabling-flag"
+  CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_WINDOW: "owner-approved-2026-07-03T00:45:00+02:00..2026-07-03T01:15:00+02:00-create-replay-cancel-only"
   CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_ROLLBACK_OWNER: "cliplot-operator"
   CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_VALIDATION_OWNER: "cliplot-validation-owner"
   ENABLE_CUSTOMER_STATUS_RUNTIME_READ: "true"
