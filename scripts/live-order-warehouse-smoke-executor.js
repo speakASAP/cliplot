@@ -42,7 +42,7 @@ assert(payload.approvalRequired?.payment === false, 'payment should remain outsi
 assert(payload.approvalRequired?.notification === false, 'notification should remain outside this smoke executor', payload);
 assert(Array.isArray(payload.blockers) && payload.blockers.includes('live_order_warehouse_smoke_flag_disabled'), 'disabled flag blocker missing', payload);
 assert(Array.isArray(payload.blockers) && payload.blockers.includes('invalid_or_missing_smoke_approval_id'), 'approval blocker missing', payload);
-assert(Array.isArray(payload.blockers) && payload.blockers.includes('missing_ORDERS_STATUS_SERVICE_TOKEN'), 'Orders status token blocker missing', payload);
+assert(Array.isArray(payload.blockers) && !payload.blockers.includes('missing_ORDERS_STATUS_SERVICE_TOKEN'), 'Orders status token should be projected after status-smoke provisioning', payload);
 assert(payload.plan?.status === 'approval_required', 'executor did not include the read-only smoke plan', payload);
 assert(payload.plan?.mutation === false, 'embedded plan reports mutation', payload.plan || {});
 assert(payload.plan?.liveExecutionAllowed === false, 'embedded plan unexpectedly allows execution', payload.plan || {});
