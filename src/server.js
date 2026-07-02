@@ -9,6 +9,7 @@ import {
   handlePaymentCallback,
   liveCheckoutApprovalPacket,
   liveCheckoutPreflight,
+  liveOrderWarehouseSmokePlan,
   orderWarehouseReadinessReport,
   paymentStatus,
   serviceReadiness,
@@ -130,6 +131,22 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-smoke-plan' && req.method === 'GET') {
+      sendJson(res, 200, await liveOrderWarehouseSmokePlan());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-smoke-plan') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
 
     if (url.pathname === '/api/checkout/order-warehouse-readiness' && req.method === 'GET') {
       sendJson(res, 200, await orderWarehouseReadinessReport());

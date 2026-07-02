@@ -7,13 +7,14 @@
   "scripts": {
     "start": "node src/server.js",
     "build": "node --check src/server.js && node --check src/integrations.js && node scripts/verify-static-assets.js",
-    "check": "node --check src/server.js && node --check src/integrations.js && node --check public/app.js && node --check scripts/verify-static-assets.js && node --check scripts/guarded-checkout-smoke.js && node --check scripts/k8s-readiness-probe.js && node --check scripts/live-checkout-approval-packet.js && node --check scripts/live-checkout-activation-gate.js && node --check scripts/order-warehouse-readiness-report.js",
+    "check": "node --check src/server.js && node --check src/integrations.js && node --check public/app.js && node --check scripts/verify-static-assets.js && node --check scripts/guarded-checkout-smoke.js && node --check scripts/k8s-readiness-probe.js && node --check scripts/live-checkout-approval-packet.js && node --check scripts/live-checkout-activation-gate.js && node --check scripts/order-warehouse-readiness-report.js && node --check scripts/live-order-warehouse-smoke-plan.js",
     "smoke:checkout": "node scripts/guarded-checkout-smoke.js",
     "readiness:bundle": "bash scripts/readiness_bundle.sh",
     "readiness:k8s": "node scripts/k8s-readiness-probe.js",
     "readiness:approval": "node scripts/live-checkout-approval-packet.js",
     "readiness:activation": "node scripts/live-checkout-activation-gate.js",
-    "readiness:order-warehouse": "node scripts/order-warehouse-readiness-report.js"
+    "readiness:order-warehouse": "node scripts/order-warehouse-readiness-report.js",
+    "readiness:live-smoke-plan": "node scripts/live-order-warehouse-smoke-plan.js"
   },
   "engines": {
     "node": ">=20"

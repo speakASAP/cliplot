@@ -146,6 +146,17 @@ deployment. If a future partial configuration sets only some flags or approval
 IDs, `/api/checkout/live-preflight` must remain blocked and `submitCheckout`
 must stay in guarded validation mode.
 
+## Live Orders/Warehouse Smoke Plan
+
+Before requesting owner approval for live order mutation, generate the read-only smoke plan:
+
+```bash
+npm run readiness:live-smoke-plan -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-smoke-plan
+```
+
+The plan must report `liveExecutionAllowed=false`, list approval blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It is not permission to execute the live smoke.
+
 ## Live Checkout Approval Packet
 
 Before enabling any live checkout flag or approval ID, generate the read-only

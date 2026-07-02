@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 const requestTimeoutMs = Number(process.env.SERVICE_REQUEST_TIMEOUT_MS || 2200);
 const orderIdPrefix = process.env.CLIPLOT_ORDER_ID_PREFIX || 'cliplot';
@@ -1219,6 +1219,302 @@ export async function orderWarehouseReadinessReport() {
 }
 
 
+function stableFingerprint(value) {
+  return createHash('sha256')
+    .update(JSON.stringify(value))
+    .digest('hex');
+}
+
+function liveSmokePayloadPreview(readiness) {
+  const order = readiness.orderCreateContract || {};
+  const preview = {
+    contractVersion: order.contractVersion,
+    channel: order.channel,
+    channelAccountId: order.channelAccountId,
+    externalOrderId: order.externalOrderId,
+    itemCount: order.itemCount,
+    warehouseIds: order.warehouseIds || [],
+    total: order.total,
+    currency: order.currency,
+    customer: {
+      name: 'Synthetic Cliplot Smoke',
+      email: 'synthetic-smoke@cliplot.invalid',
+      piiPolicy: 'synthetic_only',
+    },
+  };
+  return {
+    ...preview,
+    fingerprintSha256: stableFingerprint(preview),
+  };
+}
+
+function liveOrderWarehouseSmokeSteps(readiness) {
+  const order = readiness.orderCreateContract || {};
+  const warehouse = readiness.warehouseReadinessContract || {};
+  const externalOrderId = order.externalOrderId || readiness.checkoutIntent?.externalOrderId;
+  return [
+    {
+      sequence: 1,
+      name: 'before_availability_snapshot',
+      method: 'POST',
+      endpoint: warehouse.endpoint || '/api/stock/availability/batch',
+      expected: 'HTTP 200, selected warehouse available >= checkout quantity, no mutation',
+      evidence: [
+        'productId',
+        'warehouseId',
+        'totalAvailable',
+        'totalReserved',
+        'warehouses[0].available',
+        'warehouses[0].reserved',
+      ],
+    },
+    {
+      sequence: 2,
+      name: 'approved_order_create',
+      method: 'POST',
+      endpoint: serviceConfig.ordersCreatePath,
+      gatedBy: [
+        'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
+        'ENABLE_LIVE_ORDER_SUBMIT=true',
+        'ORDERS_SERVICE_TOKEN',
+        'WAREHOUSE_SERVICE_TOKEN',
+      ],
+      headers: {
+        'x-service-name': serviceConfig.serviceName,
+        'idempotency-key': readiness.checkoutIntent?.idempotencyKeys?.orderCreate || null,
+      },
+      payload: {
+        contractVersion: order.contractVersion,
+        channel: order.channel,
+        channelAccountId: order.channelAccountId,
+        externalOrderId,
+        itemCount: order.itemCount,
+        warehouseIds: order.warehouseIds || [],
+        total: order.total,
+        currency: order.currency,
+      },
+      expected: 'HTTP 201, order persisted once, Warehouse handoff status reserved, stock reservation created',
+      evidence: [
+        'order.id',
+        'order.status',
+        'order.externalOrderId',
+        'order.warehouseHandoff.status=reserved',
+        'order.items[].warehouseId',
+      ],
+    },
+    {
+      sequence: 3,
+      name: 'idempotent_order_replay',
+      method: 'POST',
+      endpoint: serviceConfig.ordersCreatePath,
+      headers: {
+        'x-service-name': serviceConfig.serviceName,
+        'idempotency-key': readiness.checkoutIntent?.idempotencyKeys?.orderCreate || null,
+      },
+      expected: 'Replay returns the same existing order without a second Warehouse reservation or duplicate event',
+      evidence: [
+        'same order.id',
+        'same externalOrderId',
+        'Warehouse reserved quantity unchanged after replay',
+      ],
+    },
+    {
+      sequence: 4,
+      name: 'approved_order_cancel_release',
+      method: 'PUT',
+      endpoint: '/api/orders/{orderId}/status',
+      gatedBy: [
+        'owner approval for cleanup status transition',
+        'Orders status transition auth',
+      ],
+      payload: {
+        status: 'cancelled',
+        approval: {
+          reason: 'owner_approved_cliplot_live_order_warehouse_smoke_cleanup',
+          externalOrderId,
+        },
+      },
+      expected: 'Order status becomes cancelled and Warehouse reservation is cancelled/released through Orders, not by direct stock mutation',
+      evidence: [
+        'order.status=cancelled',
+        'order.warehouseHandoff.status=cancelled',
+        'Warehouse reservation status cancelled',
+      ],
+    },
+    {
+      sequence: 5,
+      name: 'after_availability_snapshot',
+      method: 'POST',
+      endpoint: warehouse.endpoint || '/api/stock/availability/batch',
+      expected: 'Availability/reserved counts return to the before snapshot for the selected product and warehouse',
+      evidence: [
+        'same productId',
+        'same warehouseId',
+        'totalReserved equals before snapshot',
+        'warehouses[0].reserved equals before snapshot',
+      ],
+    },
+  ];
+}
+
+export async function liveOrderWarehouseSmokePlan() {
+  const readiness = await orderWarehouseReadinessReport();
+  const preflight = liveCheckoutPreflight();
+  const approvals = liveMutationApprovals();
+  const readyForPlanning = readiness.status === 'validated_no_mutation'
+    && readiness.mutation === false
+    && readiness.orderValidation?.status === 'validated_no_mutation'
+    && readiness.warehouseReservationReadiness?.status === 'validated_no_mutation'
+    && preflight.status === 'blocked'
+    && preflight.wouldMutate === false;
+
+  return {
+    success: true,
+    status: readyForPlanning ? 'approval_required' : 'blocked',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    providerCall: false,
+    persistence: false,
+    liveExecutionAllowed: false,
+    liveExecutionBlockers: [
+      '[MISSING: explicit owner approval for live Orders/Warehouse create-replay-cancel smoke]',
+      '[MISSING: deterministic cleanup approval for Orders cancel -> Warehouse reservation release]',
+      '[MISSING: operator-selected smoke window and rollback owner]',
+      ...preflight.missing,
+    ],
+    approvalRequired: {
+      owner: true,
+      orderCreate: true,
+      replay: true,
+      cancelCleanup: true,
+      warehouseReservation: true,
+      payment: false,
+      notification: false,
+    },
+    approvalIds: {
+      order: 'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
+      payment: 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+      notification: 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+    },
+    requiredApprovalIds: [
+      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
+      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+    ],
+    approvals,
+    noPaymentNotificationBoundary: {
+      paymentCreateAllowed: false,
+      notificationSendAllowed: false,
+      note: 'This smoke plan is Orders/Warehouse-only. Payment creation and notification send remain outside scope until separately approved.',
+    },
+    liveCheckoutPreflight: preflight,
+    readiness,
+    plan: {
+      objective: 'Prove one approved Cliplot live order can create exactly one Orders record, reserve Warehouse stock, replay idempotently, and clean up through Orders cancellation.',
+      scope: 'Dedicated Orders/Warehouse smoke planning only; this endpoint/script does not execute the plan and does not use normal Cliplot checkout submit.',
+      allowedMutationWindow: '[MISSING: owner-approved time window]',
+      rollbackOwner: '[MISSING: named rollback owner]',
+      scopeEvidence: {
+        channel: readiness.orderCreateContract?.channel || serviceConfig.orderChannel,
+        channelAccountId: readiness.orderCreateContract?.channelAccountId || serviceConfig.channelAccountId,
+        externalOrderIdPattern: 'cliplot-readiness-* or owner-approved cliplot-live-smoke-*',
+        productId: readiness.catalog?.sampleProduct?.id || null,
+        warehouseId: readiness.catalog?.sampleProduct?.warehouseId || null,
+        quantity: 1,
+        maxQuantity: 1,
+      },
+      endpoints: {
+        validateCreate: serviceConfig.ordersValidateCreatePath,
+        createOrder: serviceConfig.ordersCreatePath,
+        replayOrder: serviceConfig.ordersCreatePath,
+        cancelOrderThroughOrders: '/api/orders/{orderId}/status',
+        warehouseAvailability: readiness.warehouseReadinessContract?.endpoint || '/api/stock/availability/batch',
+        warehouseReservationReadback: '/api/reservations/order/{orderId}',
+        orderReadback: '/api/orders/{orderId}',
+      },
+      headersRequired: {
+        orders: ['x-internal-service-token:<redacted>', 'x-service-name:cliplot', 'idempotency-key:<redacted deterministic key>'],
+        warehouseReadOnly: ['Authorization: Bearer <redacted>', 'Content-Type: application/json'],
+      },
+      payloadPreview: liveSmokePayloadPreview(readiness),
+      expectedOutcomes: {
+        create: 'HTTP 201, one order row, one Warehouse reservation, warehouseHandoff.status=reserved',
+        replay: 'same order id and unchanged reservation count/quantity',
+        cancel: 'Orders status cancelled and Warehouse reservation cancelled through Orders cleanup',
+        conflict: 'same idempotency key with changed payload should be rejected with 409 only if separately approved',
+      },
+      beforeEvidenceChecklist: [
+        'order/Warehouse readiness status validated_no_mutation',
+        'live preflight blocked and wouldReserveWarehouse=false',
+        'Orders validate-create valid=true, mutation=false, idempotencyStatus=available',
+        'Warehouse availability selected product/warehouse available >= 1',
+        'Warehouse reservation readback for planned external order has no active reservation',
+      ],
+      afterCreateEvidenceChecklist: [
+        'Orders create status and order id',
+        'warehouseHandoff.status=reserved',
+        'Warehouse reservation readback has exactly one active reservation for product/warehouse/channel',
+        'Warehouse availability reserved increased by quantity and available decreased by quantity',
+      ],
+      afterReplayEvidenceChecklist: [
+        'same Orders order id',
+        'no duplicate reservation',
+        'reserved/available values unchanged from after-create snapshot',
+      ],
+      afterCancelEvidenceChecklist: [
+        'Orders readback status=cancelled',
+        'warehouseHandoff.status=cancelled',
+        'Warehouse reservation status=cancelled',
+        'Warehouse availability restored to before snapshot',
+      ],
+      stopConditions: [
+        'missing owner approval',
+        'missing service token',
+        'readiness not validated_no_mutation',
+        'insufficient Warehouse availability',
+        'pre-existing active reservation for planned order id',
+        'replay returns a different order id',
+        'cancellation fails',
+        'Warehouse availability not restored after cleanup',
+      ],
+      rollbackCleanup: {
+        method: 'PUT',
+        endpoint: '/api/orders/{orderId}/status',
+        throughOrdersOnly: true,
+        body: {
+          status: 'cancelled',
+          approval: {
+            approved: true,
+            approvalType: 'human',
+            approvedBy: '<owner-or-operator-id>',
+            reasonCode: 'CLIPLOT_OWNER_SMOKE_CANCEL',
+            sideEffectsHandled: {
+              payment: true,
+              warehouse: true,
+              notification: true,
+              crm: true,
+              channel: true,
+            },
+          },
+        },
+      },
+      sensitiveDataPolicy: [
+        'no raw tokens',
+        'no decoded JWTs',
+        'synthetic customer data only',
+        'no production customer order data',
+      ],
+      sampleExternalOrderId: readiness.orderCreateContract?.externalOrderId || readiness.checkoutIntent?.externalOrderId || null,
+      productId: readiness.catalog?.sampleProduct?.id || null,
+      warehouseId: readiness.catalog?.sampleProduct?.warehouseId || null,
+      steps: liveOrderWarehouseSmokeSteps(readiness),
+    },
+    next: 'Owner approval must explicitly authorize the live create, idempotent replay, and cancel/release cleanup before any mutation endpoint is called.',
+  };
+}
+
+
 export async function liveCheckoutApprovalPacket() {
   const products = await fetchCatalogProducts();
   const catalogSource = productCatalogSource(products);
@@ -1252,6 +1548,7 @@ export async function liveCheckoutApprovalPacket() {
         : null,
     },
     liveCheckoutPreflight: preflight,
+    liveOrderWarehouseSmokePlan: await liveOrderWarehouseSmokePlan(),
     validation: preflight.validation,
     integrations: readiness.integrations,
     auth: {
