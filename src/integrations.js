@@ -848,6 +848,9 @@ async function guardedPaymentValidation(checkout, paymentPayload) {
   }
 }
 
+let paymentReadScopeReadinessCache = null;
+const paymentReadScopeReadinessCacheTtlMs = 45_000;
+
 async function validatePaymentReadScope() {
   const url = new URL('/payments/status/by-order-id', serviceConfig.paymentUrl);
   url.searchParams.set('applicationId', serviceConfig.applicationId);
@@ -879,6 +882,19 @@ async function validatePaymentReadScope() {
 }
 
 export async function paymentReadScopeReadiness() {
+  const now = Date.now();
+  if (paymentReadScopeReadinessCache && paymentReadScopeReadinessCache.expiresAt > now) {
+    return {
+      ...paymentReadScopeReadinessCache.payload,
+      generatedAt: new Date().toISOString(),
+      cache: {
+        status: 'hit',
+        ttlMs: paymentReadScopeReadinessCache.expiresAt - now,
+        purpose: 'avoid_duplicate_payments_scope_probe_rate_limit',
+      },
+    };
+  }
+
   if (!serviceConfig.paymentApiKey) {
     return {
       success: true,
@@ -907,7 +923,7 @@ export async function paymentReadScopeReadiness() {
     const evidence = await validatePaymentReadScope();
     const errorCode = evidence.payload?.error?.code || evidence.payload?.code || evidence.payload?.error || null;
     const scopeValidated = evidence.httpStatus === 404 && ['PAYMENT_STATUS_SNAPSHOT_NOT_FOUND', 'Not Found'].includes(String(errorCode));
-    return {
+    const result = {
       success: true,
       status: scopeValidated ? 'validated_payments_read_scope_no_mutation' : 'blocked_payments_read_scope_not_validated',
       mode: 'guarded_payment_read_scope_readiness',
@@ -926,6 +942,11 @@ export async function paymentReadScopeReadiness() {
       persistence: false,
       providerCall: false,
       databaseRead: true,
+      cache: {
+        status: 'miss',
+        ttlMs: paymentReadScopeReadinessCacheTtlMs,
+        purpose: 'avoid_duplicate_payments_scope_probe_rate_limit',
+      },
       blockers: scopeValidated
         ? []
         : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]'],
@@ -934,6 +955,13 @@ export async function paymentReadScopeReadiness() {
         ? 'Owner approval is still required before Cliplot enables passive Payments snapshot reads.'
         : 'Fix PAYMENT_API_KEY scope or Payments route availability before enabling passive status reads.',
     };
+    if (scopeValidated) {
+      paymentReadScopeReadinessCache = {
+        expiresAt: Date.now() + paymentReadScopeReadinessCacheTtlMs,
+        payload: result,
+      };
+    }
+    return result;
   } catch (error) {
     return {
       success: true,
