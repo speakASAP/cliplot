@@ -113,8 +113,8 @@ async function main() {
 
   const paymentStatusStorage = await getJson('/api/payments/status-storage-readiness');
   assertEqual(paymentStatusStorage.body?.status, 'approved_payment_status_storage_metadata_execution_disabled', 'payment_status_storage_readiness_unexpected', { paymentStatusStorage: paymentStatusStorage.body });
-  assertEqual(paymentStatusStorage.body?.callbackPersistence, false, 'payment_status_storage_callback_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
-  assertEqual(paymentStatusStorage.body?.currentStatusPersistence, false, 'payment_status_storage_current_status_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
+  assertEqual(paymentStatusStorage.body?.callbackContract?.currentPersistence, false, 'payment_status_storage_callback_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
+  assertEqual(paymentStatusStorage.body?.readContract?.currentPersistence, false, 'payment_status_storage_current_status_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
   assertFalse(paymentStatusStorage.body?.mutation, 'payment_status_storage_readiness_mutation_enabled', { paymentStatusStorage: paymentStatusStorage.body });
   assertFalse(paymentStatusStorage.body?.persistence, 'payment_status_storage_readiness_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
   assertFalse(paymentStatusStorage.body?.providerCall, 'payment_status_storage_readiness_provider_call_enabled', { paymentStatusStorage: paymentStatusStorage.body });
