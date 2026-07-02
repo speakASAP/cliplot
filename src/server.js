@@ -81,7 +81,7 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/health' || url.pathname === '/ready') {
       sendJson(res, 200, {
         status: 'ok',
-        service: 'cliplot-service',
+        service: 'cliplot',
         mode: serviceReadiness().mode,
         timestamp: new Date().toISOString(),
       });
@@ -176,5 +176,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`cliplot-service listening on ${port}`);
+  console.log(`cliplot listening on ${port}`);
 });

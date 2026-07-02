@@ -11,11 +11,11 @@ before broad source reads when available.
 Before product code, run or record blockers for:
 
 ```text
-cliplot-service storefront shared FlipFlop catalog payments notifications warehouse auth deployment
+cliplot storefront shared FlipFlop catalog payments notifications warehouse auth deployment
 ```
 
 ```text
-Vault ExternalSecrets secret/prod cliplot-service Kubernetes statex-apps deploy.sh
+Vault ExternalSecrets secret/prod cliplot Kubernetes statex-apps deploy.sh
 ```
 
 ```text

@@ -39,9 +39,9 @@ def main() -> int:
     configmap = (root / "k8s/configmap.yaml").read_text()
     external_secret = (root / "k8s/external-secret.yaml").read_text()
     readiness_cronjob = (root / "k8s/readiness-cronjob.yaml").read_text()
-    if "cliplot-service" not in deploy or "cliplot.alfares.cz" not in ingress:
+    if "cliplot" not in deploy or "cliplot.alfares.cz" not in ingress:
         print("DEPLOYMENT_READINESS=fail")
-        print("Kubernetes manifests do not target cliplot-service/cliplot.alfares.cz")
+        print("Kubernetes manifests do not target cliplot/cliplot.alfares.cz")
         return 1
     required_config = [
         'CLIPLOT_FRONTEND_MODE: "shared-service-integration"',
@@ -64,13 +64,13 @@ def main() -> int:
         print("DEPLOYMENT_READINESS=fail")
         print("ExternalSecret must use installed API external-secrets.io/v1.")
         return 1
-    if "secret/prod/cliplot-service" not in external_secret or "vault-backend" not in external_secret:
+    if "secret/prod/cliplot" not in external_secret or "vault-backend" not in external_secret:
         print("DEPLOYMENT_READINESS=fail")
-        print("ExternalSecret does not map cliplot-service to Vault path secret/prod/cliplot-service")
+        print("ExternalSecret does not map cliplot to Vault path secret/prod/cliplot")
         return 1
-    if "k8s-readiness-probe.js" not in readiness_cronjob or "http://cliplot-service:8080" not in readiness_cronjob:
+    if "k8s-readiness-probe.js" not in readiness_cronjob or "http://cliplot:8080" not in readiness_cronjob:
         print("DEPLOYMENT_READINESS=fail")
-        print("Readiness CronJob must run the internal read-only readiness probe against cliplot-service.")
+        print("Readiness CronJob must run the internal read-only readiness probe against cliplot.")
         return 1
     if "POST" in readiness_cronjob or "readiness:bundle" in readiness_cronjob:
         print("DEPLOYMENT_READINESS=fail")
@@ -78,7 +78,7 @@ def main() -> int:
         return 1
     if "optional: true" not in deploy:
         print("DEPLOYMENT_READINESS=fail")
-        print("Deployment must keep cliplot-service-secret optional until Vault is populated.")
+        print("Deployment must keep cliplot-secret optional until Vault is populated.")
         return 1
     print("DEPLOYMENT_READINESS=pass")
     print("scope=shared-service-integration-foundation")

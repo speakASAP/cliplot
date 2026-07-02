@@ -1,10 +1,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: cliplot-service
+  name: cliplot
   namespace: statex-apps
   labels:
-    app: cliplot-service
+    app: cliplot
     managed-by: codex
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
@@ -13,7 +13,7 @@ spec:
   tls:
     - hosts:
         - cliplot.alfares.cz
-      secretName: cliplot-service-tls
+      secretName: cliplot-tls
   rules:
     - host: cliplot.alfares.cz
       http:
@@ -22,6 +22,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: cliplot-service
+                name: cliplot
                 port:
                   number: 8080

@@ -4,7 +4,7 @@ metadata:
   name: cliplot-readiness-monitor
   namespace: statex-apps
   labels:
-    app: cliplot-service
+    app: cliplot
     component: readiness-monitor
     managed-by: codex
 spec:
@@ -18,19 +18,19 @@ spec:
       template:
         metadata:
           labels:
-            app: cliplot-service
+            app: cliplot
             component: readiness-monitor
             managed-by: codex
         spec:
           restartPolicy: Never
           containers:
             - name: readiness
-              image: localhost:5000/cliplot-service:latest
+              image: localhost:5000/cliplot:latest
               imagePullPolicy: Always
               command:
                 - node
                 - scripts/k8s-readiness-probe.js
-                - http://cliplot-service:8080
+                - http://cliplot:8080
               resources:
                 requests:
                   memory: "64Mi"

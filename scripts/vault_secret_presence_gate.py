@@ -19,7 +19,7 @@ REQUIRED_KEYS = [
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", default="secret/prod/cliplot-service")
+    parser.add_argument("--path", default="secret/prod/cliplot")
     parser.add_argument("--allow-missing", action="store_true")
     args = parser.parse_args()
 

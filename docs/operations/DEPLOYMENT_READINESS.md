@@ -11,10 +11,10 @@ present.
 
 - Host: `cliplot.alfares.cz`
 - Namespace: `statex-apps`
-- Deployment name: `cliplot-service`
-- TLS secret: `cliplot-service-tls`
-- Secret target: `cliplot-service-secret`
-- Vault path: `secret/prod/cliplot-service`
+- Deployment name: `cliplot`
+- TLS secret: `cliplot-tls`
+- Secret target: `cliplot-secret`
+- Vault path: `secret/prod/cliplot`
 
 ## Deployed Artifacts
 
@@ -35,9 +35,9 @@ present.
 ## Current Safety Contract
 
 - `ENABLE_LIVE_ORDER_SUBMIT` remains `false`.
-- `cliplot-service-secret` is mounted as optional.
+- `cliplot-secret` is mounted as optional.
 - `k8s/external-secret.yaml` maps planned keys from
-  `secret/prod/cliplot-service`.
+  `secret/prod/cliplot`.
 - `/api/checkout/submit` must return `service_identity_required` until live
   order submission is explicitly enabled with required tokens.
 
@@ -52,7 +52,7 @@ ssh alfares 'cd /home/ssf/Documents/Github/cliplot && ./scripts/deploy.sh'
 Use the previous image tag from deployment history:
 
 ```bash
-ssh alfares 'kubectl rollout undo deployment/cliplot-service -n statex-apps'
+ssh alfares 'kubectl rollout undo deployment/cliplot -n statex-apps'
 ```
 ## Live Mutation Approval Contract
 

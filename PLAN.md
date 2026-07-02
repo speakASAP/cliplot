@@ -7,7 +7,7 @@ implementation.
 
 Steps:
 
-1. Create `/home/ssf/Documents/Github/cliplot-service`.
+1. Create `/home/ssf/Documents/Github/cliplot`.
 2. Run `git init`.
 3. Add repository instructions and required reading.
 4. Add design contract from the approved mockup.
@@ -64,7 +64,7 @@ Required artifacts:
 
 - Dockerfile;
 - Kubernetes deployment/service/ingress/configmap/external-secret;
-- Vault path `secret/prod/cliplot-service`;
+- Vault path `secret/prod/cliplot`;
 - RAG documentation publication/update;
 - health endpoint;
 - deploy script validation.

@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SERVICE_NAME="cliplot-service"
+SERVICE_NAME="cliplot"
 NAMESPACE="${NAMESPACE:-statex-apps}"
 REGISTRY="${REGISTRY:-localhost:5000}"
 K8S_DIR="$PROJECT_ROOT/k8s"
@@ -11,7 +11,7 @@ TAG="$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || date -u +
 IMAGE="$REGISTRY/$SERVICE_NAME:$TAG"
 IMAGE_LATEST="$REGISTRY/$SERVICE_NAME:latest"
 
-echo "cliplot-service deployment"
+echo "cliplot deployment"
 cd "$PROJECT_ROOT"
 
 python3 scripts/pre_coding_gate.py --root .
@@ -26,7 +26,7 @@ docker push "$IMAGE_LATEST"
 
 TMP_DEPLOYMENT="$(mktemp)"
 trap 'rm -f "$TMP_DEPLOYMENT"' EXIT
-sed "s#localhost:5000/cliplot-service:latest#$IMAGE#g" "$K8S_DIR/deployment.yaml" > "$TMP_DEPLOYMENT"
+sed "s#localhost:5000/cliplot:latest#$IMAGE#g" "$K8S_DIR/deployment.yaml" > "$TMP_DEPLOYMENT"
 
 kubectl apply -f "$K8S_DIR/configmap.yaml" -n "$NAMESPACE"
 if [ -f "$K8S_DIR/external-secret.yaml" ]; then
@@ -37,6 +37,14 @@ kubectl apply -f "$K8S_DIR/service.yaml" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/ingress.yaml" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/readiness-cronjob.yaml" -n "$NAMESPACE"
 kubectl rollout status "deployment/$SERVICE_NAME" -n "$NAMESPACE" --timeout=360s
+
+# Remove pre-rename Kubernetes objects after the cliplot deployment is healthy.
+kubectl delete ingress cliplot-service -n "$NAMESPACE" --ignore-not-found=true
+kubectl delete service cliplot-service -n "$NAMESPACE" --ignore-not-found=true
+kubectl delete deployment cliplot-service -n "$NAMESPACE" --ignore-not-found=true
+kubectl delete configmap cliplot-service-config -n "$NAMESPACE" --ignore-not-found=true
+kubectl delete externalsecret cliplot-service-secret -n "$NAMESPACE" --ignore-not-found=true
+kubectl delete cronjob cliplot-service-readiness-monitor -n "$NAMESPACE" --ignore-not-found=true
 
 POD="$(kubectl get pod -n "$NAMESPACE" -l app="$SERVICE_NAME" --field-selector=status.phase=Running -o json | node -e '
 let input = "";

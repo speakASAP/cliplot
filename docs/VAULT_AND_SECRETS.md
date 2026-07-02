@@ -8,7 +8,7 @@ be projected into Kubernetes through ExternalSecrets.
 ## Planned Vault Path
 
 ```text
-secret/prod/cliplot-service
+secret/prod/cliplot
 ```
 
 ## Runtime Secret Sources
@@ -37,7 +37,7 @@ path.
 Run from `alfares`:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && python3 scripts/vault_secret_presence_gate.py --allow-missing'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && python3 scripts/vault_secret_presence_gate.py --allow-missing'
 ```
 
 The gate prints key presence only and intentionally does not print secret
@@ -54,7 +54,7 @@ k8s/external-secret.yaml
 Target Kubernetes Secret:
 
 ```text
-cliplot-service-secret
+cliplot-secret
 ```
 
 ## Sensitive Operations
@@ -64,9 +64,9 @@ Do not print secret values. Validation may check presence by key name only.
 ## Open Blockers
 
 - `[MISSING: approved service principal tokens for Cliplot]`
-- `[MISSING: payment callback API key entry for cliplot-service]`
+- `[MISSING: payment callback API key entry for cliplot]`
 - `[MISSING: Auth role contract for Cliplot token accepted by warehouse-microservice]`
-- `[MISSING: Payments API key/scope for cliplot-service]`
+- `[MISSING: Payments API key/scope for cliplot]`
 ## Live Mutation Approval Evidence
 
 Live mutation approvals are currently represented by non-secret runtime config

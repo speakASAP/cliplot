@@ -58,8 +58,8 @@ export const fallbackProducts = [
 ];
 
 export const serviceConfig = {
-  serviceName: process.env.SERVICE_NAME || 'cliplot-service',
-  applicationId: process.env.CLIPLOT_APPLICATION_ID || 'cliplot-service',
+  serviceName: process.env.SERVICE_NAME || 'cliplot',
+  applicationId: process.env.CLIPLOT_APPLICATION_ID || 'cliplot',
   orderChannel: process.env.CLIPLOT_ORDER_CHANNEL || 'cliplot',
   channelAccountId: process.env.CLIPLOT_CHANNEL_ACCOUNT_ID || 'cliplot-storefront',
   frontendMode: process.env.CLIPLOT_FRONTEND_MODE || 'shared-service-integration',
@@ -75,7 +75,7 @@ export const serviceConfig = {
   notificationsUrl: process.env.NOTIFICATION_SERVICE_URL || 'http://notifications-microservice:3368',
   paymentUrl: process.env.PAYMENT_SERVICE_URL || 'http://payments-microservice:3468',
   authPublicUrl: process.env.AUTH_PUBLIC_URL || 'https://auth.alfares.cz',
-  authClientId: process.env.AUTH_CLIENT_ID || 'cliplot-service',
+  authClientId: process.env.AUTH_CLIENT_ID || 'cliplot',
   authReturnUrl: process.env.AUTH_RETURN_URL || 'https://cliplot.alfares.cz/auth/callback',
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
   ordersValidateCreatePath: process.env.ORDERS_VALIDATE_CREATE_PATH || '/api/orders/validate-create',
@@ -989,7 +989,7 @@ function buildOrderConfirmationNotification(checkout) {
       itemCount: checkout.items.reduce((sum, item) => sum + item.quantity, 0),
       total: checkout.total,
       currency: 'CZK',
-      source: 'cliplot-service',
+      source: 'cliplot',
     },
     service: serviceConfig.serviceName,
     purpose: 'transactional',

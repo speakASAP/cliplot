@@ -1,4 +1,4 @@
-# System: cliplot-service
+# System: cliplot
 
 ## Target Architecture
 
@@ -7,7 +7,7 @@ Cliplot is planned as a separate deployable storefront/service at
 
 ```text
 Customer browser
-  -> cliplot-service frontend/API boundary
+  -> cliplot frontend/API boundary
   -> catalog-microservice for product and canonical content
   -> warehouse-microservice for stock truth
   -> cart/order path based on FlipFlop/shared Orders contracts
@@ -31,7 +31,7 @@ Customer browser
 | Auth | Allow guest checkout; use shared auth for account flows. |
 | AI | Draft-only content generation; human approval before publishing claims. |
 | RAG | Store project docs and retrieve ecosystem docs before broad reads. |
-| Secrets | Vault path `secret/prod/cliplot-service` planned; no repo secrets. |
+| Secrets | Vault path `secret/prod/cliplot` planned; no repo secrets. |
 
 ## Deployment Target
 

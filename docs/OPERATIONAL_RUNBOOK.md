@@ -33,8 +33,8 @@ The script blocks until a deployable app and manifests exist.
 ## Kubernetes Target
 
 ```bash
-kubectl get pods -n statex-apps -l app=cliplot-service
-kubectl get ingress -n statex-apps cliplot-service
+kubectl get pods -n statex-apps -l app=cliplot
+kubectl get ingress -n statex-apps cliplot
 ```
 
 ## Public Smoke
@@ -51,8 +51,8 @@ curl -i https://cliplot.alfares.cz/health
 Presence-only:
 
 ```bash
-kubectl get externalsecret -n statex-apps cliplot-service-secret
-kubectl get secret -n statex-apps cliplot-service-secret
+kubectl get externalsecret -n statex-apps cliplot-secret
+kubectl get secret -n statex-apps cliplot-secret
 python3 scripts/vault_secret_presence_gate.py --allow-missing
 ```
 
@@ -214,7 +214,7 @@ Deployment applies `k8s/readiness-cronjob.yaml` as
 The CronJob runs every 30 minutes inside the cluster and executes:
 
 ```bash
-node scripts/k8s-readiness-probe.js http://cliplot-service:8080
+node scripts/k8s-readiness-probe.js http://cliplot:8080
 ```
 
 It performs only HTTP `GET` checks against `/health`,

@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cliplot-service
+  name: cliplot
   namespace: statex-apps
   labels:
-    app: cliplot-service
+    app: cliplot
     managed-by: codex
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cliplot-service
+      app: cliplot
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -19,20 +19,20 @@ spec:
   template:
     metadata:
       labels:
-        app: cliplot-service
+        app: cliplot
     spec:
       containers:
         - name: app
-          image: localhost:5000/cliplot-service:latest
+          image: localhost:5000/cliplot:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
           envFrom:
             - configMapRef:
-                name: cliplot-service-config
+                name: cliplot-config
             - secretRef:
-                name: cliplot-service-secret
+                name: cliplot-secret
                 optional: true
           startupProbe:
             httpGet:

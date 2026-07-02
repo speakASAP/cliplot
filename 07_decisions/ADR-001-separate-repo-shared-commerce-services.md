@@ -2,7 +2,7 @@
 
 ## Decision
 
-Create `cliplot-service` as a separate remote repository on `alfares`, while
+Create `cliplot` as a separate remote repository on `alfares`, while
 reusing FlipFlop/shared commerce services.
 
 ## Rationale

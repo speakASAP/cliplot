@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cliplot-service-config
+  name: cliplot-config
   namespace: statex-apps
   labels:
-    app: cliplot-service
+    app: cliplot
     managed-by: codex
 data:
   NODE_ENV: "production"
   PORT: "8080"
-  SERVICE_NAME: "cliplot-service"
+  SERVICE_NAME: "cliplot"
   DOMAIN: "cliplot.alfares.cz"
   CORS_ORIGIN: "https://cliplot.alfares.cz"
   CATALOG_SERVICE_URL: "http://catalog-microservice:3200"
@@ -20,7 +20,7 @@ data:
   AUTH_SERVICE_URL: "http://auth-microservice:3370"
   LOGGING_SERVICE_URL: "http://logging-microservice:3367"
   CLIPLOT_FRONTEND_MODE: "shared-service-integration"
-  CLIPLOT_APPLICATION_ID: "cliplot-service"
+  CLIPLOT_APPLICATION_ID: "cliplot"
   CLIPLOT_ORDER_CHANNEL: "cliplot"
   CLIPLOT_CHANNEL_ACCOUNT_ID: "cliplot-storefront"
   CLIPLOT_PRODUCT_IDS: "19c69d06-e3d3-471d-b417-b2fccbd63ab0,1db1cac0-db7f-4b29-bcb3-1055f8955b81,2909dcaa-34ce-492e-892f-efda7e39ae64,30a08ed3-562f-49e4-9847-7e81b16a9df2,3e0a7c04-22c2-4d28-b6b6-c7db14361d2c,4090f93b-e8a7-4a08-a21f-3ae645620910,53fb68c9-c8e8-4490-a145-1f3d0094c86d,6c552a47-dba2-4a5a-8b71-70c42f230555"
@@ -31,7 +31,7 @@ data:
   CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: ""
   CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: ""
   AUTH_PUBLIC_URL: "https://auth.alfares.cz"
-  AUTH_CLIENT_ID: "cliplot-service"
+  AUTH_CLIENT_ID: "cliplot"
   AUTH_RETURN_URL: "https://cliplot.alfares.cz/auth/callback"
   ORDERS_CREATE_PATH: "/api/orders"
   ORDERS_VALIDATE_CREATE_PATH: "/api/orders/validate-create"

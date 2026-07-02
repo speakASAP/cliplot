@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const baseUrl = normalizeBaseUrl(
-  process.argv[2] || process.env.CLIPLOT_READINESS_BASE_URL || 'http://cliplot-service:8080',
+  process.argv[2] || process.env.CLIPLOT_READINESS_BASE_URL || 'http://cliplot:8080',
 );
 
 function normalizeBaseUrl(value) {

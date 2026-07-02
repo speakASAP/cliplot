@@ -30,7 +30,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - IPS anchor docs created under `00_constitution` through `24_onboarding`.
 - Initial foundation commit created: `0f360ce docs: initialize cliplot service foundation`.
 - GOAL-02 frontend source committed: `aad9cc8 feat: implement cliplot frontend storefront`.
-- Cliplot frontend deployed to Kubernetes as `cliplot-service`.
+- Cliplot frontend deployed to Kubernetes as `cliplot`.
 - Public `https://cliplot.alfares.cz/` smoke returned HTTP 200.
 - Public `https://cliplot.alfares.cz/health` smoke returned HTTP 200.
 - Public `https://cliplot.alfares.cz/api/products` returned live product data.
@@ -43,8 +43,8 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - GOAL-04 platform source committed: `a969cb5 feat: harden cliplot platform operations`.
 - GOAL-04 deploy evidence committed: `60852dd docs: record cliplot platform deploy evidence`.
 - Design reference lock committed: `dafaaf6 docs: lock homepage mockup reference`.
-- Vault path `secret/prod/cliplot-service` exists with required key names and no values printed.
-- `cliplot-service-secret` and `orders-microservice-secret` are synced from Vault.
+- Vault path `secret/prod/cliplot` exists with required key names and no values printed.
+- `cliplot-secret` and `orders-microservice-secret` are synced from Vault.
 - Orders Cliplot support deployed as `localhost:5000/orders-microservice:971a446`.
 - Payments Cliplot allowlist deployed as `localhost:5000/payments-microservice:eab6ae7`.
 - Public Cliplot readiness shows service tokens present, live submit still disabled, and checkout still guarded.
@@ -64,7 +64,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   payments-microservice `POST /payments/validate-create`; guarded checkout can
   validate the full Cliplot payment payload and still returns
   `service_identity_required` until live order/payment mutation is approved.
-  Deployed Cliplot image `localhost:5000/cliplot-service:52596f5` returned
+  Deployed Cliplot image `localhost:5000/cliplot:52596f5` returned
   `paymentValidation.status=validated_no_mutation`, `mutation=false`, and
   `providerCall=false`.
 - GOAL-05 no-send notification validation is enabled through
@@ -72,7 +72,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   validates the Cliplot order confirmation payload and still returns
   `service_identity_required` until live customer notification send is
   approved. Deployed Cliplot image
-  `localhost:5000/cliplot-service:fef5fd8` returned
+  `localhost:5000/cliplot:fef5fd8` returned
   `notificationValidation.status=validated_no_send`, `mutation=false`,
   `providerCall=false`, and `notificationSent=false`.
 - GOAL-05 no-mutation order create validation is enabled through
@@ -80,12 +80,12 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   validates the full Cliplot `orders.create.v1` payload and still returns
   `service_identity_required` until live order creation and Warehouse
   reservation are approved. Deployed Cliplot image
-  `localhost:5000/cliplot-service:80e23c5` returned
+  `localhost:5000/cliplot:80e23c5` returned
   `orderValidation.status=validated_no_mutation`, `mutation=false`,
   `orderCreated=false`, `warehouseMutation=false`, and
   `eventPublished=false`.
 - GOAL-05 Warehouse routing propagation deployed as
-  `localhost:5000/cliplot-service:da5d9cf`. In-cluster product smoke returned
+  `localhost:5000/cliplot:da5d9cf`. In-cluster product smoke returned
   `warehouseId=c0de0000-0000-4000-8000-000000000013`,
   `warehouseType=own`, `availableStock=63`, and `stockQuantity=63`. Guarded
   checkout returned HTTP `202`, carried the same `warehouseId` into
@@ -93,7 +93,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `orderCreated=false`, `warehouseMutation=false`, and `eventPublished=false`.
 
 - GOAL-05 guarded checkout intent lane deployed as
-  `localhost:5000/cliplot-service:07a3bfe`. Frontend checkout now sends a
+  `localhost:5000/cliplot:07a3bfe`. Frontend checkout now sends a
   stable cart-scoped `externalOrderId`; backend normalizes that ID, derives
   order/payment/notification idempotency keys from it, and returns non-secret
   checkout intent evidence in guarded responses. Buyer-facing checkout copy no
@@ -107,7 +107,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `warehouseReservationReadiness=validated_no_mutation`, and `mutation=false`.
 
 - GOAL-05 checkout review totals lane deployed as
-  `localhost:5000/cliplot-service:7128c33`. Checkout now shows a buyer-facing
+  `localhost:5000/cliplot:7128c33`. Checkout now shows a buyer-facing
   review block before submit with item lines, `Mezisoučet`, delivery cost,
   payment fee, and final `Celkem k úhradě`; public copy no longer exposes
   internal `[MISSING: ...]` blockers. Server-side checkout recalculates
@@ -121,17 +121,17 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 
 - GOAL-06 Kubernetes readiness monitor deployed as
   `cliplot-readiness-monitor` on schedule `*/30 * * * *` with deployed
-  image `localhost:5000/cliplot-service:013b506`. Production
+  image `localhost:5000/cliplot:013b506`. Production
   `npm run readiness:k8s -- https://cliplot.alfares.cz` returned
   `ok=true`, `livePreflightStatus=blocked`, `wouldMutate=false`,
   `liveOrderSubmit=false`, `livePaymentCreate=false`,
   `liveNotifications=false`, and
   `paymentStatus=payment_status_guarded_no_persistence`. In-pod internal
-  probe against `http://cliplot-service:8080` returned the same guarded
+  probe against `http://cliplot:8080` returned the same guarded
   state.
 
 - GOAL-05 guarded checkout status surface deployed as
-  `localhost:5000/cliplot-service:cb00ffd`. Successful guarded checkout now
+  `localhost:5000/cliplot:cb00ffd`. Successful guarded checkout now
   stores a customer-safe local status summary and navigates to
   `/objednavka/stav`; `/checkout/success` and `/checkout/cancelled` render the
   same safe shell without claiming payment success. Payments status now exposes
@@ -175,9 +175,9 @@ smoke evidence.
 
 ### Current Findings
 
-- Orders accepts `cliplot-service` and channel `cliplot`, and the Orders pod has
+- Orders accepts `cliplot` and channel `cliplot`, and the Orders pod has
   `CLIPLOT_ORDERS_SERVICE_TOKEN`.
-- Payments allowlists include `cliplot-service` and `https://cliplot.alfares.cz`.
+- Payments allowlists include `cliplot` and `https://cliplot.alfares.cz`.
 - Cliplot has required secret keys projected, but `ENABLE_LIVE_ORDER_SUBMIT`
   remains `false`.
 - Catalog product APIs are Auth-guarded, and Cliplot uses the existing
@@ -214,13 +214,13 @@ order payload shape while keeping live commerce disabled.
 ### Current Findings
 
 - Vault is reachable with `VAULT_ADDR=http://127.0.0.1:8200`.
-- `secret/prod/cliplot-service` exists and required key names are present.
-- Docs/RAG can trigger repoName `cliplot` ingestion from the pod. The old `cliplot-service`/`192.168.88.53:11434` blocker is superseded by current `DOCS_RAG_PUBLICATION=pass` evidence for repoName `cliplot`.
+- `secret/prod/cliplot` exists and required key names are present.
+- Docs/RAG can trigger repoName `cliplot` ingestion from the pod. The old `cliplot`/`192.168.88.53:11434` blocker is superseded by current `DOCS_RAG_PUBLICATION=pass` evidence for repoName `cliplot`.
 - Auth validates `https://cliplot.alfares.cz/auth/callback`, but
-  `cliplot-service` is not documented in the hosted-auth client registry.
+  `cliplot` is not documented in the hosted-auth client registry.
 - Catalog is Auth-guarded and has no approved Cliplot-specific marketplace/SKU scope yet; Cliplot currently reads active Catalog products through service auth and labels the source as `catalog`.
-- Orders accepts `cliplot-service` and channel `cliplot`.
-- Payments allowlists include `cliplot-service` and
+- Orders accepts `cliplot` and channel `cliplot`.
+- Payments allowlists include `cliplot` and
   `https://cliplot.alfares.cz`.
 
 ## Closed Goal: GOAL-03-shared-service-integration
@@ -313,7 +313,7 @@ behavior until those approvals are present.
 | Foundation integration | done | Main orchestrator wrote and committed repo baseline. |
 | Storefront foundation | done | Frontend source, Dockerfile, K8s manifests, deploy, and public smoke completed. |
 | Shared-service guarded integration | done | Server integration layer, frontend checkout submit, ExternalSecret scaffold, deploy, and public smoke completed. |
-| Vault secret population | done | `secret/prod/cliplot-service`, Cliplot ExternalSecret, and Orders ExternalSecret synced. |
+| Vault secret population | done | `secret/prod/cliplot`, Cliplot ExternalSecret, and Orders ExternalSecret synced. |
 | Docs/RAG publication | done | Controlled repoName `cliplot` ingestion passed with retrieval and agent-context evidence. |
 | Orders Cliplot support | done | `orders-microservice:971a446` deployed. |
 | Payments Cliplot allowlist | done | `payments-microservice:eab6ae7` deployed. |
@@ -336,8 +336,8 @@ behavior until those approvals are present.
 - `python3 scripts/deployment_readiness_gate.py --root .` passed for frontend foundation.
 - Kubernetes dry-run passed for configmap, deployment, service, and ingress.
 - Temporary remote runtime smoke passed for `/health`, `/`, `/api/products`, and `/api/checkout/preview`.
-- `./scripts/deploy.sh` built and pushed image `localhost:5000/cliplot-service:aad9cc8`; initial rollout wait timed out while the local registry pull took about 2m40s, then `kubectl rollout status deployment/cliplot-service -n statex-apps --timeout=180s` completed successfully.
-- Deployment `cliplot-service` reached `1/1` ready/available.
+- `./scripts/deploy.sh` built and pushed image `localhost:5000/cliplot:aad9cc8`; initial rollout wait timed out while the local registry pull took about 2m40s, then `kubectl rollout status deployment/cliplot -n statex-apps --timeout=180s` completed successfully.
+- Deployment `cliplot` reached `1/1` ready/available.
 - Public smoke passed for `https://cliplot.alfares.cz/`, `https://cliplot.alfares.cz/health`, `https://cliplot.alfares.cz/api/products`, and non-mutating checkout preview.
 - GOAL-03 `npm run build` passed.
 - GOAL-03 `python3 scripts/pre_coding_gate.py --root .` passed.
@@ -345,17 +345,17 @@ behavior until those approvals are present.
 - GOAL-03 `python3 scripts/deployment_readiness_gate.py --root .` passed.
 - GOAL-03 Kubernetes dry-run passed for configmap, external-secret, deployment, service, and ingress.
 - GOAL-03 temporary runtime smoke passed for `/health`, `/api/integrations/readiness`, `/api/auth/links`, `/api/products`, and `/api/checkout/submit`.
-- GOAL-03 `./scripts/deploy.sh` passed and deployed image `localhost:5000/cliplot-service:0556cec`.
+- GOAL-03 `./scripts/deploy.sh` passed and deployed image `localhost:5000/cliplot:0556cec`.
 - GOAL-03 public smoke from `alfares` passed for `/health`, `/api/integrations/readiness`, `/api/auth/links`, `/api/products`, and `/api/checkout/submit`.
 - GOAL-05 Catalog lane pre-deploy validation passed: `npm run build`,
   `python3 scripts/pre_coding_gate.py --root .`,
   `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues`,
   `python3 scripts/deployment_readiness_gate.py --root .`, `git diff --check`,
   and `kubectl apply --dry-run=server -f k8s/external-secret.yaml`.
-- GOAL-05 Catalog lane deployed as `localhost:5000/cliplot-service:2678d29`.
+- GOAL-05 Catalog lane deployed as `localhost:5000/cliplot:2678d29`.
   Initial deploy script rollout wait timed out while the new pod was still
   pulling the image; follow-up `kubectl -n statex-apps rollout status
-  deployment/cliplot-service --timeout=180s` succeeded. Public
+  deployment/cliplot --timeout=180s` succeeded. Public
   `/api/products` returned 8 real Catalog products with UUID IDs and
   `fallback=false`; readiness returned `catalog=read_enabled_authenticated`;
   guarded checkout remained `202 service_identity_required`.
@@ -374,7 +374,7 @@ behavior until those approvals are present.
   `python3 scripts/deployment_readiness_gate.py`, `git diff --check`, and
   `node --check src/integrations.js src/server.js`.
 - GOAL-05 notification validation deployed as
-  `localhost:5000/cliplot-service:fef5fd8`. Initial rollout stalled while
+  `localhost:5000/cliplot:fef5fd8`. Initial rollout stalled while
   container runtime sandbox creation lagged; deleting only the stuck new
   Cliplot pod allowed the deployment controller to recreate it, and rollout
   completed.
@@ -396,7 +396,7 @@ behavior until those approvals are present.
   `mutation=false`, `orderCreated=false`, `warehouseMutation=false`,
   `eventPublished=false`, and `idempotencyStatus=available`.
 - Cliplot order validation deployed as
-  `localhost:5000/cliplot-service:80e23c5`. In-cluster checkout smoke returned
+  `localhost:5000/cliplot:80e23c5`. In-cluster checkout smoke returned
   `readiness.orderValidation=enabled_no_mutation`, guarded checkout HTTP `202`,
   `checkout.orderPreview.contractVersion=orders.create.v1`,
   `checkout.orderPreview.totals.subtotal=1590`,
@@ -409,7 +409,7 @@ behavior until those approvals are present.
   Warehouse runtime evidence, and notification template rules rather than the
   already-deployed Orders channel support.
 - GOAL-05 checkout guard refinement deployed as
-  `localhost:5000/cliplot-service:7ba1936`. Public readiness now reports
+  `localhost:5000/cliplot:7ba1936`. Public readiness now reports
   `payments=identity_ready_provider_guarded`, `catalog=read_enabled_authenticated`,
   `orders=guarded`, and `liveOrderSubmit=false`. Public guarded checkout still
   returns HTTP `202 service_identity_required`; remaining blockers are
@@ -422,7 +422,7 @@ behavior until those approvals are present.
   explicit stocked `CLIPLOT_PRODUCT_IDS` and enriches product cards with
   Warehouse batch availability.
 - GOAL-05 stocked storefront selection deployed as
-  `localhost:5000/cliplot-service:ea7dd54`. Public `/api/products` returned 8
+  `localhost:5000/cliplot:ea7dd54`. Public `/api/products` returned 8
   configured Catalog products with Warehouse-backed `Skladem` status, external
   product images, and Kč prices. Warehouse runtime evidence is no longer a
   checkout guard blocker for read/display; reservation/stock mutation remains
@@ -437,7 +437,7 @@ behavior until those approvals are present.
   notification send remains disabled pending approved live-send validation.
 - GOAL-05 payment-create code path is wired behind
   `ENABLE_LIVE_PAYMENT_CREATE=false`. Cliplot now builds a Payments-compatible
-  create payload with `applicationId=cliplot-service`, `paymentMethod=invoice`,
+  create payload with `applicationId=cliplot`, `paymentMethod=invoice`,
   allowlisted Cliplot callback/success/cancel URLs, customer fields, metadata,
   and idempotency key. No valid payment-create request was executed because it
   would write a live payment record; live payment creation remains gated by
@@ -446,7 +446,7 @@ behavior until those approvals are present.
   `da5d9cf`: `npm run build`, `python3 scripts/pre_coding_gate.py`,
   `python3 scripts/strict_doc_audit.py`, `python3 scripts/deployment_readiness_gate.py`,
   and `git diff --check` passed before deploy. `./scripts/deploy.sh` rolled out
-  `localhost:5000/cliplot-service:da5d9cf`. In-cluster `/api/products` returned
+  `localhost:5000/cliplot:da5d9cf`. In-cluster `/api/products` returned
   product `19c69d06-e3d3-471d-b417-b2fccbd63ab0` with Warehouse
   `warehouseId=c0de0000-0000-4000-8000-000000000013`, `warehouseType=own`,
   `availableStock=63`, and `stockQuantity=63`. Guarded `/api/checkout/submit`
@@ -458,7 +458,7 @@ behavior until those approvals are present.
   after checkout remained `totalAvailable=63`, `totalReserved=0`,
   `warehouseAvailable=63`, and `warehouseReserved=0`.
 - GOAL-05 frontend cart guard deployed as
-  `localhost:5000/cliplot-service:9fce9c7`. `public/app.js` now prunes cart
+  `localhost:5000/cliplot:9fce9c7`. `public/app.js` now prunes cart
   entries without Warehouse origin, disables add-to-cart for products without
   `warehouseId`, and renders `data-warehouse-id` on reservable product buttons.
   In-pod `/app.js` smoke confirmed `data-warehouse-id`,
@@ -467,12 +467,12 @@ behavior until those approvals are present.
   `orderPreview.items[0]`, and kept order/payment/notification validation
   no-mutation/no-send.
 - GOAL-04/GOAL-05 docs-rag publication previously failed for the old repoName
-  `cliplot-service`. That evidence is superseded by GOAL-06 controlled
+  `cliplot`. That evidence is superseded by GOAL-06 controlled
   `./scripts/publish_docs_rag.sh cliplot` pass and retrieval validation.
 - GOAL-05 Warehouse reservation-readiness is now deployed on
-  `localhost:5000/cliplot-service:83f251c`. The earlier node-level
+  `localhost:5000/cliplot:83f251c`. The earlier node-level
   `ContainerCreating` blocker cleared; redeploy succeeded and rollout returned
-  `deployment "cliplot-service" successfully rolled out`. In-cluster guarded
+  `deployment "cliplot" successfully rolled out`. In-cluster guarded
   checkout returned HTTP `202`,
   `warehouseReservationReadiness.status=validated_no_mutation`, `valid=true`,
   `mutation=false`, `reservationCreated=false`, `stockMutation=false`,
@@ -482,7 +482,7 @@ behavior until those approvals are present.
   `warehouseReserved=0`. Live order creation, live Warehouse reservation,
   payment creation, and notification send remain approval-gated.
 - GOAL-05 live mutation approval gates deployed as
-  `localhost:5000/cliplot-service:abe3810`. `ENABLE_LIVE_ORDER_SUBMIT=false`,
+  `localhost:5000/cliplot:abe3810`. `ENABLE_LIVE_ORDER_SUBMIT=false`,
   `ENABLE_LIVE_PAYMENT_CREATE=false`, and `ENABLE_LIVE_NOTIFICATIONS=false`
   remain false, and separate approval IDs are required before live order,
   payment, or notification mutation can run. Runtime readiness returned
@@ -495,7 +495,7 @@ behavior until those approvals are present.
   and `notificationSent=false`.
 
 - GOAL-05 guarded product detail route deployed as
-  `localhost:5000/cliplot-service:1cebe76`. Product cards now link to
+  `localhost:5000/cliplot:1cebe76`. Product cards now link to
   `/produkt/:id`, the client route hydrates from existing `/api/products`
   Catalog/Warehouse data, renders real image, price, stock, delivery, available
   quantity, payment/return summary, and escaped plain-text Catalog description.
@@ -503,7 +503,7 @@ behavior until those approvals are present.
   Warehouse reservation, or notification send was added.
 
 - GOAL-05 guarded cart review flow deployed as
-  `localhost:5000/cliplot-service:0e5e5db`. Add-to-cart now opens the cart
+  `localhost:5000/cliplot:0e5e5db`. Add-to-cart now opens the cart
   drawer with an aria-live Czech confirmation, cart rows show line totals,
   product-specific quantity controls, and an explicit `Odebrat` action with
   44px touch targets. Guarded checkout still returns
@@ -511,7 +511,7 @@ behavior until those approvals are present.
   reservation, or notification mutation.
 
 - GOAL-05 live checkout preflight guard deployed as
-  `localhost:5000/cliplot-service:505e90c`. Readiness and guarded checkout now
+  `localhost:5000/cliplot:505e90c`. Readiness and guarded checkout now
   expose `liveCheckoutPreflight.status=blocked`, `wouldMutate=false`, false
   order/payment/notification live flags, false approval booleans, validation
   lane statuses, and the remaining approval blockers. This makes the future
@@ -519,7 +519,7 @@ behavior until those approvals are present.
   callback persistence, or notification mutation.
 
 - GOAL-05 live checkout preflight endpoint deployed and refined as
-  `localhost:5000/cliplot-service:d7caf93`. `GET /api/checkout/live-preflight`
+  `localhost:5000/cliplot:d7caf93`. `GET /api/checkout/live-preflight`
   exposes the guarded preflight contract as JSON with
   `status=blocked`, `wouldMutate=false`, and an explicit `mutationPlan` where
   `wouldCreateOrder=false`, `wouldCreatePayment=false`, and

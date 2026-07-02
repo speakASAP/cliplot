@@ -45,7 +45,7 @@ No-send notification validation evidence:
 
 ```text
 notifications-microservice POST /notifications/validate deployed
-cliplot-service commit=fef5fd8
+cliplot commit=fef5fd8
 readiness.notificationValidation=enabled_no_send
 checkout.notificationValidation.status=validated_no_send
 checkout.notificationValidation.mutation=false
@@ -56,8 +56,8 @@ checkout.notificationValidation.notificationSent=false
 Warehouse routing propagation evidence:
 
 ```text
-cliplot-service commit=da5d9cf
-image=localhost:5000/cliplot-service:da5d9cf
+cliplot commit=da5d9cf
+image=localhost:5000/cliplot:da5d9cf
 /api/products firstWarehouseId=c0de0000-0000-4000-8000-000000000013
 /api/products firstWarehouseType=own
 /api/products firstAvailableStock=63
@@ -72,7 +72,7 @@ No-mutation order validation evidence:
 ```text
 orders-microservice POST /api/orders/validate-create deployed
 orders-microservice commit=0611e4c
-cliplot-service commit=80e23c5
+cliplot commit=80e23c5
 readiness.orderValidation=enabled_no_mutation
 checkout.orderValidation.status=validated_no_mutation
 checkout.orderValidation.mutation=false
@@ -88,8 +88,8 @@ Status: resolved by GOAL-04.
 Evidence:
 
 ```text
-ExternalSecret cliplot-service-secret: SecretSyncedError
-Vault key: secret/prod/cliplot-service
+ExternalSecret cliplot-secret: SecretSyncedError
+Vault key: secret/prod/cliplot
 Message: Secret does not exist
 ```
 
@@ -119,8 +119,8 @@ Evidence:
 ```text
 Orders endpoint is POST /api/orders with orders.create.v1.
 Orders allowed channels do not include cliplot.
-Orders allowed internal callers do not include cliplot-service.
-Payments allowlists do not include cliplot-service or https://cliplot.alfares.cz.
+Orders allowed internal callers do not include cliplot.
+Payments allowlists do not include cliplot or https://cliplot.alfares.cz.
 ```
 
 Resolution target: Orders and Payments service patches plus deployment.
@@ -169,10 +169,10 @@ Status: resolved by redeploy after node/container runtime recovered.
 Evidence:
 
 ```text
-prior blocker: cliplot-service-78cf5d95db stuck ContainerCreating with unrelated pending pods
-current image=localhost:5000/cliplot-service:83f251c
+prior blocker: cliplot-78cf5d95db stuck ContainerCreating with unrelated pending pods
+current image=localhost:5000/cliplot:83f251c
 rolloutStatus=success
-pod=cliplot-service-b7b54f454-p9tt9 ready=1/1 restarts=0
+pod=cliplot-b7b54f454-p9tt9 ready=1/1 restarts=0
 checkout.warehouseReservationReadiness.status=validated_no_mutation
 checkout.warehouseReservationReadiness.mutation=false
 checkout.warehouseReservationReadiness.reservationCreated=false
@@ -188,7 +188,7 @@ approved live mutation validation exists.
 Guarded checkout intent smoke evidence:
 
 ```text
-cliplot-service commit=07a3bfe
+cliplot commit=07a3bfe
 npm run smoke:checkout -- https://cliplot.alfares.cz
 checkoutHttpStatus=202
 checkoutStatus=service_identity_required
