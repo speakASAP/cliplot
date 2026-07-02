@@ -816,3 +816,32 @@ catalogSource=catalog
 items[0].productSource=catalog
 items[0].warehouseId=<non-empty>
 ```
+
+## Payment Status Ownership Readiness
+
+Status: ADR recorded, runtime approval still blocked.
+
+Cliplot has validated `PAYMENT_API_KEY` `payments:read` scope through the
+DB-only `/payments/status/by-order-id` readiness probe without mutation,
+persistence, provider calls, or secret printing. ADR-002 records Payments as
+the preferred authoritative payment status owner, but it is proposed for owner
+approval only and does not enable live status reads or callback persistence.
+
+Expected public evidence:
+
+```text
+npm run readiness:payment-read-scope -- https://cliplot.alfares.cz
+status=validated_payments_read_scope_no_mutation
+scopeValidated=true
+mutation=false
+persistence=false
+providerCall=false
+
+npm run readiness:payment-decision -- https://cliplot.alfares.cz
+status=decision_recorded_approval_required
+recommendedOption=shared-payments-source-of-truth
+decisionRecorded=true
+mutation=false
+persistence=false
+providerCall=false
+```

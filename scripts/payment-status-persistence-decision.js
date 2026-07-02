@@ -24,11 +24,15 @@ assert(response.status === 200 && packet.success, 'decision packet request faile
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'decision_required', 'decision packet should remain decision-required', packet);
+assert(packet.status === 'decision_recorded_approval_required', 'decision packet should remain approval-gated after ADR recording', packet);
 assert(packet.mutation === false, 'decision packet reported mutation', packet);
 assert(packet.persistence === false, 'decision packet reported persistence', packet);
 assert(packet.providerCall === false, 'decision packet reported provider call', packet);
 assert(packet.recommendedOption === 'shared-payments-source-of-truth', 'recommended option changed', packet);
+assert(packet.decisionRecord?.id === 'ADR-002-payment-status-persistence-ownership', 'decision record id missing', packet);
+assert(packet.decisionRecord?.recorded === true, 'decision record should be marked recorded', packet);
+assert(packet.decisionRecord?.status === 'proposed_for_owner_approval', 'decision record should remain proposed for owner approval', packet);
+assert(packet.decisionRecord?.runtimeApproval === false, 'decision record unexpectedly approves runtime changes', packet);
 assert(Array.isArray(packet.decisionOptions) && packet.decisionOptions.length === 3, 'decision options missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'shared-payments-source-of-truth'), 'shared payments option missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'cliplot-local-status-cache'), 'cliplot-local option missing', packet);
@@ -42,9 +46,15 @@ assert(packet.evidence?.paymentsAuthoritativeState?.some((item) => item.includes
 assert(packet.evidence?.paymentsAuthoritativeState?.some((item) => item.includes('/payments/status/by-order-id')), 'payments snapshot endpoint evidence missing', packet);
 assert(packet.evidence?.ordersBoundary?.some((item) => item.includes('bounded payment references')), 'orders boundary evidence missing', packet);
 assert(packet.evidence?.cliplotBoundary?.some((item) => item.includes('guarded_no_persistence')), 'cliplot boundary evidence missing', packet);
-assert(packet.approvalPacket?.requiredDecisionRecord === 'ADR-payment-status-persistence-ownership', 'required ADR missing', packet);
+assert(packet.evidence?.decisionRecord?.some((item) => item.includes('ADR-002-payment-status-persistence-ownership')), 'decision record evidence missing', packet);
+assert(packet.approvalPacket?.requiredDecisionRecord === 'ADR-002-payment-status-persistence-ownership', 'required ADR missing', packet);
+assert(packet.approvalPacket?.decisionRecorded === true, 'approval packet should mark ADR recorded', packet);
+assert(packet.approvalPacket?.requiredDecisionRecordStatus === 'proposed_for_owner_approval', 'ADR approval status missing', packet);
 assert(packet.approvalPacket?.mustRemainFalseBeforeApproval?.includes('provider-backed status reads'), 'approval guard missing', packet);
-assert(Array.isArray(packet.blockers) && packet.blockers.length >= 5, 'decision blockers missing', packet);
+assert(Array.isArray(packet.blockers) && packet.blockers.some((item) => item.includes('[DONE: ADR-002-payment-status-persistence-ownership')), 'ADR recorded blocker/evidence missing', packet);
+assert(packet.blockers.some((item) => item.includes('owner approval')), 'owner approval blocker missing', packet);
+assert(!packet.blockers.some((item) => item.includes('[MISSING: ADR-payment-status-persistence-ownership]')), 'stale missing ADR blocker still present', packet);
+assert(Array.isArray(packet.blockers) && packet.blockers.length >= 4, 'decision blockers missing', packet);
 assert(Array.isArray(packet.sensitiveDataPolicy) && packet.sensitiveDataPolicy.includes('decision metadata only'), 'sensitive data policy missing', packet);
 
 console.log(JSON.stringify({
@@ -52,6 +62,9 @@ console.log(JSON.stringify({
   baseUrl,
   status: packet.status,
   recommendedOption: packet.recommendedOption,
+  decisionRecord: packet.decisionRecord.id,
+  decisionRecordStatus: packet.decisionRecord.status,
+  decisionRecorded: packet.decisionRecord.recorded,
   optionCount: packet.decisionOptions.length,
   paymentStatus: packet.currentReadiness.paymentStatus,
   paymentStorage: packet.currentReadiness.paymentStorage,
@@ -61,6 +74,7 @@ console.log(JSON.stringify({
   readScopeStatus: packet.currentReadiness.readScopeStatus,
   evidenceCount: Object.values(packet.evidence || {}).reduce((count, list) => count + (Array.isArray(list) ? list.length : 0), 0),
   requiredDecisionRecord: packet.approvalPacket.requiredDecisionRecord,
+  requiredDecisionRecordStatus: packet.approvalPacket.requiredDecisionRecordStatus,
   blockerCount: packet.blockers.length,
   mutation: packet.mutation,
   persistence: packet.persistence,

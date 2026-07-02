@@ -35,12 +35,18 @@ present.
 ## Current Safety Contract
 
 - `ENABLE_LIVE_ORDER_SUBMIT` remains `false`.
+- `ENABLE_LIVE_PAYMENT_CREATE` remains `false`.
+- `ENABLE_LIVE_NOTIFICATIONS` remains `false`.
 - `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` remains `false`.
 - `cliplot-secret` is mounted as optional.
 - `k8s/external-secret.yaml` maps planned keys from
   `secret/prod/cliplot`.
 - `/api/checkout/submit` must return `service_identity_required` until live
   order submission is explicitly enabled with required tokens.
+- Payment read-scope is validated through the DB-only
+  `/payments/status/by-order-id` readiness probe, but passive customer status
+  reads remain disabled until ADR-002 owner approval, callback replay policy,
+  and live status read/write approvals exist.
 
 ## Deploy Command
 

@@ -1457,6 +1457,17 @@ export async function paymentStatusStorageReadiness() {
 export async function paymentStatusPersistenceDecisionPacket() {
   const paymentReadiness = await paymentStatusReadiness();
   const storageReadiness = await paymentStatusStorageReadiness();
+  const decisionRecord = {
+    id: 'ADR-002-payment-status-persistence-ownership',
+    title: 'Payment Status Persistence Ownership',
+    path: '07_decisions/ADR-002-payment-status-persistence-ownership.md',
+    status: 'proposed_for_owner_approval',
+    recorded: true,
+    preferredOwner: 'payments-microservice',
+    preferredOption: 'shared-payments-source-of-truth',
+    runtimeApproval: false,
+    summary: 'Payments remains the authoritative payment status owner; Cliplot may render customer-safe status only through an approved provider-refresh-free Payments read model or approved shared commerce projection.',
+  };
   const decisionOptions = [
     {
       id: 'shared-payments-source-of-truth',
@@ -1521,7 +1532,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
 
   return {
     success: true,
-    status: 'decision_required',
+    status: 'decision_recorded_approval_required',
     mode: 'guarded_payment_status_persistence_decision_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -1529,6 +1540,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
     persistence: false,
     providerCall: false,
     recommendedOption: 'shared-payments-source-of-truth',
+    decisionRecord,
     decisionOptions,
     evidence: {
       paymentsAuthoritativeState: [
@@ -1545,6 +1557,10 @@ export async function paymentStatusPersistenceDecisionPacket() {
         'Cliplot current payment status is guarded_no_persistence',
         'Cliplot must not create local payment status truth before ownership approval',
       ],
+      decisionRecord: [
+        'ADR-002-payment-status-persistence-ownership is recorded in the Cliplot Intent Preservation decision chain',
+        'ADR status is proposed for owner approval and does not enable runtime reads, writes, callback persistence, or provider calls',
+      ],
     },
     currentReadiness: {
       paymentStatus: paymentReadiness.status,
@@ -1555,7 +1571,10 @@ export async function paymentStatusPersistenceDecisionPacket() {
       readScopeStatus: paymentReadiness.readScopeReadiness?.status || null,
     },
     approvalPacket: {
-      requiredDecisionRecord: 'ADR-payment-status-persistence-ownership',
+      requiredDecisionRecord: 'ADR-002-payment-status-persistence-ownership',
+      requiredDecisionRecordPath: decisionRecord.path,
+      requiredDecisionRecordStatus: decisionRecord.status,
+      decisionRecorded: decisionRecord.recorded,
       requiredRuntimeEvidence: [
         'payment-status-readiness pass with mutation=false persistence=false providerCall=false',
         'payment-storage-readiness pass with mutation=false persistence=false providerCall=false',
@@ -1571,7 +1590,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
       ],
     },
     blockers: [
-      '[MISSING: ADR-payment-status-persistence-ownership]',
+      '[DONE: ADR-002-payment-status-persistence-ownership recorded and proposed for owner approval]',
       '[DONE: Payments read-by-orderId DB snapshot contract deployed as payments-microservice:fc42e72]',
       ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
       '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
@@ -1586,7 +1605,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
       'no storage read',
       'decision metadata only',
     ],
-    next: 'Record ADR-payment-status-persistence-ownership and prove Cliplot payments:read runtime access before implementing any live status persistence or passive Payments snapshot reads.',
+    next: 'Owner approval, callback replay policy, and live status read/write approvals are still required before implementing any live status persistence or passive Payments snapshot reads.',
   };
 }
 

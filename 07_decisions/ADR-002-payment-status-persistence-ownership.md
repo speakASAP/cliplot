@@ -53,6 +53,32 @@ Before approval, all of the following must remain true:
   invoiced, or completed;
 - no secret values printed in readiness or decision packets.
 
+## Owner Approval Checklist
+
+This ADR is recorded but not accepted for runtime enablement. Owner approval
+must explicitly confirm:
+
+- Payments remains the authoritative payment status owner for Cliplot;
+- Cliplot may use only the provider-refresh-free
+  `/payments/status/by-order-id` DB snapshot contract for passive customer
+  status reads;
+- customer-safe Czech status labels are approved for the checkout status page;
+- callback persistence remains disabled until replay, reconciliation, and
+  retention rules are approved;
+- Cliplot-local payment status storage remains deferred unless a separate
+  architecture decision and migration are approved.
+
+## Not Approved For Runtime Enablement
+
+Recording this ADR does not approve:
+
+- live payment creation;
+- provider-backed `GET /payments/{paymentId}` status reads;
+- callback persistence;
+- Cliplot-local payment status writes;
+- customer-facing claims that an order is paid, confirmed, reserved, shipped,
+  invoiced, or completed.
+
 ## Required Evidence Before Runtime Enablement
 
 - `npm run readiness:payment-status -- https://cliplot.alfares.cz` passes with
@@ -60,7 +86,8 @@ Before approval, all of the following must remain true:
 - `npm run readiness:payment-storage -- https://cliplot.alfares.cz` passes with
   `blocked_storage_backend_not_approved` until storage ownership is approved.
 - `npm run readiness:payment-decision -- https://cliplot.alfares.cz` returns
-  `decision_required` and recommends `shared-payments-source-of-truth`.
+  `decision_recorded_approval_required` and recommends
+  `shared-payments-source-of-truth`.
 - Payments provides provider-refresh-free status read evidence or read-by-orderId
   contract evidence.
 - Cliplot `PAYMENT_API_KEY` has confirmed `payments:read` runtime scope without

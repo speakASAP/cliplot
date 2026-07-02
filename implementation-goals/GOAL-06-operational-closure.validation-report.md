@@ -313,6 +313,34 @@ partialActivationMatrix.order_and_payment_without_notification_flag=blocked,woul
 partialActivationMatrix.all_flags_with_all_approvals=ready_for_approved_live_mutation,wouldMutate=true
 ```
 
+## Payment Status Ownership Closure Packet
+
+Status: implemented and approval-gated.
+
+ADR-002 is recorded in the Intent Preservation decision chain as proposed for
+owner approval. The runtime decision packet must therefore report the decision
+record as present while still blocking all passive status reads, callback
+persistence, and Cliplot-local storage writes.
+
+Expected validation:
+
+```bash
+npm run readiness:payment-decision -- https://cliplot.alfares.cz
+```
+
+Expected evidence:
+
+```text
+status=decision_recorded_approval_required
+decisionRecord=ADR-002-payment-status-persistence-ownership
+decisionRecordStatus=proposed_for_owner_approval
+decisionRecorded=true
+recommendedOption=shared-payments-source-of-truth
+mutation=false
+persistence=false
+providerCall=false
+```
+
 
 ## Live Notification Send Path Wiring
 
