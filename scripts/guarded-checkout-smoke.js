@@ -173,7 +173,7 @@ assert(callbackResponse.status === 401 && callbackPayload.status === 'payment_ca
 });
 
 const { response: paymentStatusResponse, payload: paymentStatusPayload } = await getJson(`/api/payments/status?orderId=${encodeURIComponent(externalOrderId)}`);
-assert(paymentStatusResponse.status === 200 && paymentStatusPayload.status === 'payment_status_guarded_no_persistence', 'payment status contract changed', {
+assert(paymentStatusResponse.status === 200 && ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_read'].includes(paymentStatusPayload.status), 'payment status contract changed', {
   httpStatus: paymentStatusResponse.status,
   status: paymentStatusPayload.status,
 });

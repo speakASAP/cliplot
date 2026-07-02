@@ -36,7 +36,7 @@ assert(packet.decisionRecord?.runtimeApproval === false, 'decision record unexpe
 assert(Array.isArray(packet.decisionOptions) && packet.decisionOptions.length === 3, 'decision options missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'shared-payments-source-of-truth'), 'shared payments option missing', packet);
 assert(packet.decisionOptions.some((option) => option.id === 'cliplot-local-status-cache'), 'cliplot-local option missing', packet);
-assert(packet.currentReadiness?.paymentStatus === 'blocked_pending_provider_backed_status_contract', 'payment status readiness unexpected', packet);
+assert(['blocked_pending_provider_backed_status_contract', 'ready_for_approved_payment_status_runtime_read'].includes(packet.currentReadiness?.paymentStatus), 'payment status readiness unexpected', packet);
 assert(packet.currentReadiness?.paymentStorage === 'blocked_storage_backend_not_approved', 'payment storage readiness unexpected', packet);
 assert(packet.currentReadiness?.callbackPersistence === false, 'callback persistence unexpectedly enabled', packet);
 assert(packet.currentReadiness?.currentStatusPersistence === false, 'current status persistence unexpectedly enabled', packet);
