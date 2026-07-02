@@ -302,6 +302,12 @@ and `providerCall=false`, and it must never print the webhook key. Run it with:
 npm run readiness:payment-callback -- https://cliplot.alfares.cz
 ```
 
+`GET /api/payments/callback-replay-policy` is the approval gate for future callback persistence and replay. It must return `approval_required_callback_replay_policy`, `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. It records the proposed ADR-005 policy surface and keeps storage writes, provider calls, order updates, payment updates, and replay disabled until owner approval exists.
+
+```bash
+npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the

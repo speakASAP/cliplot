@@ -96,6 +96,14 @@ async function main() {
   assertFalse(paymentCallback.body?.persistence, 'payment_callback_readiness_persistence_enabled', { paymentCallback: paymentCallback.body });
   assertFalse(paymentCallback.body?.providerCall, 'payment_callback_readiness_provider_call_enabled', { paymentCallback: paymentCallback.body });
 
+  const callbackPolicy = await getJson('/api/payments/callback-replay-policy');
+  assertEqual(callbackPolicy.body?.status, 'approval_required_callback_replay_policy', 'payment_callback_replay_policy_unexpected', { callbackPolicy: callbackPolicy.body });
+  assertEqual(callbackPolicy.body?.callbackPersistence, false, 'payment_callback_policy_persistence_enabled', { callbackPolicy: callbackPolicy.body });
+  assertEqual(callbackPolicy.body?.callbackReplayEnabled, false, 'payment_callback_policy_replay_enabled', { callbackPolicy: callbackPolicy.body });
+  assertFalse(callbackPolicy.body?.mutation, 'payment_callback_policy_mutation_enabled', { callbackPolicy: callbackPolicy.body });
+  assertFalse(callbackPolicy.body?.persistence, 'payment_callback_policy_persistence_field_enabled', { callbackPolicy: callbackPolicy.body });
+  assertFalse(callbackPolicy.body?.providerCall, 'payment_callback_policy_provider_call_enabled', { callbackPolicy: callbackPolicy.body });
+
   const paymentStatusReadiness = await getJson('/api/payments/status-readiness');
   assertEqual(paymentStatusReadiness.body?.status, 'blocked_pending_provider_backed_status_contract', 'payment_status_readiness_unexpected', { paymentStatusReadiness: paymentStatusReadiness.body });
   assertFalse(paymentStatusReadiness.body?.mutation, 'payment_status_readiness_mutation_enabled', { paymentStatusReadiness: paymentStatusReadiness.body });
@@ -194,6 +202,7 @@ async function main() {
     liveNotifications: readiness.liveNotifications,
     paymentStatus: paymentStatus.body.status,
     paymentCallbackReadiness: paymentCallback.body.status,
+    paymentCallbackReplayPolicy: callbackPolicy.body.status,
     paymentStatusReadiness: paymentStatusReadiness.body.status,
     paymentStatusStorageReadiness: paymentStatusStorage.body.status,
     paymentStatusPersistenceDecision: paymentDecision.body.status,

@@ -1635,6 +1635,113 @@ export function paymentCallbackReadiness() {
   };
 }
 
+
+export function paymentCallbackReplayPolicyReadiness() {
+  const callback = paymentCallbackReadiness();
+  const guarded = callback.status === 'validated_guarded_ack_no_persistence'
+    && callback.callbackAccepted === true
+    && callback.mutation === false
+    && callback.persistence === false
+    && callback.providerCall === false;
+
+  return {
+    success: true,
+    status: guarded
+      ? 'approval_required_callback_replay_policy'
+      : 'blocked_callback_replay_policy_guard_missing',
+    mode: 'guarded_payment_callback_replay_policy_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    callbackPersistence: false,
+    callbackReplayEnabled: false,
+    callbackAccepted: callback.callbackAccepted,
+    callbackReadiness: callback.status,
+    currentCallbackContract: {
+      endpoint: '/api/payments/callback',
+      readinessEndpoint: '/api/payments/callback-readiness',
+      authHeader: 'x-api-key:<redacted>',
+      acceptedHttpStatus: 202,
+      acceptedStatus: 'payment_callback_received_guarded',
+      unauthorizedHttpStatus: 401,
+      validationFailureHttpStatus: 400,
+      currentPersistence: false,
+      currentOrderMutation: false,
+      currentPaymentMutation: false,
+      providerCall: false,
+    },
+    proposedReplayPolicy: {
+      decisionRecord: 'ADR-005-payment-callback-replay-policy',
+      status: 'proposed_for_owner_approval',
+      idempotencyKeys: [
+        'paymentId',
+        'orderId',
+        'event',
+        'paymentStatus',
+      ],
+      duplicateHandling: 'same semantic callback should be accepted idempotently after approved persistence exists',
+      conflictHandling: 'same paymentId/orderId with incompatible terminal status requires manual review',
+      orderingPolicy: 'completed/refunded terminal events win only after approved Payments-owned status source confirms them',
+      retentionPolicy: '[MISSING: approved callback event retention window]',
+      replaySource: 'payments-microservice webhook retry or operator-approved replay queue',
+      replayExecution: 'disabled_until_persistence_and_replay_approval',
+      customerStatusImpact: 'no customer-visible payment truth until approved Payments DB snapshot read or approved projection exists',
+    },
+    approvalRequest: {
+      requiredDecision: 'approved callback persistence/replay policy',
+      requiredBeforeRuntimeStatusReads: true,
+      requiredBeforeCallbackPersistence: true,
+      requiredApprovals: [
+        'callback event ownership',
+        'idempotency key definition',
+        'duplicate and conflict handling',
+        'terminal status ordering',
+        'retention window',
+        'operator replay procedure',
+        'rollback owner and validation owner',
+      ],
+    },
+    mustRemainFalseBeforeApproval: [
+      'callbackPersistence',
+      'callbackReplayEnabled',
+      'Cliplot-local callback storage writes',
+      'Cliplot-local payment status writes',
+      'ENABLE_CUSTOMER_STATUS_RUNTIME_READ',
+      'ENABLE_PAYMENT_STATUS_SNAPSHOT_READ',
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'provider-backed /payments/{paymentId} reads',
+    ],
+    forbiddenOperations: [
+      'persist callback state',
+      'replay callback into storage',
+      'update order status',
+      'update payment status',
+      'create payment',
+      'call payment provider',
+      'read /payments/{paymentId}',
+      'print webhook key or API key values',
+      'return raw provider payloads',
+    ],
+    blockers: [
+      '[MISSING: approved callback persistence/replay policy]',
+      '[MISSING: callback event ownership decision]',
+      '[MISSING: callback replay idempotency and conflict handling]',
+      '[MISSING: callback event retention policy]',
+      '[MISSING: operator replay procedure and rollback owner]',
+    ],
+    sensitiveDataPolicy: [
+      'no webhook key value',
+      'no payment API key value',
+      'no provider payload',
+      'no customer PII',
+      'policy metadata only',
+    ],
+    next: 'Approve callback replay/persistence policy before enabling callback persistence or customer-visible runtime payment status.',
+  };
+}
+
 export async function paymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
   const statusResult = await paymentStatus({ orderId: syntheticOrderId });

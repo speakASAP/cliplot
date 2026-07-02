@@ -52,6 +52,7 @@ readiness.
 | Operational docs | ready now | main orchestrator | `docs/OPERATIONAL_RUNBOOK.md`, `docs/operations/DEPLOYMENT_READINESS.md` | strict doc audit |
 | Live approval packet | ready now | main orchestrator | approval packet endpoint/script/docs | `npm run readiness:approval -- https://cliplot.alfares.cz` |
 | Passive payment snapshot-read approval packet | ready now | main orchestrator | payment snapshot-read approval endpoint/script/docs | `npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz` |
+| Callback replay policy gate | ready now | main orchestrator | callback replay policy endpoint/script/docs | `npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz` |
 | Customer status surface contract | ready now | main orchestrator | checkout status surface contract endpoint/script/docs | `npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz` |
 | Customer status runtime rollout plan | ready now | main orchestrator | customer status rollout plan endpoint/script/ADR/docs | `npm run readiness:customer-status-rollout -- https://cliplot.alfares.cz` |
 | Customer status runtime activation gate | ready now | main orchestrator | customer status activation endpoint/script/docs | `npm run readiness:customer-status-activation -- https://cliplot.alfares.cz` |

@@ -43,6 +43,7 @@ present.
   `secret/prod/cliplot`.
 - `/api/checkout/submit` must return `service_identity_required` until live
   order submission is explicitly enabled with required tokens.
+- The callback replay policy gate must remain `approval_required_callback_replay_policy` with `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false` until callback persistence/replay ownership, idempotency, retention, operator replay, and rollback ownership are approved.
 - Payment read-scope is validated through the DB-only
   `/payments/status/by-order-id` readiness probe, but passive customer status
   reads remain disabled until ADR-002 owner approval, callback replay policy,

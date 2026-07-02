@@ -28,7 +28,10 @@ because that endpoint can refresh pending Stripe/card provider state.
 Plan the customer status rollout as a read-only, approval-gated runtime change.
 The rollout may be implemented only after owner approval confirms the DB-only
 Payments snapshot route, customer-safe Czech status copy, callback replay
-policy, and status mapping ownership.
+policy, and status mapping ownership. For the read-only activation, Cliplot
+must keep callback persistence and replay disabled; missed callback
+reconciliation comes from the Payments DB snapshot contract, not from Cliplot
+callback storage.
 
 ## Guardrails
 
@@ -38,6 +41,7 @@ Before runtime approval, all of the following remain false:
 - `paymentsSnapshotReadEnabled`;
 - `storageRead`;
 - callback persistence;
+- callback replay execution;
 - Cliplot-local payment/order status writes;
 - order creation;
 - payment creation;

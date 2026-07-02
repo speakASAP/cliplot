@@ -17,6 +17,7 @@ import {
   liveOrderWarehouseSmokePlan,
   orderWarehouseReadinessReport,
   paymentCallbackReadiness,
+  paymentCallbackReplayPolicyReadiness,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
@@ -308,6 +309,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/callback-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-replay-policy' && req.method === 'GET') {
+      sendJson(res, 200, paymentCallbackReplayPolicyReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-replay-policy') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

@@ -63,8 +63,7 @@ must explicitly confirm:
   `/payments/status/by-order-id` DB snapshot contract for passive customer
   status reads;
 - customer-safe Czech status labels are approved for the checkout status page;
-- callback persistence remains disabled until replay, reconciliation, and
-  retention rules are approved;
+- callback persistence remains disabled for read-only customer status activation; missed or delayed callbacks are reconciled through the Payments DB snapshot read path, and any Cliplot callback storage/replay requires ADR-005 owner approval;
 - Cliplot-local payment status storage remains deferred unless a separate
   architecture decision and migration are approved.
 
