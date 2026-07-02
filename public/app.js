@@ -107,6 +107,29 @@ function escapeHtml(value) {
   })[char]);
 }
 
+function productPath(productId) {
+  return `/produkt/${encodeURIComponent(productId)}`;
+}
+
+function productIdFromPath() {
+  const match = window.location.pathname.match(/^\/produkt\/([^/]+)$/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function plainText(value, maxLength = 680) {
+  const text = String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1).trim()}…` : text;
+}
+
 function saveCart() {
   localStorage.setItem(cartStorageKey, JSON.stringify(state.cart));
 }
@@ -241,8 +264,8 @@ function renderProducts() {
             <span>${escapeHtml(product.category)}</span>
             <span>${escapeHtml(stockLabel)}</span>
           </div>
-          <h3>${escapeHtml(product.name)}</h3>
-          <p class="product-description">${escapeHtml(product.description)}</p>
+          <h3><a href="${productPath(product.id)}">${escapeHtml(product.name)}</a></h3>
+          <p class="product-description">${escapeHtml(plainText(product.description, 160))}</p>
           <div class="product-meta">
             <span>${escapeHtml(product.delivery)}</span>
           </div>
@@ -250,6 +273,7 @@ function renderProducts() {
             <strong>${formatPrice(product.price)}</strong>
             ${product.originalPrice ? `<del>${formatPrice(product.originalPrice)}</del>` : ""}
           </div>
+          <a class="secondary-link product-detail-link" href="${productPath(product.id)}">Detail</a>
           <button class="primary-button" type="button" data-add-to-cart="${canReserve ? escapeHtml(product.id) : ""}" data-warehouse-id="${escapeHtml(product.warehouseId || "")}" ${disabledAttributes}>${buttonLabel}</button>
         </article>
       `;
@@ -349,8 +373,89 @@ async function loadProducts() {
     state.products = fallbackProducts;
   }
   removeUnreservableCartItems();
-  renderProducts();
+  if (!renderProductDetailPage()) {
+    renderProducts();
+    renderCart();
+  }
+}
+
+function renderProductDetailPage() {
+  const productId = productIdFromPath();
+  if (!productId) return false;
+
+  const product = findProduct(productId);
+  const main = document.querySelector('main');
+  if (!product) {
+    main.innerHTML = `
+      <section class="product-detail-page">
+        <div class="section-heading">
+          <h1>Produkt nebyl nalezen</h1>
+          <p>Vraťte se prosím do katalogu a vyberte jinou položku.</p>
+        </div>
+        <a class="primary-link" href="/#produkty">Zpět do katalogu</a>
+      </section>
+    `;
+    renderCart();
+    return true;
+  }
+
+  const canReserve = hasWarehouseOrigin(product);
+  const stockLabel = canReserve ? product.stockStatus : 'Nedostupné';
+  const buttonLabel = canReserve ? 'Do košíku' : 'Nelze objednat';
+  const disabledAttributes = canReserve ? '' : 'disabled aria-disabled=true';
+  const description = plainText(product.description, 1200);
+  const available = Number.isFinite(Number(product.availableStock)) ? `${Number(product.availableStock)} ks` : 'Skladem';
+
+  document.title = `${product.name} - Cliplot`;
+  main.innerHTML = `
+    <section class="product-detail-page">
+      <a class="secondary-link" href="/#produkty">Zpět do katalogu</a>
+      <div class="product-detail-layout">
+        <div class="product-detail-media">
+          <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" />
+        </div>
+        <div class="product-detail-info">
+          <div class="product-meta">
+            <span>${escapeHtml(product.category)}</span>
+            <span>${escapeHtml(stockLabel)}</span>
+          </div>
+          <h1>${escapeHtml(product.name)}</h1>
+          <div class="product-price">
+            <strong>${formatPrice(product.price)}</strong>
+            ${product.originalPrice ? `<del>${formatPrice(product.originalPrice)}</del>` : ''}
+          </div>
+          <dl class="detail-proof">
+            <div>
+              <dt>Dostupnost</dt>
+              <dd>${escapeHtml(stockLabel)}${canReserve ? ` · ${escapeHtml(available)}` : ''}</dd>
+            </div>
+            <div>
+              <dt>Doručení</dt>
+              <dd>${escapeHtml(product.delivery || 'Doručení 1-2 dny')}</dd>
+            </div>
+            <div>
+              <dt>Platba</dt>
+              <dd>Kartou online po potvrzení nebo bankovní převod</dd>
+            </div>
+            <div>
+              <dt>Vrácení</dt>
+              <dd>14 dní podle českých pravidel</dd>
+            </div>
+          </dl>
+          <div class="product-detail-action">
+            <button class="primary-button" type="button" data-add-to-cart="${canReserve ? escapeHtml(product.id) : ''}" data-warehouse-id="${escapeHtml(product.warehouseId || '')}" ${disabledAttributes}>${buttonLabel}</button>
+            <a class="secondary-link" href="/#checkout">Přejít k objednávce</a>
+          </div>
+        </div>
+      </div>
+      <section class="product-description-full">
+        <h2>Popis produktu</h2>
+        <p>${escapeHtml(description || 'Popis připravujeme z katalogových dat.')}</p>
+      </section>
+    </section>
+  `;
   renderCart();
+  return true;
 }
 
 document.addEventListener('click', (event) => {

@@ -61,6 +61,11 @@ const checkoutBody = {
   total: subtotal + 69,
 };
 
+const { response: detailResponse, text: detailHtml } = await getText(`/produkt/${encodeURIComponent(product.id)}`);
+assert(detailResponse.status === 200 && detailHtml.includes('/app.js'), 'product detail route did not render static shell', {
+  httpStatus: detailResponse.status,
+});
+
 const { response: checkoutResponse, payload: checkout } = await postJson('/api/checkout/submit', checkoutBody);
 assert(checkoutResponse.status === 202, 'guarded checkout did not return HTTP 202', {
   httpStatus: checkoutResponse.status,
@@ -138,6 +143,7 @@ console.log(JSON.stringify({
   ok: true,
   baseUrl,
   productId: product.id,
+  detailStatus: detailResponse.status,
   warehouseId: product.warehouseId,
   checkoutHttpStatus: checkoutResponse.status,
   checkoutStatus: checkout.status,
