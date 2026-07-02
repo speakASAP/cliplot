@@ -3799,7 +3799,7 @@ export async function customerStatusRuntimeRolloutPlan() {
   const readyForPlanning = ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(surface.status)
     && surface.storageRead === false
     && ['approval_required_passive_payments_snapshot_read', 'approved_passive_payments_snapshot_read'].includes(snapshotReadApproval.status)
-    && paymentDecision.status === 'decision_recorded_approval_required';
+    && ['decision_recorded_approval_required', 'approved_payment_status_persistence_decision_metadata_execution_disabled'].includes(paymentDecision.status);
 
   return {
     success: true,
