@@ -156,6 +156,7 @@ notification sends, and Docs/RAG ingestion gated.
 - GOAL-06 readiness bundle now passes after Docs/RAG embedding connectivity was restored via Docker Ollama host port `11435`, `scripts/publish_docs_rag.sh` was hardened to select the newest Running Ready non-deleting Docs/RAG pod, and Docs/RAG chunking was capped by character length in `docs-rag-microservice:febd791`.
 - Controlled Docs/RAG ingestion for repoName `cliplot` passed with job `7a03ada9-9b99-4ef7-8223-5c5a298244f5`, `chunksProcessed=76`, `chunksTotal=76`. Retrieval search returned HTTP 200 with 5 results, and agent-context returned HTTP 200 with 6 sources; both top results were `cliplot/implementation-goals/GOAL-06-operational-closure.execution-plan.md`.
 - The full `npm run readiness:bundle` is the operator aggregate check and now passes with Docs/RAG preflight, guarded checkout smoke, Vault presence, and Kubernetes rollout evidence.
+- The live activation gate now blocks partial future live configurations. `npm run readiness:activation -- https://cliplot.alfares.cz` proves order-only, order-plus-payment, and all-flags-before-notification-send scenarios all remain `blocked` with `wouldMutate=false`.
 - The Kubernetes readiness monitor lane is endpoint-only and read-only. It
   checks `/health`, `/api/checkout/live-preflight`,
   `/api/integrations/readiness`, and `/api/payments/status` without POST or

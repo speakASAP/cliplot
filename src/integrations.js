@@ -340,6 +340,9 @@ function checkoutMissingFacts() {
   if (!serviceConfig.notificationValidation) {
     missing.push('[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]');
   }
+  if (serviceConfig.liveNotifications) {
+    missing.push('[MISSING: implemented live notification send path for Cliplot order confirmations]');
+  }
   if (!approvals.notification) {
     missing.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID after approved live notification send validation for Cliplot order confirmations]');
   }
@@ -365,8 +368,8 @@ export function liveCheckoutPreflight() {
     && approvals.payment
     && approvals.notification
     && missing.length === 0;
-  const wouldCreateOrder = liveFlags.order && missing.length === 0;
-  const wouldCreatePayment = wouldCreateOrder && liveFlags.payment && approvals.payment;
+  const wouldCreateOrder = fullyReady;
+  const wouldCreatePayment = fullyReady;
   const wouldSendNotification = false;
   const wouldMutate = wouldCreateOrder || wouldCreatePayment || wouldSendNotification;
 
@@ -994,7 +997,7 @@ export async function submitCheckout(input) {
 
   const missing = checkoutMissingFacts();
   const preflight = liveCheckoutPreflight();
-  if (!serviceConfig.liveOrderSubmit || missing.length) {
+  if (preflight.status !== 'ready_for_approved_live_mutation') {
     const orderPreview = buildOrderCreatePayload(checkout);
     const warehouseReservationReadiness = await guardedWarehouseReservationReadiness(checkout);
     const orderValidation = await guardedOrderValidation(checkout, orderPreview);
@@ -1009,7 +1012,7 @@ export async function submitCheckout(input) {
         status: 'service_identity_required',
         mode: 'guarded_checkout_submit',
         message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
-        missing,
+        missing: preflight.missing,
         liveMutationApprovals: liveMutationApprovals(),
         liveCheckoutPreflight: preflight,
         checkoutIntent: checkoutIntentEvidence(checkout),

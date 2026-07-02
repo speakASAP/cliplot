@@ -129,6 +129,21 @@ shared-service validation succeeds.
 
 
 
+
+## Live Activation Gate
+
+Before changing any live checkout flag, run the fail-closed activation gate:
+
+```bash
+npm run readiness:activation -- https://cliplot.alfares.cz
+```
+
+The gate must report `wouldMutate=false`, all mutation-plan booleans false, all
+live flags false, and all approval booleans false in the current guarded
+deployment. If a future partial configuration sets only some flags or approval
+IDs, `/api/checkout/live-preflight` must remain blocked and `submitCheckout`
+must stay in guarded validation mode.
+
 ## Live Checkout Approval Packet
 
 Before enabling any live checkout flag or approval ID, generate the read-only

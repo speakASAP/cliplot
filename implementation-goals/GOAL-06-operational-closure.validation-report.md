@@ -281,3 +281,34 @@ providerCall=false
 persistence=false
 requiredApprovalIds=CLIPLOT_LIVE_ORDER_APPROVAL_ID,CLIPLOT_LIVE_PAYMENT_APPROVAL_ID,CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 ```
+
+
+## Fail-Closed Live Activation Gate
+
+Status: implemented and validated in guarded mode.
+
+`submitCheckout` now enters the live order branch only when
+`liveCheckoutPreflight.status=ready_for_approved_live_mutation`. Partial future
+configuration is fail-closed: enabling only a subset of live flags or approval
+IDs must keep `wouldMutate=false`.
+
+Expected validation:
+
+```bash
+npm run readiness:activation -- https://cliplot.alfares.cz
+```
+
+Validation evidence:
+
+```text
+npm run readiness:activation -- https://cliplot.alfares.cz
+status=approval_required
+livePreflight=blocked
+wouldMutate=false
+wouldCreateOrder=false
+wouldCreatePayment=false
+wouldSendNotification=false
+partialActivationMatrix.order_only_with_all_approvals=blocked,wouldMutate=false
+partialActivationMatrix.order_and_payment_without_notification_flag=blocked,wouldMutate=false
+partialActivationMatrix.all_flags_before_notification_send_implementation=blocked,wouldMutate=false
+```
