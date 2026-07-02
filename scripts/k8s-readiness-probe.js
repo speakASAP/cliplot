@@ -148,7 +148,7 @@ async function main() {
   const snapshotReadApproval = await getJson('/api/payments/status-snapshot-read-approval-packet');
   assertEqual(snapshotReadApproval.body?.status, 'approved_passive_payments_snapshot_read', 'payment_status_snapshot_read_approval_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
   assertEqual(snapshotReadApproval.body?.runtimeReadEnabled, true, 'payment_status_snapshot_read_runtime_not_enabled', { snapshotReadApproval: snapshotReadApproval.body });
-  assertEqual(snapshotReadApproval.body?.readEndpoint, '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'payment_status_snapshot_read_endpoint_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
+  assertEqual(snapshotReadApproval.body?.readContract?.endpoint, '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'payment_status_snapshot_read_endpoint_unexpected', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.mutation, 'payment_status_snapshot_read_approval_mutation_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.persistence, 'payment_status_snapshot_read_approval_persistence_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.providerCall, 'payment_status_snapshot_read_approval_provider_call_enabled', { snapshotReadApproval: snapshotReadApproval.body });
