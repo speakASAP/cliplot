@@ -80,6 +80,12 @@ async function main() {
   assertFalse(paymentStatus.body?.persistence, 'payment_status_persistence_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.providerCall, 'payment_status_provider_call_enabled', { paymentStatus: paymentStatus.body });
 
+  const paymentCallback = await getJson('/api/payments/callback-readiness');
+  assertEqual(paymentCallback.body?.status, 'validated_guarded_ack_no_persistence', 'payment_callback_readiness_not_validated', { paymentCallback: paymentCallback.body });
+  assertFalse(paymentCallback.body?.mutation, 'payment_callback_readiness_mutation_enabled', { paymentCallback: paymentCallback.body });
+  assertFalse(paymentCallback.body?.persistence, 'payment_callback_readiness_persistence_enabled', { paymentCallback: paymentCallback.body });
+  assertFalse(paymentCallback.body?.providerCall, 'payment_callback_readiness_provider_call_enabled', { paymentCallback: paymentCallback.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -90,6 +96,7 @@ async function main() {
     livePaymentCreate: readiness.livePaymentCreate,
     liveNotifications: readiness.liveNotifications,
     paymentStatus: paymentStatus.body.status,
+    paymentCallbackReadiness: paymentCallback.body.status,
   }, null, 2));
 }
 

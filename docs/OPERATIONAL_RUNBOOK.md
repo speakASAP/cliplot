@@ -215,6 +215,15 @@ evidence and approval IDs exist.
 guarded. It must return `payment_status_guarded_no_persistence`,
 `mutation=false`, `persistence=false`, and `providerCall=false`.
 
+`GET /api/payments/callback-readiness` validates the configured webhook key
+through an internal synthetic callback ACK. It must return
+`validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`,
+and `providerCall=false`, and it must never print the webhook key. Run it with:
+
+```bash
+npm run readiness:payment-callback -- https://cliplot.alfares.cz
+```
+
 
 ## Operator Readiness Bundle
 
@@ -226,9 +235,9 @@ npm run readiness:bundle
 
 The bundle checks git status, Kubernetes rollout state, live checkout preflight,
 integration readiness, Vault key presence without printing values, Docs/RAG
-preflight, and guarded checkout smoke. Docs/RAG preflight may return blocked
-while the embedding backend is unreachable; that is an operational blocker, not
-a checkout mutation.
+preflight, guarded payment callback ACK readiness, and guarded checkout smoke.
+Docs/RAG preflight may return blocked while the embedding backend is
+unreachable; that is an operational blocker, not a checkout mutation.
 
 ## Kubernetes Readiness Monitor
 
@@ -243,10 +252,10 @@ node scripts/k8s-readiness-probe.js http://cliplot:8080
 
 It performs only HTTP `GET` checks against `/health`,
 `/api/checkout/live-preflight`, `/api/integrations/readiness`, and
-`/api/payments/status`. It does not call Kubernetes APIs, does not need RBAC,
-does not run `npm run readiness:bundle`, and must not create orders, payments,
-Warehouse reservations, callback persistence, notifications, or Docs/RAG
-ingestion jobs.
+`/api/payments/status`, and `/api/payments/callback-readiness`. It does not call
+Kubernetes APIs, does not need RBAC, does not run `npm run readiness:bundle`,
+and must not create orders, payments, Warehouse reservations, callback
+persistence, notifications, or Docs/RAG ingestion jobs.
 
 Inspect it with:
 

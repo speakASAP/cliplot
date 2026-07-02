@@ -286,28 +286,50 @@ async function fetchConfiguredCatalogProducts(headers) {
     .map((result) => result.value);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function hasAvailabilityFor(productIds, warehouseIds, availabilityByProductId) {
+  return productIds.every((productId) => {
+    const row = availabilityByProductId.get(String(productId));
+    if (!row) return false;
+    if (!warehouseIds.length) return true;
+    const warehouses = Array.isArray(row.warehouses) ? row.warehouses : [];
+    return warehouseIds.every((warehouseId) => warehouses.some((warehouse) => String(warehouse?.warehouseId || '') === String(warehouseId)));
+  });
+}
+
 async function fetchWarehouseAvailability(productIds, warehouseIds = []) {
   const normalizedProductIds = [...new Set(productIds.map((id) => String(id || "").trim()).filter(Boolean))];
   const normalizedWarehouseIds = [...new Set(warehouseIds.map((id) => String(id || "").trim()).filter(Boolean))];
   if (!serviceConfig.warehouseServiceToken || normalizedProductIds.length === 0) {
     return new Map();
   }
-  try {
-    const body = { productIds: normalizedProductIds };
-    if (normalizedWarehouseIds.length) body.warehouseIds = normalizedWarehouseIds;
-    const payload = await fetchJson(new URL("/api/stock/availability/batch", serviceConfig.warehouseUrl), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: "Bearer " + serviceConfig.warehouseServiceToken,
-      },
-      body: JSON.stringify(body),
-    });
-    const rows = Array.isArray(payload?.data) ? payload.data : [];
-    return new Map(rows.map((row) => [String(row.productId), row]));
-  } catch {
-    return new Map();
+  const body = { productIds: normalizedProductIds };
+  if (normalizedWarehouseIds.length) body.warehouseIds = normalizedWarehouseIds;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const payload = await fetchJson(new URL("/api/stock/availability/batch", serviceConfig.warehouseUrl), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer " + serviceConfig.warehouseServiceToken,
+        },
+        body: JSON.stringify(body),
+      });
+      const rows = Array.isArray(payload?.data) ? payload.data : [];
+      const availability = new Map(rows.map((row) => [String(row.productId), row]));
+      if (hasAvailabilityFor(normalizedProductIds, normalizedWarehouseIds, availability) || attempt === 3) {
+        return availability;
+      }
+    } catch {
+      if (attempt === 3) return new Map();
+    }
+    await sleep(150 * attempt);
   }
+  return new Map();
 }
 
 export function authLinks() {
@@ -1003,6 +1025,70 @@ export function handlePaymentCallback(input, headers = {}) {
       },
       next: 'Persist order/payment status only after GOAL-05 live checkout storage is approved.',
     },
+  };
+}
+
+export function paymentCallbackReadiness() {
+  if (!serviceConfig.paymentWebhookApiKey) {
+    return {
+      success: true,
+      status: 'blocked_missing_payment_webhook_key',
+      mode: 'guarded_payment_callback_readiness',
+      generatedAt: new Date().toISOString(),
+      service: serviceConfig.serviceName,
+      keyPresent: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      callbackAccepted: false,
+      blockers: ['missing_PAYMENT_WEBHOOK_API_KEY'],
+      next: 'Populate PAYMENT_WEBHOOK_API_KEY through Vault before relying on payment callback ACK readiness.',
+    };
+  }
+
+  const synthetic = {
+    paymentId: 'callback-readiness-payment',
+    orderId: 'cliplot-callback-readiness',
+    status: 'completed',
+    event: 'payment.completed',
+  };
+  const result = handlePaymentCallback(synthetic, {
+    'x-api-key': serviceConfig.paymentWebhookApiKey,
+  });
+  const body = result.body || {};
+  const accepted = result.httpStatus === 202
+    && body.status === 'payment_callback_received_guarded'
+    && body.mutation === false
+    && body.persistence === false;
+
+  return {
+    success: true,
+    status: accepted ? 'validated_guarded_ack_no_persistence' : 'blocked_callback_ack_unexpected',
+    mode: 'guarded_payment_callback_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    keyPresent: true,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    callbackAccepted: accepted,
+    callbackStatus: body.status || null,
+    callbackHttpStatus: result.httpStatus,
+    callbackState: {
+      orderStatus: body.callbackState?.orderStatus || null,
+      paymentStatus: body.callbackState?.paymentStatus || null,
+      event: body.callbackState?.event || null,
+    },
+    sensitiveDataPolicy: [
+      'no webhook key value',
+      'synthetic callback payload only',
+      'no provider call',
+      'no order or payment persistence',
+    ],
+    blockers: accepted ? [] : ['payment_callback_guarded_ack_failed'],
+    next: accepted
+      ? 'Payment callback key presence and guarded ACK path are validated without persistence.'
+      : 'Keep live payment callback persistence disabled until the guarded ACK path validates.',
   };
 }
 

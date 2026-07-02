@@ -11,6 +11,7 @@ import {
   liveCheckoutPreflight,
   liveOrderWarehouseSmokePlan,
   orderWarehouseReadinessReport,
+  paymentCallbackReadiness,
   paymentStatus,
   serviceReadiness,
   runLiveOrderWarehouseSmoke,
@@ -211,6 +212,21 @@ const server = createServer(async (req, res) => {
       const payload = await readRequestJson(req);
       const result = handlePaymentCallback(payload, req.headers);
       sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-readiness' && req.method === 'GET') {
+      sendJson(res, 200, paymentCallbackReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/callback-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 
