@@ -56,7 +56,9 @@ assert(readiness.mappingContract?.source === 'approved_persistence_contract_requ
 assert(readiness.mappingContract?.proposedFields?.includes('externalOrderId'), 'mapping externalOrderId missing', readiness);
 assert(readiness.mappingContract?.proposedFields?.includes('paymentId'), 'mapping paymentId missing', readiness);
 assert(readiness.mappingContract?.persistence === false, 'mapping contract unexpectedly persists', readiness);
-assert(Array.isArray(readiness.blockers) && readiness.blockers.some((item) => item.includes('payments:read scope')), 'payment status runtime scope blocker missing', readiness);
+assert(Array.isArray(readiness.blockers), 'payment status blockers missing', readiness);
+assert(!readiness.blockers.some((item) => item.includes('payments:read scope')), 'payments:read scope blocker should be closed after runtime evidence', readiness);
+assert(readiness.blockers.some((item) => item.includes('owner approval')), 'payment status owner approval blocker missing', readiness);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no provider call'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({
