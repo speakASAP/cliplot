@@ -63,6 +63,7 @@ no-send notification payload validation.
 | Checkout review totals lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke proves subtotal, shipping cost, payment fee, total, and no-mutation preview compatibility |
 | Guarded checkout status surface lane | done | main orchestrator | Cliplot status frontend, payment status endpoint, callback ACK evidence, smoke script | public smoke proves status shell, unauthorized callback, guarded payment status, and no live objects |
 | Product detail route lane | done | main orchestrator plus read-only sidecars | Cliplot product frontend and smoke script | public smoke proves `/produkt/:id` static shell and guarded checkout contract remains no-mutation/no-send |
+| Cart review readiness lane | done | main orchestrator plus read-only sidecar | Cliplot cart frontend and smoke script | public smoke proves cart feedback/edit contract and guarded checkout remains no-mutation/no-send |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
@@ -146,3 +147,17 @@ existing Warehouse-origin guard through `warehouseId`.
 
 This lane improves buyer confidence before checkout while preserving the
 GOAL-05 live-mutation boundary.
+
+
+## Cart Review Readiness Lane
+
+Status: deployed and validated in guarded mode.
+
+Cart add-to-cart now opens the drawer with a Czech aria-live confirmation.
+Cart rows show unit price, quantity, line total, product-specific quantity
+button labels, and an explicit `Odebrat` action. This improves the customer's
+path from product detail to checkout while preserving the guarded checkout
+boundary.
+
+This lane does not enable live order creation, payment creation, Warehouse
+reservation, callback persistence, or notification send.

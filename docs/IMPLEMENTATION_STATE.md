@@ -474,3 +474,11 @@ behavior until those approvals are present.
   quantity, payment/return summary, and escaped plain-text Catalog description.
   No local product truth, backend product mutation, live order, payment,
   Warehouse reservation, or notification send was added.
+
+- GOAL-05 guarded cart review flow deployed as
+  `localhost:5000/cliplot-service:0e5e5db`. Add-to-cart now opens the cart
+  drawer with an aria-live Czech confirmation, cart rows show line totals,
+  product-specific quantity controls, and an explicit `Odebrat` action with
+  44px touch targets. Guarded checkout still returns
+  `service_identity_required` and no live order, payment, Warehouse
+  reservation, or notification mutation.
