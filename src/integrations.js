@@ -61,6 +61,9 @@ export const serviceConfig = {
   liveOrderSubmit: process.env.ENABLE_LIVE_ORDER_SUBMIT === 'true',
   livePaymentCreate: process.env.ENABLE_LIVE_PAYMENT_CREATE === 'true',
   liveNotifications: process.env.ENABLE_LIVE_NOTIFICATIONS === 'true',
+  liveOrderApprovalId: process.env.CLIPLOT_LIVE_ORDER_APPROVAL_ID || '',
+  livePaymentApprovalId: process.env.CLIPLOT_LIVE_PAYMENT_APPROVAL_ID || '',
+  liveNotificationApprovalId: process.env.CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID || '',
   catalogUrl: process.env.CATALOG_SERVICE_URL || 'http://catalog-microservice:3200',
   warehouseUrl: process.env.WAREHOUSE_SERVICE_URL || 'http://warehouse-microservice:3201',
   ordersUrl: process.env.ORDERS_SERVICE_URL || 'http://orders-microservice:3203',
@@ -86,6 +89,18 @@ export const serviceConfig = {
   paymentApiKey: process.env.PAYMENT_API_KEY || '',
   paymentWebhookApiKey: process.env.PAYMENT_WEBHOOK_API_KEY || '',
 };
+
+function isApprovalPresent(value) {
+  return String(value || '').trim().length > 0;
+}
+
+function liveMutationApprovals() {
+  return {
+    order: isApprovalPresent(serviceConfig.liveOrderApprovalId),
+    payment: isApprovalPresent(serviceConfig.livePaymentApprovalId),
+    notification: isApprovalPresent(serviceConfig.liveNotificationApprovalId),
+  };
+}
 
 function timeoutSignal() {
   const controller = new AbortController();
@@ -294,25 +309,33 @@ export function authLinks() {
 }
 
 function checkoutMissingFacts() {
-  const orderBlocker = serviceConfig.orderCreateValidation
-    ? '[MISSING: approved live order-create execution and Warehouse reservation evidence for Cliplot]'
-    : '[MISSING: approved no-mutation order-create validation evidence for Cliplot]';
-  const notificationBlocker = serviceConfig.notificationValidation
-    ? '[MISSING: approved live notification send validation for Cliplot order confirmations]'
-    : '[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]';
-  const missing = [
-    orderBlocker,
-    serviceConfig.paymentCreateValidation
-      ? '[MISSING: approved live payment-create execution evidence for Cliplot]'
-      : '[MISSING: approved valid-body payment-create validation evidence for Cliplot]',
-    notificationBlocker,
-  ];
+  const approvals = liveMutationApprovals();
+  const missing = [];
+  if (!serviceConfig.orderCreateValidation) {
+    missing.push('[MISSING: approved no-mutation order-create validation evidence for Cliplot]');
+  }
+  if (!approvals.order) {
+    missing.push('[MISSING: CLIPLOT_LIVE_ORDER_APPROVAL_ID after approved live order-create and Warehouse reservation evidence for Cliplot]');
+  }
+  if (!serviceConfig.paymentCreateValidation) {
+    missing.push('[MISSING: approved valid-body payment-create validation evidence for Cliplot]');
+  }
+  if (!approvals.payment) {
+    missing.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID after approved live payment-create execution evidence for Cliplot]');
+  }
+  if (!serviceConfig.notificationValidation) {
+    missing.push('[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]');
+  }
+  if (!approvals.notification) {
+    missing.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID after approved live notification send validation for Cliplot order confirmations]');
+  }
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.paymentApiKey) missing.push('[MISSING: PAYMENT_API_KEY in Vault]');
   if (!serviceConfig.paymentWebhookApiKey) missing.push('[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]');
   return missing;
 }
+
 
 function normalizeCheckout(input) {
   const items = Array.isArray(input?.items) ? input.items : [];
@@ -811,6 +834,7 @@ export async function submitCheckout(input) {
         mode: 'guarded_checkout_submit',
         message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
         missing,
+        liveMutationApprovals: liveMutationApprovals(),
         orderPreview,
         warehouseReservationReadiness,
         orderValidation,
@@ -848,6 +872,7 @@ export async function submitCheckout(input) {
       status: serviceConfig.livePaymentCreate ? 'order_created_payment_pending' : 'order_created_payment_guarded',
       order,
       payment,
+      liveMutationApprovals: liveMutationApprovals(),
       paymentPreview,
       notification: serviceConfig.liveNotifications
         ? 'pending_live_send_in_payment_lane'
@@ -859,6 +884,7 @@ export async function submitCheckout(input) {
 }
 
 export function serviceReadiness() {
+  const approvals = liveMutationApprovals();
   return {
     success: true,
     service: serviceConfig.serviceName,
@@ -866,18 +892,19 @@ export function serviceReadiness() {
     liveOrderSubmit: serviceConfig.liveOrderSubmit,
     livePaymentCreate: serviceConfig.livePaymentCreate,
     liveNotifications: serviceConfig.liveNotifications,
+    liveMutationApprovals: approvals,
     integrations: {
       catalog: serviceConfig.catalogServiceToken ? 'read_enabled_authenticated' : 'read_enabled_with_fallback',
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
-      orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit ? 'live_submit_enabled' : 'guarded',
+      orders: serviceConfig.ordersServiceToken && serviceConfig.liveOrderSubmit && approvals.order ? 'live_submit_enabled' : 'guarded',
       orderValidation: serviceConfig.orderCreateValidation
         ? (serviceConfig.ordersServiceToken ? 'enabled_no_mutation' : 'missing_orders_service_token')
         : 'disabled',
-      notifications: serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing',
+      notifications: serviceConfig.notificationServiceToken && serviceConfig.liveNotifications && approvals.notification ? 'live_send_enabled' : (serviceConfig.notificationServiceToken ? 'identity_ready_send_guarded' : 'token_missing'),
       notificationValidation: serviceConfig.notificationValidation
         ? (serviceConfig.notificationServiceToken ? 'enabled_no_send' : 'missing_notification_service_token')
         : 'disabled',
-      payments: serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing',
+      payments: serviceConfig.paymentApiKey && serviceConfig.livePaymentCreate && approvals.payment ? 'live_create_enabled' : (serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing'),
       paymentValidation: serviceConfig.paymentCreateValidation
         ? (serviceConfig.paymentApiKey ? 'enabled_no_mutation' : 'missing_payment_api_key')
         : 'disabled',

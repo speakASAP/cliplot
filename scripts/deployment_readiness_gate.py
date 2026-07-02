@@ -45,6 +45,11 @@ def main() -> int:
         'CLIPLOT_FRONTEND_MODE: "shared-service-integration"',
         'CLIPLOT_ORDER_CHANNEL: "cliplot"',
         'ENABLE_LIVE_ORDER_SUBMIT: "false"',
+        'ENABLE_LIVE_PAYMENT_CREATE: "false"',
+        'ENABLE_LIVE_NOTIFICATIONS: "false"',
+        'CLIPLOT_LIVE_ORDER_APPROVAL_ID: ""',
+        'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: ""',
+        'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: ""',
         'AUTH_PUBLIC_URL: "https://auth.alfares.cz"',
     ]
     missing_config = [item for item in required_config if item not in configmap]
@@ -67,7 +72,7 @@ def main() -> int:
         return 1
     print("DEPLOYMENT_READINESS=pass")
     print("scope=shared-service-integration-foundation")
-    print("note=Live order/payment mutation remains gated by ENABLE_LIVE_ORDER_SUBMIT=false and missing Vault/provider evidence.")
+    print("note=Live order/payment/notification mutation remains gated by false live flags and missing approval IDs.")
     return 0
 
 
