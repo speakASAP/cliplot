@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 const requestTimeoutMs = Number(process.env.SERVICE_REQUEST_TIMEOUT_MS || 2200);
+const liveSmokeRequestTimeoutMs = Number(process.env.CLIPLOT_LIVE_SMOKE_REQUEST_TIMEOUT_MS || 15000);
 const orderIdPrefix = process.env.CLIPLOT_ORDER_ID_PREFIX || 'cliplot';
 const externalOrderIdPattern = /^[a-z0-9][a-z0-9-]{7,95}$/;
 
@@ -117,21 +118,22 @@ function liveMutationApprovals() {
   };
 }
 
-function timeoutSignal() {
+function timeoutSignal(timeoutMs = requestTimeoutMs) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   return { controller, timeout };
 }
 
 async function fetchJson(url, options = {}) {
-  const { controller, timeout } = timeoutSignal();
+  const { timeoutMs, ...fetchOptions } = options;
+  const { controller, timeout } = timeoutSignal(timeoutMs);
   try {
     const response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       signal: controller.signal,
       headers: {
         accept: 'application/json',
-        ...(options.headers || {}),
+        ...(fetchOptions.headers || {}),
       },
     });
     const text = await response.text();
@@ -790,9 +792,10 @@ function buildOrderCreatePayload(checkout) {
   };
 }
 
-async function postOrderPayload(path, checkout, orderPayload, idempotencyKey = checkoutIdempotencyKeys(checkout).orderCreate) {
+async function postOrderPayload(path, checkout, orderPayload, idempotencyKey = checkoutIdempotencyKeys(checkout).orderCreate, requestOptions = {}) {
   const url = new URL(path, serviceConfig.ordersUrl);
   return fetchJson(url, {
+    ...requestOptions,
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -813,8 +816,9 @@ function extractOrderId(payload) {
   return String(order?.id || order?.orderId || order?.uuid || '').trim();
 }
 
-async function readOrder(orderId) {
+async function readOrder(orderId, requestOptions = {}) {
   return fetchJson(new URL(`/api/orders/${encodeURIComponent(orderId)}`, serviceConfig.ordersUrl), {
+    ...requestOptions,
     headers: {
       'x-internal-service-token': serviceConfig.ordersServiceToken,
       'x-service-name': serviceConfig.serviceName,
@@ -822,8 +826,9 @@ async function readOrder(orderId) {
   });
 }
 
-async function readWarehouseReservation(orderId) {
+async function readWarehouseReservation(orderId, requestOptions = {}) {
   return fetchJson(new URL(`/api/reservations/order/${encodeURIComponent(orderId)}`, serviceConfig.warehouseUrl), {
+    ...requestOptions,
     headers: {
       authorization: `Bearer ${serviceConfig.warehouseServiceToken}`,
       'x-service-name': serviceConfig.serviceName,
@@ -831,9 +836,10 @@ async function readWarehouseReservation(orderId) {
   });
 }
 
-async function cancelOrderThroughOrders(orderId, approval) {
+async function cancelOrderThroughOrders(orderId, approval, requestOptions = {}) {
   const path = serviceConfig.smokeCancelPath.replace('{orderId}', encodeURIComponent(orderId));
   return fetchJson(new URL(path, serviceConfig.ordersUrl), {
+    ...requestOptions,
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
@@ -3723,6 +3729,85 @@ function compactWarehouseEvidence(payload) {
   };
 }
 
+
+function compactSmokeError(error) {
+  const payload = error?.payload && typeof error.payload === 'object' ? error.payload : {};
+  return {
+    message: error?.name === 'AbortError' ? 'request_aborted_or_timed_out' : (error?.message || 'unknown_error'),
+    httpStatus: Number(error?.status || 0) || null,
+    payloadStatus: payload.status || null,
+    payloadError: payload.error || payload.message || payload.code || null,
+  };
+}
+
+function cleanupCompleted(cleanup) {
+  const orderStatus = String(cleanup?.orderReadback?.status || cleanup?.cancel?.status || '').toLowerCase();
+  const handoffStatus = String(cleanup?.orderReadback?.warehouseHandoff?.status || '').toLowerCase();
+  const activeReservationCount = Number(cleanup?.afterCancelReservation?.activeReservationCount || 0);
+  return orderStatus === 'cancelled' && (handoffStatus === 'cancelled' || activeReservationCount === 0);
+}
+
+async function attemptLiveOrderWarehouseSmokeCleanup(orderId, approval, checkout) {
+  const cleanup = {
+    attempted: Boolean(orderId),
+    orderId: orderId || null,
+    success: false,
+    errors: [],
+  };
+  if (!orderId) return cleanup;
+
+  try {
+    cleanup.cancel = compactOrderEvidence(await cancelOrderThroughOrders(orderId, approval, { timeoutMs: liveSmokeRequestTimeoutMs }));
+  } catch (error) {
+    cleanup.errors.push({ step: 'cancel_order_through_orders', error: compactSmokeError(error) });
+  }
+
+  try {
+    cleanup.orderReadback = compactOrderEvidence(await readOrder(orderId, { timeoutMs: liveSmokeRequestTimeoutMs }));
+  } catch (error) {
+    cleanup.errors.push({ step: 'read_order_after_cleanup', error: compactSmokeError(error) });
+  }
+
+  try {
+    cleanup.afterCancelReservation = compactWarehouseEvidence(await readWarehouseReservation(orderId, { timeoutMs: liveSmokeRequestTimeoutMs }));
+  } catch (error) {
+    cleanup.errors.push({ step: 'read_warehouse_reservation_after_cleanup', error: compactSmokeError(error) });
+  }
+
+  try {
+    cleanup.afterReadiness = await guardedWarehouseReservationReadiness(checkout);
+  } catch (error) {
+    cleanup.errors.push({ step: 'warehouse_readiness_after_cleanup', error: compactSmokeError(error) });
+  }
+
+  cleanup.success = cleanupCompleted(cleanup);
+  return cleanup;
+}
+
+async function liveOrderWarehouseSmokeFailureWithCleanup({ checkout, orderId, approval, failedStep, error, evidence, httpStatus = 502 }) {
+  const cleanup = await attemptLiveOrderWarehouseSmokeCleanup(orderId, approval, checkout);
+  return {
+    httpStatus,
+    body: {
+      success: false,
+      status: cleanup.success
+        ? 'live_order_warehouse_smoke_failed_cleanup_completed'
+        : 'live_order_warehouse_smoke_failed_cleanup_incomplete',
+      mode: 'guarded_live_order_warehouse_smoke_executor',
+      failedStep,
+      orderId: orderId || null,
+      error: compactSmokeError(error),
+      mutation: Boolean(orderId),
+      providerCall: Boolean(orderId),
+      persistence: Boolean(orderId),
+      paymentCreated: false,
+      notificationSent: false,
+      cleanup,
+      evidence,
+    },
+  };
+}
+
 async function executeLiveOrderWarehouseSmoke(input, plan) {
   const checkout = buildLiveOrderWarehouseSmokeCheckout(plan, input);
   const validationErrors = validateCheckout(checkout);
@@ -3775,7 +3860,8 @@ async function executeLiveOrderWarehouseSmoke(input, plan) {
     },
   };
 
-  const create = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, idempotency.orderCreate);
+  const liveRequestOptions = { timeoutMs: liveSmokeRequestTimeoutMs };
+  const create = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, idempotency.orderCreate, liveRequestOptions);
   const orderId = extractOrderId(create);
   if (!orderId) {
     return {
@@ -3792,64 +3878,89 @@ async function executeLiveOrderWarehouseSmoke(input, plan) {
     };
   }
 
-  const afterCreateReservation = await readWarehouseReservation(orderId);
-  const replay = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, idempotency.orderCreate);
-  const replayOrderId = extractOrderId(replay);
-  if (replayOrderId !== orderId) {
+  const evidence = {
+    beforeReadiness,
+    create: compactOrderEvidence(create),
+  };
+  let failedStep = 'read_warehouse_reservation_after_create';
+
+  try {
+    const afterCreateReservation = await readWarehouseReservation(orderId, liveRequestOptions);
+    evidence.afterCreateReservation = compactWarehouseEvidence(afterCreateReservation);
+
+    failedStep = 'idempotent_order_replay';
+    const replay = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, idempotency.orderCreate, liveRequestOptions);
+    const replayOrderId = extractOrderId(replay);
+    evidence.replay = compactOrderEvidence(replay);
+    if (replayOrderId !== orderId) {
+      const cleanup = await attemptLiveOrderWarehouseSmokeCleanup(orderId, approval, checkout);
+      return {
+        httpStatus: 409,
+        body: {
+          success: false,
+          status: cleanup.success
+            ? 'order_replay_id_mismatch_cleanup_completed'
+            : 'order_replay_id_mismatch_cleanup_incomplete',
+          mode: 'guarded_live_order_warehouse_smoke_executor',
+          orderId,
+          replayOrderId: replayOrderId || null,
+          mutation: true,
+          providerCall: true,
+          persistence: true,
+          paymentCreated: false,
+          notificationSent: false,
+          cleanup,
+          evidence,
+        },
+      };
+    }
+
+    failedStep = 'cancel_order_cleanup';
+    const cancel = await cancelOrderThroughOrders(orderId, approval, liveRequestOptions);
+    evidence.cancel = compactOrderEvidence(cancel);
+
+    failedStep = 'read_order_after_cancel';
+    const orderReadback = await readOrder(orderId, liveRequestOptions);
+    evidence.orderReadback = compactOrderEvidence(orderReadback);
+
+    failedStep = 'read_warehouse_reservation_after_cancel';
+    const afterCancelReservation = await readWarehouseReservation(orderId, liveRequestOptions);
+    evidence.afterCancelReservation = compactWarehouseEvidence(afterCancelReservation);
+
+    failedStep = 'warehouse_readiness_after_cancel';
+    const afterReadiness = await guardedWarehouseReservationReadiness(checkout);
+    evidence.afterReadiness = afterReadiness;
+
     return {
-      httpStatus: 409,
+      httpStatus: 201,
       body: {
-        success: false,
-        status: 'order_replay_id_mismatch_cleanup_required',
+        success: true,
+        status: 'live_order_warehouse_smoke_completed',
         mode: 'guarded_live_order_warehouse_smoke_executor',
-        orderId,
-        replayOrderId: replayOrderId || null,
         mutation: true,
         providerCall: true,
         persistence: true,
-        cleanup: {
-          required: true,
-          endpoint: serviceConfig.smokeCancelPath,
-          throughOrdersOnly: true,
+        paymentCreated: false,
+        notificationSent: false,
+        noPaymentNotificationBoundary: {
+          paymentCreateAllowed: false,
+          notificationSendAllowed: false,
         },
+        checkoutIntent: checkoutIntentEvidence(checkout),
+        orderId,
+        evidence,
       },
     };
-  }
-
-  const cancel = await cancelOrderThroughOrders(orderId, approval);
-  const orderReadback = await readOrder(orderId);
-  const afterCancelReservation = await readWarehouseReservation(orderId);
-  const afterReadiness = await guardedWarehouseReservationReadiness(checkout);
-
-  return {
-    httpStatus: 201,
-    body: {
-      success: true,
-      status: 'live_order_warehouse_smoke_completed',
-      mode: 'guarded_live_order_warehouse_smoke_executor',
-      mutation: true,
-      providerCall: true,
-      persistence: true,
-      paymentCreated: false,
-      notificationSent: false,
-      noPaymentNotificationBoundary: {
-        paymentCreateAllowed: false,
-        notificationSendAllowed: false,
-      },
-      checkoutIntent: checkoutIntentEvidence(checkout),
+  } catch (error) {
+    return liveOrderWarehouseSmokeFailureWithCleanup({
+      checkout,
       orderId,
-      evidence: {
-        beforeReadiness,
-        create: compactOrderEvidence(create),
-        afterCreateReservation: compactWarehouseEvidence(afterCreateReservation),
-        replay: compactOrderEvidence(replay),
-        cancel: compactOrderEvidence(cancel),
-        orderReadback: compactOrderEvidence(orderReadback),
-        afterCancelReservation: compactWarehouseEvidence(afterCancelReservation),
-        afterReadiness,
-      },
-    },
-  };
+      approval,
+      failedStep,
+      error,
+      evidence,
+    });
+  }
 }
 
 export async function runLiveOrderWarehouseSmoke(input = {}) {
