@@ -482,3 +482,11 @@ behavior until those approvals are present.
   44px touch targets. Guarded checkout still returns
   `service_identity_required` and no live order, payment, Warehouse
   reservation, or notification mutation.
+
+- GOAL-05 live checkout preflight guard deployed as
+  `localhost:5000/cliplot-service:505e90c`. Readiness and guarded checkout now
+  expose `liveCheckoutPreflight.status=blocked`, `wouldMutate=false`, false
+  order/payment/notification live flags, false approval booleans, validation
+  lane statuses, and the remaining approval blockers. This makes the future
+  live-checkout go/no-go auditable without enabling order, payment, Warehouse,
+  callback persistence, or notification mutation.
