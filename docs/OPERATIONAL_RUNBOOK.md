@@ -227,6 +227,18 @@ customer PII, provider transaction IDs, or raw provider payloads.
 npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz
 ```
 
+`GET /api/checkout/customer-status-runtime-rollout-plan` is the read-only
+runtime rollout plan for a future approved customer status surface. It must
+return `approval_required_read_only_customer_status_runtime_rollout`,
+`runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+`storageRead=false`, `callbackPersistence=false`, `mutation=false`,
+`persistence=false`, and `providerCall=false`. ADR-003 records this as proposed
+for owner approval only; it does not approve live reads or writes.
+
+```bash
+npm run readiness:customer-status-rollout -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/callback-readiness` validates the configured webhook key
 through an internal synthetic callback ACK. It must return
 `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`,

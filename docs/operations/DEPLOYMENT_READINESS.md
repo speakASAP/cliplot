@@ -57,6 +57,11 @@ present.
   `storageRead=false`, `mutation=false`, `persistence=false`, and
   `providerCall=false` until the approved read-only customer status rollout
   exists.
+- The customer status runtime rollout plan must remain
+  `approval_required_read_only_customer_status_runtime_rollout` with
+  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+  `storageRead=false`, `callbackPersistence=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false` until ADR-003 is approved.
 
 ## Deploy Command
 

@@ -139,6 +139,7 @@ run_step docs_rag_preflight docs_rag_preflight
 if [ "$critical_failed" -eq 0 ]; then
   run_critical_step order_warehouse_readiness npm run readiness:order-warehouse -- "$BASE_URL"
   run_step checkout_status_surface npm run readiness:checkout-status-surface -- "$BASE_URL"
+  run_step customer_status_rollout npm run readiness:customer-status-rollout -- "$BASE_URL"
   run_step payment_callback_readiness npm run readiness:payment-callback -- "$BASE_URL"
   run_step payment_read_scope_readiness npm run readiness:payment-read-scope -- "$BASE_URL"
   run_step payment_status_readiness npm run readiness:payment-status -- "$BASE_URL"

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   authLinks,
   customerStatusSurfaceReadiness,
+  customerStatusRuntimeRolloutPlan,
   fetchCatalogProducts,
   productCatalogSource,
   handlePaymentCallback,
@@ -177,6 +178,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/status-surface-contract') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/customer-status-runtime-rollout-plan' && req.method === 'GET') {
+      sendJson(res, 200, await customerStatusRuntimeRolloutPlan());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/customer-status-runtime-rollout-plan') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

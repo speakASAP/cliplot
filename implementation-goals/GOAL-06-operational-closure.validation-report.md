@@ -404,6 +404,38 @@ persistence=false
 providerCall=false
 ```
 
+## Customer Status Runtime Rollout Plan
+
+Status: implemented and approval-gated.
+
+ADR-003 records the future read-only customer status runtime rollout as proposed
+for owner approval. The runtime plan keeps production disabled while documenting
+the prerequisites, rollout steps, rollback steps, and forbidden operations for
+the future approved status surface.
+
+Expected validation:
+
+```bash
+npm run readiness:customer-status-rollout -- https://cliplot.alfares.cz
+```
+
+Expected evidence:
+
+```text
+status=approval_required_read_only_customer_status_runtime_rollout
+decisionRecord=ADR-003-read-only-customer-status-runtime-rollout
+currentDataSource=browser_local_checkout_snapshot
+futureReadContract=/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}
+forbiddenEndpoint=/payments/{paymentId}
+runtimeReadEnabled=false
+paymentsSnapshotReadEnabled=false
+storageRead=false
+callbackPersistence=false
+mutation=false
+persistence=false
+providerCall=false
+```
+
 
 ## Live Notification Send Path Wiring
 

@@ -1825,6 +1825,121 @@ export async function customerStatusSurfaceReadiness() {
   };
 }
 
+export async function customerStatusRuntimeRolloutPlan() {
+  const surface = await customerStatusSurfaceReadiness();
+  const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
+  const paymentDecision = await paymentStatusPersistenceDecisionPacket();
+  const readyForPlanning = surface.status === 'guarded_customer_status_surface_contract'
+    && surface.runtimeReadEnabled === false
+    && surface.paymentsSnapshotReadEnabled === false
+    && surface.storageRead === false
+    && snapshotReadApproval.status === 'approval_required_passive_payments_snapshot_read'
+    && paymentDecision.status === 'decision_recorded_approval_required';
+
+  return {
+    success: true,
+    status: readyForPlanning ? 'approval_required_read_only_customer_status_runtime_rollout' : 'blocked_status_surface_contract_not_guarded',
+    mode: 'guarded_customer_status_runtime_rollout_plan',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    runtimeReadEnabled: false,
+    paymentsSnapshotReadEnabled: false,
+    storageRead: false,
+    approvedRuntimeChange: false,
+    callbackPersistence: false,
+    targetSurface: {
+      routes: surface.routes,
+      currentDataSource: surface.currentSurface?.source,
+      currentPaymentStatusContract: surface.currentPaymentStatusContract?.status,
+      futureReadContract: snapshotReadApproval.readContract?.endpoint,
+      requiredScope: snapshotReadApproval.readContract?.requiredScope,
+      forbiddenEndpoint: snapshotReadApproval.readContract?.forbiddenEndpoint,
+      providerRefreshRisk: snapshotReadApproval.readContract?.providerRefreshRisk,
+    },
+    decisionRecord: {
+      id: 'ADR-003-read-only-customer-status-runtime-rollout',
+      path: '07_decisions/ADR-003-read-only-customer-status-runtime-rollout.md',
+      status: 'proposed_for_owner_approval',
+      recorded: true,
+      runtimeApproval: false,
+    },
+    prerequisites: [
+      '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
+      '[MISSING: customer-safe status copy approval for pending/processing/completed/failed/cancelled/refunded states]',
+      '[MISSING: explicit approval that passive reads use only Payments DB-only by-order-id route]',
+      '[MISSING: approved runtime rollout plan for read-only customer status surface]',
+      '[MISSING: callback persistence/replay policy]',
+      '[MISSING: approved order/payment status mapping ownership]',
+    ],
+    rolloutSteps: [
+      {
+        order: 1,
+        name: 'confirm_guarded_baseline',
+        command: 'npm run readiness:bundle',
+        expected: 'CLIPLOT_READINESS_BUNDLE=pass with runtimeReadEnabled=false and wouldMutate=false',
+      },
+      {
+        order: 2,
+        name: 'record_owner_approval',
+        expected: 'approval explicitly limits Cliplot to provider-refresh-free Payments DB snapshot reads by orderId',
+      },
+      {
+        order: 3,
+        name: 'enable_read_only_surface_feature_flag',
+        expected: 'future flag enables read rendering only after approval; payment/order mutation flags remain false',
+      },
+      {
+        order: 4,
+        name: 'validate_customer_safe_status_copy',
+        expected: 'Czech labels for pending, processing, completed, failed, cancelled, refunded are approved',
+      },
+      {
+        order: 5,
+        name: 'run_post_enable_readiness',
+        expected: 'customer status uses DB snapshot read only; mutation=false persistence=false providerCall=false',
+      },
+    ],
+    rollbackPlan: [
+      'set future read-only customer status feature flag back to false',
+      'verify /api/checkout/status-surface-contract returns runtimeReadEnabled=false',
+      'verify /api/payments/status remains payment_status_guarded_no_persistence',
+      'run npm run readiness:bundle and confirm wouldMutate=false',
+    ],
+    mustRemainFalseDuringRollout: [
+      'ENABLE_LIVE_ORDER_SUBMIT',
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'ENABLE_LIVE_NOTIFICATIONS',
+      'callback persistence',
+      'Cliplot-local payment status writes',
+      'provider-backed /payments/{paymentId} reads',
+      'Warehouse reservation',
+      'customer notification send',
+    ],
+    forbiddenOperations: [
+      'create order',
+      'create payment',
+      'reserve Warehouse stock',
+      'send notification',
+      'persist callback state',
+      'read /payments/{paymentId}',
+      'print API keys or webhook keys',
+      'return payment rows, customer PII, provider transaction IDs, or raw provider payloads',
+    ],
+    validationCommands: [
+      'npm run readiness:customer-status-rollout -- https://cliplot.alfares.cz',
+      'npm run readiness:checkout-status-surface -- https://cliplot.alfares.cz',
+      'npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz',
+      'npm run readiness:k8s -- https://cliplot.alfares.cz',
+      'npm run readiness:bundle',
+    ],
+    blockers: surface.blockers,
+    next: 'Keep runtime status reads disabled until owner approval and rollout evidence exist, then implement the read-only surface behind an explicit disabled-by-default flag.',
+  };
+}
+
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
     .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)

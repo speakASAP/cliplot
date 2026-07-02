@@ -124,6 +124,15 @@ async function main() {
   assertFalse(checkoutStatusSurface.body?.persistence, 'checkout_status_surface_persistence_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
   assertFalse(checkoutStatusSurface.body?.providerCall, 'checkout_status_surface_provider_call_enabled', { checkoutStatusSurface: checkoutStatusSurface.body });
 
+  const customerStatusRollout = await getJson('/api/checkout/customer-status-runtime-rollout-plan');
+  assertEqual(customerStatusRollout.body?.status, 'approval_required_read_only_customer_status_runtime_rollout', 'customer_status_rollout_unexpected', { customerStatusRollout: customerStatusRollout.body });
+  assertEqual(customerStatusRollout.body?.runtimeReadEnabled, false, 'customer_status_rollout_runtime_read_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertEqual(customerStatusRollout.body?.paymentsSnapshotReadEnabled, false, 'customer_status_rollout_snapshot_read_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertEqual(customerStatusRollout.body?.storageRead, false, 'customer_status_rollout_storage_read_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertFalse(customerStatusRollout.body?.mutation, 'customer_status_rollout_mutation_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertFalse(customerStatusRollout.body?.persistence, 'customer_status_rollout_persistence_enabled', { customerStatusRollout: customerStatusRollout.body });
+  assertFalse(customerStatusRollout.body?.providerCall, 'customer_status_rollout_provider_call_enabled', { customerStatusRollout: customerStatusRollout.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -140,6 +149,7 @@ async function main() {
     paymentStatusPersistenceDecision: paymentDecision.body.status,
     paymentStatusSnapshotReadApproval: snapshotReadApproval.body.status,
     checkoutStatusSurface: checkoutStatusSurface.body.status,
+    customerStatusRollout: customerStatusRollout.body.status,
   }, null, 2));
 }
 
