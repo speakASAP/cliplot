@@ -237,10 +237,23 @@ current guarded deployment. The readiness body exposes a non-authoritative
 `labelsLocale=cs-CZ`, and Czech labels for `pending`, `processing`,
 `completed`, `failed`, `cancelled`, and `refunded`; these labels are readiness
 metadata only until persisted payment status storage and approved
-`payments:read` access exist. Run it with:
+`payments:read` access exist. The same response includes a non-authoritative
+`mappingContract` proposal for `externalOrderId`, `orderId`, `paymentId`,
+`paymentCreateIdempotencyKey`, amount/currency, status, and timestamps; it is a
+contract proposal only, not storage. Run it with:
 
 ```bash
 npm run readiness:payment-status -- https://cliplot.alfares.cz
+```
+
+`GET /api/payments/status-storage-readiness` is the read-only schema/storage
+ownership proposal for future payment status persistence. It must return
+`blocked_storage_backend_not_approved`, `mutation=false`, `persistence=false`,
+and `providerCall=false` until a decision records whether persistence belongs in
+Cliplot-local storage or an approved shared commerce service.
+
+```bash
+npm run readiness:payment-storage -- https://cliplot.alfares.cz
 ```
 
 

@@ -92,6 +92,12 @@ async function main() {
   assertFalse(paymentStatusReadiness.body?.persistence, 'payment_status_readiness_persistence_enabled', { paymentStatusReadiness: paymentStatusReadiness.body });
   assertFalse(paymentStatusReadiness.body?.providerCall, 'payment_status_readiness_provider_call_enabled', { paymentStatusReadiness: paymentStatusReadiness.body });
 
+  const paymentStatusStorage = await getJson('/api/payments/status-storage-readiness');
+  assertEqual(paymentStatusStorage.body?.status, 'blocked_storage_backend_not_approved', 'payment_status_storage_readiness_unexpected', { paymentStatusStorage: paymentStatusStorage.body });
+  assertFalse(paymentStatusStorage.body?.mutation, 'payment_status_storage_readiness_mutation_enabled', { paymentStatusStorage: paymentStatusStorage.body });
+  assertFalse(paymentStatusStorage.body?.persistence, 'payment_status_storage_readiness_persistence_enabled', { paymentStatusStorage: paymentStatusStorage.body });
+  assertFalse(paymentStatusStorage.body?.providerCall, 'payment_status_storage_readiness_provider_call_enabled', { paymentStatusStorage: paymentStatusStorage.body });
+
   console.log(JSON.stringify({
     ok: true,
     scope: 'read_only_kubernetes_readiness_monitor',
@@ -104,6 +110,7 @@ async function main() {
     paymentStatus: paymentStatus.body.status,
     paymentCallbackReadiness: paymentCallback.body.status,
     paymentStatusReadiness: paymentStatusReadiness.body.status,
+    paymentStatusStorageReadiness: paymentStatusStorage.body.status,
   }, null, 2));
 }
 

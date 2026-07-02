@@ -140,6 +140,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_critical_step order_warehouse_readiness npm run readiness:order-warehouse -- "$BASE_URL"
   run_step payment_callback_readiness npm run readiness:payment-callback -- "$BASE_URL"
   run_step payment_status_readiness npm run readiness:payment-status -- "$BASE_URL"
+  run_step payment_status_storage_readiness npm run readiness:payment-storage -- "$BASE_URL"
   run_step live_smoke_plan npm run readiness:live-smoke-plan -- "$BASE_URL"
   run_step live_smoke_executor_guard npm run readiness:live-smoke-executor -- "$BASE_URL"
   run_step guarded_checkout_smoke npm run smoke:checkout -- "$BASE_URL"

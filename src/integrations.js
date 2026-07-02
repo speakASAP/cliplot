@@ -1192,10 +1192,29 @@ export function paymentStatusReadiness() {
       persistence: false,
       providerCall: false,
     },
+    mappingContract: {
+      authoritative: false,
+      source: 'approved_persistence_contract_required',
+      proposedFields: [
+        'externalOrderId',
+        'orderId',
+        'paymentId',
+        'paymentCreateIdempotencyKey',
+        'amount',
+        'currency',
+        'status',
+        'createdAt',
+        'completedAt',
+      ],
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
     blockers: [
       '[MISSING: approved Cliplot persisted payment id storage contract]',
       '[MISSING: approved mapping from Cliplot externalOrderId/orderId to Payments paymentId]',
       '[MISSING: owner approval for provider-backed payment status reads]',
+      '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
     ],
     sensitiveDataPolicy: [
       'no payment API key value',
@@ -1208,6 +1227,92 @@ export function paymentStatusReadiness() {
     next: guarded
       ? 'Design and approve persisted payment id storage before Cliplot calls Payments status read endpoints.'
       : 'Restore guarded payment status and callback readiness before designing provider-backed status reads.',
+  };
+}
+
+
+export function paymentStatusStorageReadiness() {
+  const paymentReadiness = paymentStatusReadiness();
+  const callback = paymentCallbackReadiness();
+  const sampleRecord = {
+    externalOrderId: 'cliplot-storage-readiness-order',
+    paymentId: 'cliplot-storage-readiness-payment',
+    paymentStatus: 'completed',
+    customerSafePaymentStatus: customerSafePaymentStatus('completed'),
+    source: 'payment_callback',
+    schemaVersion: 'cliplot.payment_status.v1',
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    success: true,
+    status: 'blocked_storage_backend_not_approved',
+    mode: 'guarded_payment_status_storage_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    storage: {
+      configured: false,
+      adapter: 'none',
+      liveWritesEnabled: false,
+      liveReadsEnabled: false,
+      reason: 'No approved Cliplot-owned persistence backend or migration exists for payment/order status yet.',
+    },
+    mappingContract: paymentReadiness.mappingContract,
+    schemaContract: {
+      schemaVersion: 'cliplot.payment_status.v1',
+      requiredFields: [
+        'externalOrderId',
+        'paymentId',
+        'paymentStatus',
+        'customerSafePaymentStatus.code',
+        'customerSafePaymentStatus.label',
+        'source',
+        'updatedAt',
+      ],
+      uniqueKeys: ['externalOrderId', 'paymentId'],
+      lookupKeys: ['externalOrderId', 'paymentId'],
+      allowedPaymentStatuses: Object.keys(customerSafePaymentStatusMap).filter((statusName) => statusName !== 'unknown'),
+      customerSafeStatusContract: paymentReadiness.customerSafeStatusContract,
+      sampleRecord,
+    },
+    callbackContract: {
+      endpoint: '/api/payments/callback',
+      readinessEndpoint: '/api/payments/callback-readiness',
+      ackStatus: callback.status,
+      callbackAccepted: callback.callbackAccepted,
+      currentPersistence: callback.persistence,
+      futureWriteSource: 'payment_callback_after_storage_approval',
+    },
+    readContract: {
+      currentEndpoint: '/api/payments/status',
+      currentStatus: paymentReadiness.currentStatusContract.status,
+      currentPersistence: paymentReadiness.currentStatusContract.persistence,
+      futureProviderBackedEndpoint: paymentReadiness.futureProviderBackedRead.paymentsEndpoint,
+      providerRefreshRisk: paymentReadiness.futureProviderBackedRead.providerRefreshRisk,
+      requiredScope: paymentReadiness.futureProviderBackedRead.requiredScope,
+    },
+    blockers: [
+      '[MISSING: approved Cliplot persisted payment id storage contract]',
+      '[MISSING: approved mapping from Cliplot externalOrderId/orderId to Payments paymentId]',
+      '[MISSING: owner approval for provider-backed payment status reads]',
+      '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
+      '[MISSING: approved migration or managed storage resource for cliplot.payment_status.v1]',
+      '[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]',
+      '[MISSING: approved callback persistence rollout plan]',
+      '[MISSING: owner approval before enabling live status writes or reads]',
+    ],
+    sensitiveDataPolicy: [
+      'no payment API key value',
+      'no webhook key value',
+      'no provider call',
+      'no storage write',
+      'no storage read',
+      'synthetic sample record only',
+    ],
+    next: 'Approve a Cliplot-owned storage backend and migration before callback persistence or provider-backed payment status reads are enabled.',
   };
 }
 

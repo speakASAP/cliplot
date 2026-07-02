@@ -46,7 +46,12 @@ assert(readiness.futureProviderBackedRead?.requiredScope === 'payments:read', 'f
 assert(readiness.futureProviderBackedRead?.providerRefreshRisk === 'stripe_card_pending_reads_may_call_provider', 'provider refresh risk missing', readiness);
 assert(readiness.futureProviderBackedRead?.supportsPaymentIdRead === true, 'payment id read support missing', readiness);
 assert(readiness.futureProviderBackedRead?.supportsOrderIdRead === false, 'order id read support should remain false', readiness);
-assert(Array.isArray(readiness.blockers) && readiness.blockers.length >= 3, 'payment status blockers missing', readiness);
+assert(readiness.mappingContract?.authoritative === false, 'mapping contract should be non-authoritative', readiness);
+assert(readiness.mappingContract?.source === 'approved_persistence_contract_required', 'mapping contract source missing', readiness);
+assert(readiness.mappingContract?.proposedFields?.includes('externalOrderId'), 'mapping externalOrderId missing', readiness);
+assert(readiness.mappingContract?.proposedFields?.includes('paymentId'), 'mapping paymentId missing', readiness);
+assert(readiness.mappingContract?.persistence === false, 'mapping contract unexpectedly persists', readiness);
+assert(Array.isArray(readiness.blockers) && readiness.blockers.length >= 4, 'payment status blockers missing', readiness);
 assert(Array.isArray(readiness.sensitiveDataPolicy) && readiness.sensitiveDataPolicy.includes('no provider call'), 'sensitive data policy missing', readiness);
 
 console.log(JSON.stringify({
@@ -63,6 +68,7 @@ console.log(JSON.stringify({
   futureEndpoint: readiness.futureProviderBackedRead.paymentsEndpoint,
   requiredScope: readiness.futureProviderBackedRead.requiredScope,
   providerRefreshRisk: readiness.futureProviderBackedRead.providerRefreshRisk,
+  mappingFields: readiness.mappingContract.proposedFields,
   blockerCount: readiness.blockers.length,
   mutation: readiness.mutation,
   persistence: readiness.persistence,
