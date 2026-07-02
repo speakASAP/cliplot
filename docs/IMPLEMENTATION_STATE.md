@@ -159,7 +159,7 @@ notification sends, and Docs/RAG ingestion gated.
 - The live checkout mutation plan now names Warehouse reservation explicitly as `wouldReserveWarehouse`, because Orders live create calls Warehouse reservation before payment/notification continuation. Guarded production reports keep it `false`; the fully approved simulated activation path sets it `true` together with order, payment, and notification mutation booleans.
 - The live Orders/Warehouse smoke plan is wired as `GET /api/checkout/live-order-warehouse-smoke-plan` and `npm run readiness:live-smoke-plan`. It is read-only and approval-gated: it lists the exact before-availability, approved create, idempotent replay, approved cancel/release, and after-availability evidence steps while keeping `liveExecutionAllowed=false`.
 - The live Orders/Warehouse smoke executor is wired as `POST /api/checkout/live-order-warehouse-smoke-executor` and `npm run readiness:live-smoke-executor`. In default production it returns `approval_required` with `mutation=false`, `providerCall=false`, and `persistence=false`; execution additionally requires `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true`, `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, `ORDERS_STATUS_SERVICE_TOKEN`, body `confirm=CREATE_REPLAY_CANCEL`, `approvedBy`, and `reasonCode`.
-- The Cliplot ConfigMap and Vault gate now expose dedicated live-smoke readiness while keeping execution disabled by default: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID=""`, `ORDERS_STATUS_SERVICE_NAME=cliplot`, and `LIVE_SMOKE_SECRET_PRESENCE=blocked` until `ORDERS_STATUS_SERVICE_TOKEN` plus the smoke approval ID are populated. ExternalSecret projection for missing live-smoke Vault properties is intentionally deferred to avoid breaking the currently synced `cliplot-secret`.
+- The Cliplot ConfigMap and Vault gate now expose dedicated live-smoke readiness while keeping execution disabled by default: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, smoke metadata IDs/owners are recorded, `ORDERS_STATUS_SERVICE_NAME=cliplot`, and `LIVE_SMOKE_SECRET_PRESENCE=pass` when `ORDERS_STATUS_SERVICE_TOKEN` is present. The smoke approval metadata is not an execution switch; execution still requires opening the flag for the approved window plus executor confirmation.
 - The guarded payment callback readiness endpoint is wired as `GET /api/payments/callback-readiness` and `npm run readiness:payment-callback`. It validates the configured webhook key through an internal synthetic callback ACK and returns `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing the key or updating payment/order state.
 - The payment callback replay policy gate is wired as `GET /api/payments/callback-replay-policy` and `npm run readiness:payment-callback-policy`. It records ADR-005 callback replay policy metadata approval through `CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID` while keeping `callbackPersistence=false`, `callbackReplayEnabled=false`, `mutation=false`, `persistence=false`, and `providerCall=false`. It does not persist callbacks, replay callbacks, update orders, update payments, or call the payment provider.
 - The read-only customer status runtime is approved and deployed through
@@ -618,13 +618,7 @@ provider-refresh reads, and Cliplot-local payment status storage remain disabled
 ### 2026-07-02 - Live-smoke Vault projection readiness gate
 
 Added `npm run readiness:vault-live-smoke` as a read-only projection gate for the
-future Orders/Warehouse create-replay-cancel smoke. It checks only key presence
-for `ORDERS_STATUS_SERVICE_TOKEN` and
-`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, keeps secret values hidden,
-and reports whether adding ExternalSecret refs is safe. Current production is
-expected to remain `LIVE_SMOKE_PROJECTION=blocked` until those Vault keys exist.
-No ExternalSecret refs were added for missing keys, and
-`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false` remains the required runtime state.
+future Orders/Warehouse create-replay-cancel smoke. It checks only key presence for `ORDERS_STATUS_SERVICE_TOKEN`, keeps secret values hidden, and reports whether the guarded live-smoke projection is ready. Current production reports `LIVE_SMOKE_PROJECTION=ready` while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false` remains the required runtime state until an approved execution window is intentionally opened.
 
 
 ### 2026-07-02 - Configured Cliplot SKU scope approval

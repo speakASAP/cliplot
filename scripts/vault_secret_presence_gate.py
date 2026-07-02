@@ -25,7 +25,7 @@ def emit_live_smoke_projection(path: str, missing_live_smoke: list[str]) -> None
     ready = not missing_live_smoke
     print(f"LIVE_SMOKE_PROJECTION={'ready' if ready else 'blocked'}")
     print("projection_keys=" + ",".join(LIVE_SMOKE_KEYS))
-    print("external_secret_projection=" + ("ready_to_add_after_owner_review" if ready else "deferred_missing_vault_keys"))
+    print("external_secret_projection=" + ("already_projected_or_ready" if ready else "deferred_missing_vault_keys"))
     print("runtime_flag=ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false")
     print("approval_id_source=CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID")
     print("mutation=false")
@@ -36,7 +36,7 @@ def emit_live_smoke_projection(path: str, missing_live_smoke: list[str]) -> None
             print(f"PROJECTION_BLOCKER [MISSING: {key} in Vault path {path}]")
         print("next=Populate ORDERS_STATUS_SERVICE_TOKEN before adding live-smoke ExternalSecret refs.")
     else:
-        print("next=Project ORDERS_STATUS_SERVICE_TOKEN while keeping ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false until owner-approved execution.")
+        print("next=ORDERS_STATUS_SERVICE_TOKEN is present for the guarded smoke path; keep ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false until the approved execution window is intentionally opened.")
 
 
 def main() -> int:

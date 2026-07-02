@@ -15,11 +15,11 @@ assert(response.status === 200 && plan.success, 'live smoke plan request failed'
   httpStatus: response.status,
   status: plan.status,
 });
-assert(plan.status === 'approval_required', 'live smoke plan is not approval-gated', plan);
+assert(['approval_required', 'approved_live_order_warehouse_smoke_metadata_execution_disabled'].includes(plan.status), 'live smoke plan is not approval-gated', plan);
 assert(plan.mutation === false && plan.providerCall === false && plan.persistence === false, 'plan endpoint is not read-only', plan);
 assert(plan.liveExecutionAllowed === false, 'plan unexpectedly allows live execution', plan);
 assert(plan.approvalRequired?.orderCreate === true && plan.approvalRequired?.warehouseReservation === true, 'required approval map missing', plan);
-assert(Array.isArray(plan.liveExecutionBlockers) && plan.liveExecutionBlockers.length >= 4, 'plan blockers missing', plan);
+assert(Array.isArray(plan.liveExecutionBlockers) && plan.liveExecutionBlockers.length >= 1, 'plan blockers missing', plan);
 assert(plan.liveCheckoutPreflight?.status === 'blocked', 'live preflight is not blocked', plan.liveCheckoutPreflight || {});
 assert(plan.liveCheckoutPreflight?.wouldMutate === false, 'live preflight would mutate', plan.liveCheckoutPreflight || {});
 assert(plan.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'live preflight would reserve Warehouse before approval', plan.liveCheckoutPreflight || {});
@@ -30,6 +30,16 @@ assert(plan.readiness?.catalog?.productScopeEvidence?.approvedCliplotSkuScope ==
 assert(Array.isArray(plan.readiness?.catalog?.productScopeEvidence?.blockers) && plan.readiness.catalog.productScopeEvidence.blockers.length === 0, 'approved product scope should not have blockers', plan.readiness?.catalog || {});
 assert(plan.noPaymentNotificationBoundary?.paymentCreateAllowed === false, 'payment boundary is not closed', plan.noPaymentNotificationBoundary || {});
 assert(plan.noPaymentNotificationBoundary?.notificationSendAllowed === false, 'notification boundary is not closed', plan.noPaymentNotificationBoundary || {});
+if (plan.status === 'approved_live_order_warehouse_smoke_metadata_execution_disabled') {
+  assert(plan.approvals?.orderWarehouseSmoke === true, 'approved smoke metadata should include smoke approval id evidence', plan);
+  assert(plan.approvals?.orderWarehouseSmokeCleanup === true, 'approved smoke metadata should include cleanup approval evidence', plan);
+  assert(plan.approvals?.orderWarehouseSmokeWindow === true, 'approved smoke metadata should include operator window evidence', plan);
+  assert(plan.approvals?.orderWarehouseSmokeRollbackOwner === true, 'approved smoke metadata should include rollback owner evidence', plan);
+  assert(plan.approvals?.orderWarehouseSmokeValidationOwner === true, 'approved smoke metadata should include validation owner evidence', plan);
+  assert(plan.satisfiedEvidence?.some((item) => item.includes('owner-approved live Orders/Warehouse')), 'approved smoke metadata evidence missing', plan);
+  assert(plan.liveExecutionBlockers.includes('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]'), 'execution flag blocker missing after metadata approval', plan);
+  assert(!plan.liveExecutionBlockers.some((item) => item.includes('explicit owner approval for live Orders/Warehouse')), 'stale owner approval blocker present', plan);
+}
 assert(plan.plan?.scopeEvidence?.productId && plan.plan?.scopeEvidence?.warehouseId, 'plan lacks product or warehouse evidence', plan.plan || {});
 assert(plan.plan?.payloadPreview?.fingerprintSha256, 'payload fingerprint missing', plan.plan || {});
 assert(Array.isArray(plan.plan?.steps) && plan.plan.steps.length === 5, 'plan steps missing', plan.plan || {});

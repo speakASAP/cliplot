@@ -53,7 +53,6 @@ def main() -> int:
         'CLIPLOT_LIVE_ORDER_APPROVAL_ID: ""',
         'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: ""',
         'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: ""',
-        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID: ""',
         'AUTH_PUBLIC_URL: "https://auth.alfares.cz"',
     ]
     missing_config = [item for item in required_config if item not in configmap]
@@ -84,7 +83,20 @@ def main() -> int:
         return 1
     print("DEPLOYMENT_READINESS=pass")
     print("scope=shared-service-integration-foundation")
-    print("note=Live order/payment/notification mutation remains gated by false live flags and missing approval IDs.")
+    smoke_metadata_keys = [
+        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID:',
+        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_CLEANUP_APPROVAL_ID:',
+        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_WINDOW:',
+        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_ROLLBACK_OWNER:',
+        'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_VALIDATION_OWNER:',
+    ]
+    missing_smoke_metadata = [item for item in smoke_metadata_keys if item not in configmap]
+    if missing_smoke_metadata:
+        print("DEPLOYMENT_READINESS=fail")
+        for item in missing_smoke_metadata:
+            print(f"MISSING smoke metadata config {item}")
+        return 1
+    print("note=Live order/payment/notification mutation remains gated by false live flags and missing approval IDs; smoke metadata does not enable execution.")
     return 0
 
 

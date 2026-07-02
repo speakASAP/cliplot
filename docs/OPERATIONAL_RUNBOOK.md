@@ -156,7 +156,7 @@ npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-smoke-plan
 ```
 
-The plan must report `liveExecutionAllowed=false`, list approval blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It is not permission to execute the live smoke.
+The plan must report `liveExecutionAllowed=false`, list any remaining execution blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It may return `approved_live_order_warehouse_smoke_metadata_execution_disabled` after owner metadata is recorded, but that is not permission to execute the live smoke while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
 
 The executor endpoint is `POST /api/checkout/live-order-warehouse-smoke-executor`.
 It must remain blocked in normal production and return `approval_required` until

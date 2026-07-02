@@ -84,12 +84,13 @@ ssh alfares 'kubectl rollout undo deployment/cliplot -n statex-apps'
 - `ENABLE_LIVE_ORDER_SUBMIT`, `ENABLE_LIVE_PAYMENT_CREATE`, and
   `ENABLE_LIVE_NOTIFICATIONS` remain `false` by default.
 - `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` remains `false` by default, with
-  `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` projected by name only for a
-  future owner-approved smoke window.
+  `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` and smoke owner metadata
+  projected for a future owner-approved smoke window; the execution flag still
+  stays `false` until that window is intentionally opened.
 - `CLIPLOT_LIVE_ORDER_APPROVAL_ID`, `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, and
   `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` must stay empty until approved live
   mutation evidence exists.
-- Deployment readiness now checks both false live flags and empty approval IDs.
+- Deployment readiness checks false live mutation flags, empty live order/payment/notification approval IDs, and confirms that smoke metadata does not enable execution while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
 
 
 ## Docs/RAG Operational Readiness

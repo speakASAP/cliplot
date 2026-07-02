@@ -54,7 +54,7 @@ assert(packet.callbackPolicy?.callbackPersistence === false, 'callback persisten
 assert(packet.customerStatus?.activation === 'ready_for_approved_read_only_customer_status_runtime', 'customer status activation missing', packet);
 assert(packet.customerStatus?.runtimeReadEnabled === true, 'read-only customer status runtime not enabled', packet);
 assert(packet.customerStatus?.storageRead === false, 'customer status storage read enabled', packet);
-assert(packet.liveSmokePlan?.status === 'approval_required', 'live smoke plan should remain approval-required', packet);
+assert(['approval_required', 'approved_live_order_warehouse_smoke_metadata_execution_disabled'].includes(packet.liveSmokePlan?.status), 'live smoke plan should remain approval-required or metadata-approved execution-disabled', packet);
 assert(packet.liveSmokePlan?.liveExecutionAllowed === false, 'live smoke execution unexpectedly allowed', packet);
 assert(Array.isArray(packet.forbiddenOperations) && packet.forbiddenOperations.includes('create payment'), 'forbidden payment operation missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length > 0, 'revenue closure blockers missing', packet);

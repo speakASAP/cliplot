@@ -99,15 +99,12 @@ CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID
 ```
 
-If these approval IDs later become sensitive or centrally issued, promote them
-to Vault/ExternalSecret keys by name only. Do not commit or print approval token
-values.
+Live order, payment, and notification approval IDs must stay empty until full live checkout approval exists. The Orders/Warehouse smoke approval metadata may be recorded while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`; it is not an execution secret and does not permit mutation by itself. If any approval IDs later become sensitive or centrally issued, promote them to Vault/ExternalSecret keys by name only. Do not commit or print approval token values.
 
 
 ## Live-Smoke Projection Readiness
 
-Run the read-only projection gate before adding live-smoke keys to
-`k8s/external-secret.yaml`:
+Run the read-only projection gate to confirm live-smoke secret presence without printing values:
 
 ```bash
 npm run readiness:vault-live-smoke

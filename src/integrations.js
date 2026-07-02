@@ -72,6 +72,10 @@ export const serviceConfig = {
   livePaymentApprovalId: process.env.CLIPLOT_LIVE_PAYMENT_APPROVAL_ID || '',
   liveNotificationApprovalId: process.env.CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID || '',
   liveOrderWarehouseSmokeApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID || '',
+  liveOrderWarehouseSmokeCleanupApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_CLEANUP_APPROVAL_ID || '',
+  liveOrderWarehouseSmokeWindow: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_WINDOW || '',
+  liveOrderWarehouseSmokeRollbackOwner: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_ROLLBACK_OWNER || '',
+  liveOrderWarehouseSmokeValidationOwner: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_VALIDATION_OWNER || '',
   customerStatusRuntimeRead: process.env.ENABLE_CUSTOMER_STATUS_RUNTIME_READ === 'true',
   paymentStatusSnapshotRead: process.env.ENABLE_PAYMENT_STATUS_SNAPSHOT_READ === 'true',
   statusRuntimeApprovalId: process.env.CLIPLOT_STATUS_RUNTIME_APPROVAL_ID || '',
@@ -3636,28 +3640,50 @@ export async function liveOrderWarehouseSmokePlan() {
   const preflight = liveCheckoutPreflight();
   const approvals = liveMutationApprovals();
   const smokeApprovalPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeApprovalId);
+  const cleanupApprovalPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeCleanupApprovalId);
+  const smokeWindowPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeWindow);
+  const rollbackOwnerPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeRollbackOwner);
+  const validationOwnerPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeValidationOwner);
+  const smokeMetadataApproved = smokeApprovalPresent
+    && cleanupApprovalPresent
+    && smokeWindowPresent
+    && rollbackOwnerPresent
+    && validationOwnerPresent;
   const readyForPlanning = readiness.status === 'validated_no_mutation'
     && readiness.mutation === false
     && readiness.orderValidation?.status === 'validated_no_mutation'
     && readiness.warehouseReservationReadiness?.status === 'validated_no_mutation'
     && preflight.status === 'blocked'
     && preflight.wouldMutate === false;
+  const status = !readyForPlanning
+    ? 'blocked'
+    : (smokeMetadataApproved ? 'approved_live_order_warehouse_smoke_metadata_execution_disabled' : 'approval_required');
+  const satisfiedEvidence = [
+    ...(smokeApprovalPresent ? ['[DONE: owner-approved live Orders/Warehouse create-replay-cancel smoke metadata recorded]'] : []),
+    ...(cleanupApprovalPresent ? ['[DONE: deterministic Orders cancel -> Warehouse reservation release cleanup approval recorded]'] : []),
+    ...(smokeWindowPresent ? [`[DONE: operator-selected smoke window recorded: ${serviceConfig.liveOrderWarehouseSmokeWindow}]`] : []),
+    ...(rollbackOwnerPresent ? [`[DONE: rollback owner recorded: ${serviceConfig.liveOrderWarehouseSmokeRollbackOwner}]`] : []),
+    ...(validationOwnerPresent ? [`[DONE: validation owner recorded: ${serviceConfig.liveOrderWarehouseSmokeValidationOwner}]`] : []),
+  ];
+  const liveExecutionBlockers = [
+    ...(smokeApprovalPresent ? [] : ['[MISSING: explicit owner approval for live Orders/Warehouse create-replay-cancel smoke]']),
+    ...(cleanupApprovalPresent ? [] : ['[MISSING: deterministic cleanup approval for Orders cancel -> Warehouse reservation release]']),
+    ...(smokeWindowPresent && rollbackOwnerPresent ? [] : ['[MISSING: operator-selected smoke window and rollback owner]']),
+    ...(smokeMetadataApproved && !serviceConfig.liveOrderWarehouseSmoke ? ['[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]'] : []),
+    ...preflight.missing,
+  ];
 
   return {
     success: true,
-    status: readyForPlanning ? 'approval_required' : 'blocked',
+    status,
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
     mutation: false,
     providerCall: false,
     persistence: false,
     liveExecutionAllowed: false,
-    liveExecutionBlockers: [
-      '[MISSING: explicit owner approval for live Orders/Warehouse create-replay-cancel smoke]',
-      '[MISSING: deterministic cleanup approval for Orders cancel -> Warehouse reservation release]',
-      '[MISSING: operator-selected smoke window and rollback owner]',
-      ...preflight.missing,
-    ],
+    satisfiedEvidence,
+    liveExecutionBlockers,
     liveOrderWarehouseSmokeFlag: serviceConfig.liveOrderWarehouseSmoke,
     approvalRequired: {
       owner: true,
@@ -3680,6 +3706,10 @@ export async function liveOrderWarehouseSmokePlan() {
     approvals: {
       ...approvals,
       orderWarehouseSmoke: smokeApprovalPresent,
+      orderWarehouseSmokeCleanup: cleanupApprovalPresent,
+      orderWarehouseSmokeWindow: smokeWindowPresent,
+      orderWarehouseSmokeRollbackOwner: rollbackOwnerPresent,
+      orderWarehouseSmokeValidationOwner: validationOwnerPresent,
     },
     noPaymentNotificationBoundary: {
       paymentCreateAllowed: false,
@@ -3691,8 +3721,10 @@ export async function liveOrderWarehouseSmokePlan() {
     plan: {
       objective: 'Prove one approved Cliplot live order can create exactly one Orders record, reserve Warehouse stock, replay idempotently, and clean up through Orders cancellation.',
       scope: 'Dedicated Orders/Warehouse smoke planning only; this endpoint/script does not execute the plan and does not use normal Cliplot checkout submit.',
-      allowedMutationWindow: '[MISSING: owner-approved time window]',
-      rollbackOwner: '[MISSING: named rollback owner]',
+      allowedMutationWindow: smokeWindowPresent ? serviceConfig.liveOrderWarehouseSmokeWindow : '[MISSING: owner-approved time window]',
+      rollbackOwner: rollbackOwnerPresent ? serviceConfig.liveOrderWarehouseSmokeRollbackOwner : '[MISSING: named rollback owner]',
+      validationOwner: validationOwnerPresent ? serviceConfig.liveOrderWarehouseSmokeValidationOwner : '[MISSING: named validation owner]',
+      cleanupApprovalIdPresent: cleanupApprovalPresent,
       scopeEvidence: {
         channel: readiness.orderCreateContract?.channel || serviceConfig.orderChannel,
         channelAccountId: readiness.orderCreateContract?.channelAccountId || serviceConfig.channelAccountId,
@@ -3788,7 +3820,9 @@ export async function liveOrderWarehouseSmokePlan() {
       warehouseId: readiness.catalog?.sampleProduct?.warehouseId || null,
       steps: liveOrderWarehouseSmokeSteps(readiness),
     },
-    next: 'Owner approval must explicitly authorize the live create, idempotent replay, and cancel/release cleanup before any mutation endpoint is called.',
+    next: smokeMetadataApproved
+      ? 'Live Orders/Warehouse smoke metadata is owner-approved, but execution remains disabled until ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true is set for the approved window and the executor receives CREATE_REPLAY_CANCEL confirmation.'
+      : 'Owner approval must explicitly authorize the live create, idempotent replay, and cancel/release cleanup before any mutation endpoint is called.',
   };
 }
 
@@ -3803,7 +3837,7 @@ function liveOrderWarehouseSmokeExecutionBlockers(input, plan) {
   if (!serviceConfig.ordersServiceToken) blockers.push('missing_ORDERS_SERVICE_TOKEN');
   if (!serviceConfig.ordersStatusServiceToken) blockers.push('missing_ORDERS_STATUS_SERVICE_TOKEN');
   if (!serviceConfig.warehouseServiceToken) blockers.push('missing_WAREHOUSE_SERVICE_TOKEN');
-  if (plan.status !== 'approval_required') blockers.push('smoke_plan_not_ready_for_approval');
+  if (!['approval_required', 'approved_live_order_warehouse_smoke_metadata_execution_disabled'].includes(plan.status)) blockers.push('smoke_plan_not_ready_for_approval');
   if (plan.readiness?.status !== 'validated_no_mutation') blockers.push('order_warehouse_readiness_not_validated');
   if (plan.readiness?.warehouseReservationReadiness?.valid !== true) blockers.push('warehouse_reservation_readiness_not_valid');
   return blockers;
@@ -4336,7 +4370,7 @@ export async function revenueClosurePacket() {
     blockers,
     next: readyForLiveMutation
       ? 'Owner must execute the approved live checkout runbook; this packet itself remains read-only.'
-      : 'Resolve the listed approval, SKU-scope, live smoke, and provider evidence blockers before enabling live checkout mutation.',
+      : 'Resolve the listed live checkout approvals, smoke execution flag/window, callback persistence, replay, and live write blockers before enabling live checkout mutation.',
   };
 }
 
