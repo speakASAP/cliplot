@@ -22,11 +22,29 @@ LIVE_SMOKE_KEYS = [
 ]
 
 
+def emit_live_smoke_projection(path: str, missing_live_smoke: list[str]) -> None:
+    ready = not missing_live_smoke
+    print(f"LIVE_SMOKE_PROJECTION={'ready' if ready else 'blocked'}")
+    print("projection_keys=" + ",".join(LIVE_SMOKE_KEYS))
+    print("external_secret_projection=" + ("ready_to_add_after_owner_review" if ready else "deferred_missing_vault_keys"))
+    print("runtime_flag=ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false")
+    print("mutation=false")
+    print("providerCall=false")
+    print("persistence=false")
+    if missing_live_smoke:
+        for key in missing_live_smoke:
+            print(f"PROJECTION_BLOCKER [MISSING: {key} in Vault path {path}]")
+        print("next=Populate the missing Vault keys before adding live-smoke ExternalSecret refs.")
+    else:
+        print("next=Add live-smoke ExternalSecret refs only in a reviewed deploy while keeping ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false until owner-approved execution.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", default="secret/prod/cliplot")
     parser.add_argument("--allow-missing", action="store_true")
     parser.add_argument("--require-live-smoke", action="store_true")
+    parser.add_argument("--projection-plan", action="store_true")
     args = parser.parse_args()
 
     env = os.environ.copy()
@@ -66,6 +84,8 @@ def main() -> int:
         print("LIVE_SMOKE_SECRET_PRESENCE=blocked")
         for key in missing_live_smoke:
             print(f"MISSING_LIVE_SMOKE {key}")
+        if args.projection_plan:
+            emit_live_smoke_projection(args.path, missing_live_smoke)
         print("note=secret values intentionally not printed")
         if args.require_live_smoke and not args.allow_missing:
             return 2
@@ -76,6 +96,8 @@ def main() -> int:
     print("checked_keys=" + ",".join(REQUIRED_KEYS))
     print("LIVE_SMOKE_SECRET_PRESENCE=pass")
     print("checked_live_smoke_keys=" + ",".join(LIVE_SMOKE_KEYS))
+    if args.projection_plan:
+        emit_live_smoke_projection(args.path, [])
     print("note=secret values intentionally not printed")
     return 0
 

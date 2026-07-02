@@ -526,3 +526,40 @@ persistence=false
 providerCall=false
 remainingClosureBlockers=callback persistence/replay policy, order/payment mapping ownership
 ```
+
+
+## Live-Smoke Vault Projection Readiness Gate
+
+Status: implemented as a read-only Vault projection gate.
+
+`npm run readiness:vault-live-smoke` checks the existing Cliplot Vault path for
+`ORDERS_STATUS_SERVICE_TOKEN` and
+`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` without printing secret values.
+When either key is missing, it reports `LIVE_SMOKE_PROJECTION=blocked` and
+`external_secret_projection=deferred_missing_vault_keys`. When both keys exist,
+it reports `LIVE_SMOKE_PROJECTION=ready` but still documents that
+`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false` must remain false until owner-approved
+execution. The gate does not add missing ExternalSecret refs, does not create
+orders, does not reserve Warehouse stock, does not call payment providers, does
+not send notifications, and does not persist state.
+
+Validation:
+
+```bash
+npm run readiness:vault-live-smoke
+npm run readiness:bundle
+```
+
+Expected current production blocker:
+
+```text
+LIVE_SMOKE_SECRET_PRESENCE=blocked
+LIVE_SMOKE_PROJECTION=blocked
+external_secret_projection=deferred_missing_vault_keys
+runtime_flag=ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false
+PROJECTION_BLOCKER [MISSING: ORDERS_STATUS_SERVICE_TOKEN in Vault path secret/prod/cliplot]
+PROJECTION_BLOCKER [MISSING: CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID in Vault path secret/prod/cliplot]
+mutation=false
+providerCall=false
+persistence=false
+```

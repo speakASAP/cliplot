@@ -102,3 +102,20 @@ CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID
 If these approval IDs later become sensitive or centrally issued, promote them
 to Vault/ExternalSecret keys by name only. Do not commit or print approval token
 values.
+
+
+## Live-Smoke Projection Readiness
+
+Run the read-only projection gate before adding live-smoke keys to
+`k8s/external-secret.yaml`:
+
+```bash
+npm run readiness:vault-live-smoke
+```
+
+The gate checks `ORDERS_STATUS_SERVICE_TOKEN` and
+`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID` in `secret/prod/cliplot`
+without printing values. `LIVE_SMOKE_PROJECTION=ready` only means the Vault
+properties exist and can be reviewed for ExternalSecret projection. It does not
+authorize `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true` and does not authorize live
+Orders/Warehouse execution.

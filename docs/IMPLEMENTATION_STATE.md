@@ -619,3 +619,15 @@ and `ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true` present, the packet reports
 persistence/replay and order/payment mapping ownership; live order creation,
 live payment creation, Warehouse reservation, notification sends,
 provider-refresh reads, and Cliplot-local payment status storage remain disabled.
+
+
+### 2026-07-02 - Live-smoke Vault projection readiness gate
+
+Added `npm run readiness:vault-live-smoke` as a read-only projection gate for the
+future Orders/Warehouse create-replay-cancel smoke. It checks only key presence
+for `ORDERS_STATUS_SERVICE_TOKEN` and
+`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, keeps secret values hidden,
+and reports whether adding ExternalSecret refs is safe. Current production is
+expected to remain `LIVE_SMOKE_PROJECTION=blocked` until those Vault keys exist.
+No ExternalSecret refs were added for missing keys, and
+`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false` remains the required runtime state.

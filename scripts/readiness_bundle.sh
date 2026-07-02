@@ -134,6 +134,7 @@ run_critical_step kubernetes_rollout kubernetes_rollout
 run_critical_step live_preflight live_preflight
 run_critical_step integrations_readiness integrations_readiness
 run_step vault_presence python3 scripts/vault_secret_presence_gate.py --allow-missing
+run_step live_smoke_vault_projection python3 scripts/vault_secret_presence_gate.py --require-live-smoke --allow-missing --projection-plan
 run_step docs_rag_preflight docs_rag_preflight
 
 if [ "$critical_failed" -eq 0 ]; then

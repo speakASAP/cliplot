@@ -31,7 +31,8 @@
     "readiness:customer-status-approval": "node scripts/customer-status-approval-evidence-packet.js",
     "test:payment-status-runtime-adapter": "node scripts/payment-status-runtime-adapter-unit.js",
     "readiness:payment-mapping": "node scripts/payment-status-mapping-ownership.js",
-    "readiness:revenue-closure": "node scripts/revenue-closure-packet.js"
+    "readiness:revenue-closure": "node scripts/revenue-closure-packet.js",
+    "readiness:vault-live-smoke": "python3 scripts/vault_secret_presence_gate.py --require-live-smoke --allow-missing --projection-plan"
   },
   "engines": {
     "node": ">=20"
