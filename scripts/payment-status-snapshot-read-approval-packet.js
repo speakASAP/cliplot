@@ -39,8 +39,8 @@ assert(packet.readContract?.providerRefreshRisk === 'db_snapshot_endpoint_no_pro
 assert(packet.readContract?.providerCall === false && packet.readContract?.persistence === false && packet.readContract?.mutation === false, 'read contract is not read-only', packet);
 assert(packet.readContract?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider-refresh endpoint missing', packet);
 assert(['blocked_pending_provider_backed_status_contract', 'ready_for_approved_payment_status_runtime_read'].includes(packet.currentReadiness?.paymentStatus), 'payment status readiness unexpected', packet);
-assert(packet.currentReadiness?.paymentStorage === 'blocked_storage_backend_not_approved', 'payment storage readiness unexpected', packet);
-assert(packet.currentReadiness?.paymentDecision === 'decision_recorded_approval_required', 'payment decision readiness unexpected', packet);
+assert(['blocked_storage_backend_not_approved', 'approved_payment_status_storage_metadata_execution_disabled'].includes(packet.currentReadiness?.paymentStorage), 'payment storage readiness unexpected', packet);
+assert(['decision_recorded_approval_required', 'approved_payment_status_persistence_decision_metadata_execution_disabled'].includes(packet.currentReadiness?.paymentDecision), 'payment decision readiness unexpected', packet);
 assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.currentReadiness?.readScopeStatus), 'read-scope readiness missing', packet);
 assert(packet.currentReadiness?.scopeValidated === true, 'payments:read scope evidence missing', packet);
 assert(packet.currentReadiness?.currentStatusPersistence === false, 'current status persistence unexpectedly enabled', packet);
