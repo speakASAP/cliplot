@@ -49,6 +49,7 @@ const fallbackProducts = [
 
 const cartStorageKey = 'cliplot-cart';
 const checkoutIntentStorageKey = 'cliplot-checkout-intent-v1';
+const lastCheckoutStorageKey = 'cliplot-last-checkout-v1';
 
 const state = {
   products: fallbackProducts,
@@ -134,6 +135,41 @@ function cartSignature(entries = cartEntries()) {
     .map(({ product, quantity }) => `${product.id}:${quantity}:${product.warehouseId || ''}`)
     .sort()
     .join('|');
+}
+
+function saveLastCheckout(payload, formData, breakdown, entries) {
+  const snapshot = {
+    externalOrderId: payload.checkoutIntent?.externalOrderId || '',
+    status: 'Čeká na kontrolu',
+    checkoutSummary: payload.checkoutSummary || {
+      subtotal: breakdown.subtotal,
+      shipping: breakdown.shipping,
+      payment: breakdown.payment,
+      total: breakdown.total,
+      currency: 'CZK',
+    },
+    customer: {
+      name: formData.name || '',
+      email: formData.email || '',
+    },
+    items: entries.map(({ product, quantity }) => ({
+      name: product.name,
+      quantity,
+      lineTotal: product.price * quantity,
+    })),
+    createdAt: new Date().toISOString(),
+  };
+  localStorage.setItem(lastCheckoutStorageKey, JSON.stringify(snapshot));
+  return snapshot;
+}
+
+function readLastCheckout() {
+  try {
+    return JSON.parse(localStorage.getItem(lastCheckoutStorageKey) || '{}');
+  } catch {
+    localStorage.removeItem(lastCheckoutStorageKey);
+    return {};
+  }
 }
 
 function checkoutIntentFor(entries) {
@@ -390,17 +426,8 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
     return;
   }
 
-  const reference = payload.checkoutIntent?.externalOrderId
-    ? `<p>Referenční číslo: <strong>${escapeHtml(payload.checkoutIntent.externalOrderId)}</strong></p>`
-    : '';
-
-  selectors.result.innerHTML = `
-    <strong>Objednávka je připravena ke kontrole.</strong>
-    <p>Zákazník: ${escapeHtml(data.name)} | Celkem: ${formatPrice(payload.checkoutSummary?.total ?? breakdown.total)}</p>
-    ${reference}
-    <p>Doprava: ${escapeHtml(payload.checkoutSummary?.shipping?.label || breakdown.shipping.label)} | Platba: ${escapeHtml(payload.checkoutSummary?.payment?.label || breakdown.payment.label)}</p>
-    <p>Platba se zatím nespustila. Po kontrole objednávky dostanete další pokyny k platbě.</p>
-  `;
+  const snapshot = saveLastCheckout(payload, data, breakdown, entries);
+  window.location.href = `/objednavka/stav?externalOrderId=${encodeURIComponent(snapshot.externalOrderId)}`;
 });
 
 async function loadAuthLinks() {
@@ -415,6 +442,89 @@ async function loadAuthLinks() {
   }
 }
 
-document.querySelector('[data-category="all"]').classList.add('is-active');
-loadAuthLinks();
-loadProducts();
+function renderCheckoutStatusPage() {
+  const path = window.location.pathname;
+  if (!['/objednavka/stav', '/checkout/success', '/checkout/cancelled'].includes(path)) return false;
+
+  const params = new URLSearchParams(window.location.search);
+  const snapshot = readLastCheckout();
+  const externalOrderId = params.get('externalOrderId') || snapshot.externalOrderId || '';
+  const main = document.querySelector('main');
+  const missing = !snapshot.externalOrderId || (externalOrderId && snapshot.externalOrderId !== externalOrderId);
+  const title = path === '/checkout/cancelled' ? 'Platba nebyla dokončena' : 'Objednávka je připravena ke kontrole.';
+
+  if (missing) {
+    main.innerHTML = `
+      <section class="checkout-status-page" aria-live="polite">
+        <div class="section-heading">
+          <h1>${title}</h1>
+          <p>Nemáme uložený stav objednávky. Vraťte se prosím do košíku a objednávku zkontrolujte znovu.</p>
+        </div>
+        <div class="hero-actions">
+          <a class="primary-link" href="/#checkout">Zpět do košíku</a>
+          <a class="secondary-link" href="/#produkty">Vybrat produkty</a>
+        </div>
+      </section>
+    `;
+    return true;
+  }
+
+  const summary = snapshot.checkoutSummary || {};
+  const items = Array.isArray(snapshot.items) ? snapshot.items : [];
+  const itemMarkup = items.length
+    ? items.map((item) => `
+        <div>
+          <span>${escapeHtml(item.name)} × ${Number(item.quantity || 0)}</span>
+          <strong>${formatPrice(item.lineTotal)}</strong>
+        </div>
+      `).join('')
+    : '<p class="product-description">Položky nejsou uložené.</p>';
+  const preparedAt = snapshot.createdAt
+    ? new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(snapshot.createdAt))
+    : '';
+
+  main.innerHTML = `
+    <section class="checkout-status-page" aria-live="polite">
+      <div class="section-heading">
+        <h1>${title}</h1>
+        <p>Platba se zatím nespustila. Po kontrole objednávky pošleme další pokyny k platbě.</p>
+      </div>
+      <div class="status-summary">
+        <p>Stav: <strong>Čeká na kontrolu</strong></p>
+        <p>Referenční číslo: <strong>${escapeHtml(snapshot.externalOrderId)}</strong></p>
+        ${preparedAt ? `<p>Připraveno ke kontrole: ${escapeHtml(preparedAt)}</p>` : ''}
+        <div class="review-items">${itemMarkup}</div>
+        <dl class="price-breakdown">
+          <div>
+            <dt>Mezisoučet</dt>
+            <dd>${formatPrice(summary.subtotal)}</dd>
+          </div>
+          <div>
+            <dt>Doprava</dt>
+            <dd>${escapeHtml(summary.shipping?.label || 'Bude potvrzeno')} · ${formatPrice(summary.shipping?.cost || 0)}</dd>
+          </div>
+          <div>
+            <dt>Platba</dt>
+            <dd>${escapeHtml(summary.payment?.label || 'Bude potvrzeno')} · ${formatPrice(summary.payment?.fee || 0)}</dd>
+          </div>
+          <div class="price-breakdown-total">
+            <dt>Celkem k úhradě</dt>
+            <dd>${formatPrice(summary.total)}</dd>
+          </div>
+        </dl>
+        <p>Zboží zatím není rezervované a objednávka není zaplacená.</p>
+        <div class="hero-actions">
+          <a class="primary-link" href="/#produkty">Zpět k produktům</a>
+          <a class="secondary-link" href="/#checkout">Upravit objednávku</a>
+        </div>
+      </div>
+    </section>
+  `;
+  return true;
+}
+
+if (!renderCheckoutStatusPage()) {
+  document.querySelector('[data-category="all"]').classList.add('is-active');
+  loadAuthLinks();
+  loadProducts();
+}

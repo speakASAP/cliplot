@@ -771,6 +771,46 @@ function headerValue(headers, name) {
   return Array.isArray(value) ? value[0] : value || '';
 }
 
+function normalizeStatusIdentifier(value) {
+  const normalized = String(value || '').trim().slice(0, 128);
+  return /^[a-zA-Z0-9][a-zA-Z0-9._:-]{2,127}$/.test(normalized) ? normalized : '';
+}
+
+export function paymentStatus(input = {}) {
+  const orderId = normalizeExternalOrderId(input.orderId || input.externalOrderId);
+  const paymentId = normalizeStatusIdentifier(input.paymentId);
+  if (!orderId && !paymentId) {
+    return {
+      httpStatus: 400,
+      body: {
+        success: false,
+        status: 'payment_status_validation_failed',
+        errors: ['missing_valid_order_or_payment_id'],
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+      },
+    };
+  }
+
+  return {
+    httpStatus: 200,
+    body: {
+      success: true,
+      status: 'payment_status_guarded_no_persistence',
+      mode: 'guarded_payment_status',
+      orderId: orderId || undefined,
+      paymentId: paymentId || undefined,
+      paymentStatus: 'unknown',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      liveMutationApprovals: liveMutationApprovals(),
+      next: 'Read provider-backed payment status only after GOAL-05 live payment status contract is approved.',
+    },
+  };
+}
+
 function safeTokenEquals(actual, expected) {
   if (!actual || !expected) return false;
   const actualBuffer = Buffer.from(String(actual));
@@ -833,6 +873,12 @@ export function handlePaymentCallback(input, headers = {}) {
       paymentStatus: status,
       event: event || 'unknown',
       mutation: false,
+      persistence: false,
+      callbackState: {
+        orderStatus: 'not_updated_guarded',
+        paymentStatus: status,
+        event: event || 'unknown',
+      },
       next: 'Persist order/payment status only after GOAL-05 live checkout storage is approved.',
     },
   };
@@ -985,6 +1031,7 @@ export function serviceReadiness() {
         ? (serviceConfig.paymentApiKey ? 'enabled_no_mutation' : 'missing_payment_api_key')
         : 'disabled',
       paymentCallback: serviceConfig.paymentWebhookApiKey ? 'identity_ready_guarded_ack' : 'token_missing',
+      paymentStatus: 'guarded_no_persistence',
       auth: 'public_links_contract_unverified',
     },
     missing: checkoutMissingFacts(),

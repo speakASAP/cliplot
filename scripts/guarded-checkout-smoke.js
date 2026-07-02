@@ -14,6 +14,12 @@ async function getJson(path) {
   return { response, payload };
 }
 
+async function getText(path) {
+  const response = await fetch(new URL(path, baseUrl));
+  const text = await response.text();
+  return { response, text };
+}
+
 async function postJson(path, body) {
   const response = await fetch(new URL(path, baseUrl), {
     method: 'POST',
@@ -91,6 +97,43 @@ assert(checkout.orderValidation?.orderCreated === false && checkout.orderValidat
 assert(checkout.paymentValidation?.mutation === false && checkout.paymentValidation?.providerCall === false, 'payment validation reported mutation', checkout.paymentValidation || {});
 assert(checkout.notificationValidation?.notificationSent === false, 'notification validation reported send', checkout.notificationValidation || {});
 
+const { response: statusPage, text: statusHtml } = await getText(`/objednavka/stav?externalOrderId=${encodeURIComponent(externalOrderId)}`);
+assert(statusPage.status === 200 && statusHtml.includes('Cliplot'), 'checkout status page did not render static shell', {
+  httpStatus: statusPage.status,
+});
+const { response: successPage, text: successHtml } = await getText(`/checkout/success?externalOrderId=${encodeURIComponent(externalOrderId)}`);
+assert(successPage.status === 200 && successHtml.includes('Cliplot'), 'checkout success page did not render static shell', {
+  httpStatus: successPage.status,
+});
+const { response: cancelledPage, text: cancelledHtml } = await getText(`/checkout/cancelled?externalOrderId=${encodeURIComponent(externalOrderId)}`);
+assert(cancelledPage.status === 200 && cancelledHtml.includes('Cliplot'), 'checkout cancelled page did not render static shell', {
+  httpStatus: cancelledPage.status,
+});
+
+const { response: callbackResponse, payload: callbackPayload } = await postJson('/api/payments/callback', {
+  paymentId: 'smoke-payment',
+  orderId: externalOrderId,
+  status: 'completed',
+  event: 'payment.completed',
+});
+assert(callbackResponse.status === 401 && callbackPayload.status === 'payment_callback_unauthorized', 'unauthorized callback contract changed', {
+  httpStatus: callbackResponse.status,
+  status: callbackPayload.status,
+});
+
+const { response: paymentStatusResponse, payload: paymentStatusPayload } = await getJson(`/api/payments/status?orderId=${encodeURIComponent(externalOrderId)}`);
+assert(paymentStatusResponse.status === 200 && paymentStatusPayload.status === 'payment_status_guarded_no_persistence', 'payment status contract changed', {
+  httpStatus: paymentStatusResponse.status,
+  status: paymentStatusPayload.status,
+});
+assert(paymentStatusPayload.mutation === false && paymentStatusPayload.persistence === false && paymentStatusPayload.providerCall === false, 'payment status is not guarded', paymentStatusPayload);
+assert(!paymentStatusPayload.payment && !paymentStatusPayload.order, 'payment status returned live objects', paymentStatusPayload);
+const { response: invalidPaymentStatusResponse, payload: invalidPaymentStatusPayload } = await getJson('/api/payments/status?orderId=');
+assert(invalidPaymentStatusResponse.status === 400 && invalidPaymentStatusPayload.status === 'payment_status_validation_failed', 'invalid payment status contract changed', {
+  httpStatus: invalidPaymentStatusResponse.status,
+  status: invalidPaymentStatusPayload.status,
+});
+
 console.log(JSON.stringify({
   ok: true,
   baseUrl,
@@ -103,6 +146,9 @@ console.log(JSON.stringify({
   shippingCost: checkout.checkoutSummary.shipping.cost,
   paymentFee: checkout.checkoutSummary.payment.fee,
   total: checkout.checkoutSummary.total,
+  statusPage: statusPage.status,
+  callbackUnauthorizedStatus: callbackResponse.status,
+  paymentStatusContract: paymentStatusPayload.status,
   orderValidation: checkout.orderValidation.status,
   paymentValidation: checkout.paymentValidation.status,
   notificationValidation: checkout.notificationValidation.status,

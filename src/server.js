@@ -6,6 +6,7 @@ import {
   authLinks,
   fetchCatalogProducts,
   handlePaymentCallback,
+  paymentStatus,
   serviceReadiness,
   submitCheckout,
 } from './integrations.js';
@@ -119,6 +120,12 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/api/payments/callback' && req.method === 'POST') {
       const payload = await readRequestJson(req);
       const result = handlePaymentCallback(payload, req.headers);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status' && req.method === 'GET') {
+      const result = paymentStatus(Object.fromEntries(url.searchParams.entries()));
       sendJson(res, result.httpStatus, result.body);
       return;
     }
