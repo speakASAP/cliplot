@@ -152,10 +152,22 @@ Before requesting owner approval for live order mutation, generate the read-only
 
 ```bash
 npm run readiness:live-smoke-plan -- https://cliplot.alfares.cz
+npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-smoke-plan
 ```
 
 The plan must report `liveExecutionAllowed=false`, list approval blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It is not permission to execute the live smoke.
+
+The executor endpoint is `POST /api/checkout/live-order-warehouse-smoke-executor`.
+It must remain blocked in normal production and return `approval_required` until
+all of the following are present: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true`,
+`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, `ORDERS_STATUS_SERVICE_TOKEN`,
+body `confirm=CREATE_REPLAY_CANCEL`, `approvalId`, `approvedBy`, and
+`reasonCode`. The executor is Orders/Warehouse-only: it must not create payments
+or send notifications, and cleanup must go through Orders cancellation rather
+than direct Warehouse mutation. After cleanup, Warehouse reservation readback is
+required because Orders can persist order status even if Warehouse cleanup
+reports a failed handoff.
 
 ## Live Checkout Approval Packet
 

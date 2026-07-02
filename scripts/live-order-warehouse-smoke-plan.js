@@ -36,7 +36,7 @@ assert(plan.plan?.endpoints?.cancelOrderThroughOrders === '/api/orders/{orderId}
 assert(plan.plan.steps.some((step) => step.name === 'approved_order_create' && step.endpoint === '/api/orders'), 'approved create step missing', plan.plan || {});
 assert(plan.plan.steps.some((step) => step.name === 'idempotent_order_replay'), 'idempotent replay step missing', plan.plan || {});
 assert(plan.plan.steps.some((step) => step.name === 'approved_order_cancel_release' && step.endpoint === '/api/orders/{orderId}/status'), 'cancel/release step missing', plan.plan || {});
-assert(plan.requiredApprovalIds?.includes('CLIPLOT_LIVE_ORDER_APPROVAL_ID'), 'approval IDs missing', plan);
+assert(plan.requiredApprovalIds?.includes('CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID'), 'approval IDs missing', plan);
 
 console.log(JSON.stringify({
   ok: true,

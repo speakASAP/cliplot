@@ -13,6 +13,7 @@ import {
   orderWarehouseReadinessReport,
   paymentStatus,
   serviceReadiness,
+  runLiveOrderWarehouseSmoke,
   submitCheckout,
 } from './integrations.js';
 
@@ -158,6 +159,23 @@ const server = createServer(async (req, res) => {
         success: false,
         status: 'method_not_allowed',
         allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-smoke-executor' && req.method === 'POST') {
+      const payload = await readRequestJson(req);
+      const result = await runLiveOrderWarehouseSmoke(payload);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-order-warehouse-smoke-executor') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['POST'],
         mutation: false,
       });
       return;

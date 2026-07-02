@@ -66,9 +66,11 @@ export const serviceConfig = {
   liveOrderSubmit: process.env.ENABLE_LIVE_ORDER_SUBMIT === 'true',
   livePaymentCreate: process.env.ENABLE_LIVE_PAYMENT_CREATE === 'true',
   liveNotifications: process.env.ENABLE_LIVE_NOTIFICATIONS === 'true',
+  liveOrderWarehouseSmoke: process.env.ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE === 'true',
   liveOrderApprovalId: process.env.CLIPLOT_LIVE_ORDER_APPROVAL_ID || '',
   livePaymentApprovalId: process.env.CLIPLOT_LIVE_PAYMENT_APPROVAL_ID || '',
   liveNotificationApprovalId: process.env.CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID || '',
+  liveOrderWarehouseSmokeApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID || '',
   catalogUrl: process.env.CATALOG_SERVICE_URL || 'http://catalog-microservice:3200',
   warehouseUrl: process.env.WAREHOUSE_SERVICE_URL || 'http://warehouse-microservice:3201',
   ordersUrl: process.env.ORDERS_SERVICE_URL || 'http://orders-microservice:3203',
@@ -87,6 +89,9 @@ export const serviceConfig = {
   orderCreateValidation: process.env.ENABLE_ORDER_CREATE_VALIDATION === 'true',
   notificationValidation: process.env.ENABLE_NOTIFICATION_VALIDATION === 'true',
   paymentCreateValidation: process.env.ENABLE_PAYMENT_CREATE_VALIDATION === 'true',
+  smokeCancelPath: process.env.ORDERS_STATUS_PATH || '/api/orders/{orderId}/status',
+  ordersStatusServiceToken: process.env.ORDERS_STATUS_SERVICE_TOKEN || '',
+  ordersStatusServiceName: process.env.ORDERS_STATUS_SERVICE_NAME || process.env.SERVICE_NAME || 'cliplot',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
   catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
@@ -635,6 +640,46 @@ async function postOrderPayload(path, checkout, orderPayload, idempotencyKey = c
       'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(orderPayload),
+  });
+}
+
+function extractOrderRecord(payload) {
+  return payload?.data?.order || payload?.order || payload?.data || payload || {};
+}
+
+function extractOrderId(payload) {
+  const order = extractOrderRecord(payload);
+  return String(order?.id || order?.orderId || order?.uuid || '').trim();
+}
+
+async function readOrder(orderId) {
+  return fetchJson(new URL(`/api/orders/${encodeURIComponent(orderId)}`, serviceConfig.ordersUrl), {
+    headers: {
+      'x-internal-service-token': serviceConfig.ordersServiceToken,
+      'x-service-name': serviceConfig.serviceName,
+    },
+  });
+}
+
+async function readWarehouseReservation(orderId) {
+  return fetchJson(new URL(`/api/reservations/order/${encodeURIComponent(orderId)}`, serviceConfig.warehouseUrl), {
+    headers: {
+      authorization: `Bearer ${serviceConfig.warehouseServiceToken}`,
+      'x-service-name': serviceConfig.serviceName,
+    },
+  });
+}
+
+async function cancelOrderThroughOrders(orderId, approval) {
+  const path = serviceConfig.smokeCancelPath.replace('{orderId}', encodeURIComponent(orderId));
+  return fetchJson(new URL(path, serviceConfig.ordersUrl), {
+    method: 'PUT',
+    headers: {
+      'content-type': 'application/json',
+      'x-internal-service-token': serviceConfig.ordersStatusServiceToken,
+      'x-service-name': serviceConfig.ordersStatusServiceName,
+    },
+    body: JSON.stringify({ status: 'cancelled', approval }),
   });
 }
 
@@ -1361,6 +1406,7 @@ export async function liveOrderWarehouseSmokePlan() {
   const readiness = await orderWarehouseReadinessReport();
   const preflight = liveCheckoutPreflight();
   const approvals = liveMutationApprovals();
+  const smokeApprovalPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeApprovalId);
   const readyForPlanning = readiness.status === 'validated_no_mutation'
     && readiness.mutation === false
     && readiness.orderValidation?.status === 'validated_no_mutation'
@@ -1383,6 +1429,7 @@ export async function liveOrderWarehouseSmokePlan() {
       '[MISSING: operator-selected smoke window and rollback owner]',
       ...preflight.missing,
     ],
+    liveOrderWarehouseSmokeFlag: serviceConfig.liveOrderWarehouseSmoke,
     approvalRequired: {
       owner: true,
       orderCreate: true,
@@ -1396,13 +1443,15 @@ export async function liveOrderWarehouseSmokePlan() {
       order: 'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
       payment: 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
       notification: 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+      orderWarehouseSmoke: 'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
     },
     requiredApprovalIds: [
-      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
-      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
-      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+      'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
     ],
-    approvals,
+    approvals: {
+      ...approvals,
+      orderWarehouseSmoke: smokeApprovalPresent,
+    },
     noPaymentNotificationBoundary: {
       paymentCreateAllowed: false,
       notificationSendAllowed: false,
@@ -1512,6 +1561,229 @@ export async function liveOrderWarehouseSmokePlan() {
     },
     next: 'Owner approval must explicitly authorize the live create, idempotent replay, and cancel/release cleanup before any mutation endpoint is called.',
   };
+}
+
+function liveOrderWarehouseSmokeExecutionBlockers(input, plan) {
+  const blockers = [];
+  if (!serviceConfig.liveOrderWarehouseSmoke) blockers.push('live_order_warehouse_smoke_flag_disabled');
+  if (!serviceConfig.liveOrderWarehouseSmokeApprovalId) blockers.push('missing_CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID');
+  if (!safeTokenEquals(input?.approvalId, serviceConfig.liveOrderWarehouseSmokeApprovalId)) blockers.push('invalid_or_missing_smoke_approval_id');
+  if (String(input?.confirm || '') !== 'CREATE_REPLAY_CANCEL') blockers.push('missing_CREATE_REPLAY_CANCEL_confirmation');
+  if (!String(input?.approvedBy || '').trim()) blockers.push('missing_approvedBy');
+  if (!String(input?.reasonCode || '').trim()) blockers.push('missing_reasonCode');
+  if (!serviceConfig.ordersServiceToken) blockers.push('missing_ORDERS_SERVICE_TOKEN');
+  if (!serviceConfig.ordersStatusServiceToken) blockers.push('missing_ORDERS_STATUS_SERVICE_TOKEN');
+  if (!serviceConfig.warehouseServiceToken) blockers.push('missing_WAREHOUSE_SERVICE_TOKEN');
+  if (plan.status !== 'approval_required') blockers.push('smoke_plan_not_ready_for_approval');
+  if (plan.readiness?.status !== 'validated_no_mutation') blockers.push('order_warehouse_readiness_not_validated');
+  if (plan.readiness?.warehouseReservationReadiness?.valid !== true) blockers.push('warehouse_reservation_readiness_not_valid');
+  return blockers;
+}
+
+function buildLiveOrderWarehouseSmokeCheckout(plan, input = {}) {
+  const productId = plan.plan?.productId || plan.plan?.scopeEvidence?.productId;
+  const warehouseId = plan.plan?.warehouseId || plan.plan?.scopeEvidence?.warehouseId;
+  const total = Number(plan.readiness?.orderCreateContract?.total || 0);
+  const subtotal = Math.max(1, total - 69);
+  const externalOrderId = normalizeExternalOrderId(input.externalOrderId)
+    || normalizeExternalOrderId(`cliplot-live-smoke-${Date.now()}`);
+  return normalizeCheckout({
+    externalOrderId,
+    customer: {
+      name: 'Synthetic Cliplot Smoke',
+      email: 'synthetic-smoke@cliplot.invalid',
+      phone: '+420000000000',
+      address: 'Smoke 1, Praha',
+    },
+    shipping: 'balikovna',
+    payment: 'invoice',
+    items: [{
+      productId,
+      name: 'Synthetic Cliplot smoke product',
+      quantity: 1,
+      unitPrice: subtotal,
+      warehouseId,
+    }],
+  });
+}
+
+function compactOrderEvidence(payload) {
+  const order = extractOrderRecord(payload);
+  return {
+    id: String(order?.id || order?.orderId || order?.uuid || '').trim() || null,
+    status: order?.status || payload?.status || null,
+    externalOrderId: order?.externalOrderId || payload?.externalOrderId || null,
+    warehouseHandoff: order?.warehouseHandoff || payload?.warehouseHandoff || null,
+  };
+}
+
+function compactWarehouseEvidence(payload) {
+  const reservations = Array.isArray(payload?.data)
+    ? payload.data
+    : (Array.isArray(payload?.data?.reservations)
+      ? payload.data.reservations
+      : (Array.isArray(payload?.reservations) ? payload.reservations : []));
+  return {
+    status: payload?.status || payload?.data?.status || null,
+    reservationCount: reservations.length,
+    activeReservationCount: reservations.filter((reservation) => String(reservation?.status || '').toLowerCase() === 'active').length,
+  };
+}
+
+async function executeLiveOrderWarehouseSmoke(input, plan) {
+  const checkout = buildLiveOrderWarehouseSmokeCheckout(plan, input);
+  const validationErrors = validateCheckout(checkout);
+  if (validationErrors.length) {
+    return {
+      httpStatus: 400,
+      body: {
+        success: false,
+        status: 'smoke_payload_validation_failed',
+        mode: 'guarded_live_order_warehouse_smoke_executor',
+        errors: validationErrors,
+        mutation: false,
+        providerCall: false,
+        persistence: false,
+      },
+    };
+  }
+
+  const beforeReadiness = await guardedWarehouseReservationReadiness(checkout);
+  if (beforeReadiness.status !== 'validated_no_mutation' || beforeReadiness.valid !== true) {
+    return {
+      httpStatus: 409,
+      body: {
+        success: false,
+        status: 'warehouse_readiness_blocked_before_smoke',
+        mode: 'guarded_live_order_warehouse_smoke_executor',
+        beforeReadiness,
+        mutation: false,
+        providerCall: false,
+        persistence: false,
+      },
+    };
+  }
+
+  const orderPayload = buildOrderCreatePayload(checkout);
+  const idempotency = checkoutIdempotencyKeys(checkout);
+  const approval = {
+    approved: true,
+    approvalType: 'human',
+    approvedBy: String(input.approvedBy).trim().slice(0, 128),
+    reasonCode: String(input.reasonCode).trim().slice(0, 128),
+    externalOrderId: checkout.externalOrderId,
+    approvalIdFingerprint: stableFingerprint(String(input.approvalId || '')),
+    sideEffectsHandled: {
+      payment: true,
+      warehouse: true,
+      notification: true,
+      crm: true,
+      channel: true,
+    },
+  };
+
+  const create = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, idempotency.orderCreate);
+  const orderId = extractOrderId(create);
+  if (!orderId) {
+    return {
+      httpStatus: 502,
+      body: {
+        success: false,
+        status: 'order_create_missing_order_id',
+        mode: 'guarded_live_order_warehouse_smoke_executor',
+        createEvidence: compactOrderEvidence(create),
+        mutation: true,
+        providerCall: true,
+        persistence: true,
+      },
+    };
+  }
+
+  const afterCreateReservation = await readWarehouseReservation(orderId);
+  const replay = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, idempotency.orderCreate);
+  const replayOrderId = extractOrderId(replay);
+  if (replayOrderId !== orderId) {
+    return {
+      httpStatus: 409,
+      body: {
+        success: false,
+        status: 'order_replay_id_mismatch_cleanup_required',
+        mode: 'guarded_live_order_warehouse_smoke_executor',
+        orderId,
+        replayOrderId: replayOrderId || null,
+        mutation: true,
+        providerCall: true,
+        persistence: true,
+        cleanup: {
+          required: true,
+          endpoint: serviceConfig.smokeCancelPath,
+          throughOrdersOnly: true,
+        },
+      },
+    };
+  }
+
+  const cancel = await cancelOrderThroughOrders(orderId, approval);
+  const orderReadback = await readOrder(orderId);
+  const afterCancelReservation = await readWarehouseReservation(orderId);
+  const afterReadiness = await guardedWarehouseReservationReadiness(checkout);
+
+  return {
+    httpStatus: 201,
+    body: {
+      success: true,
+      status: 'live_order_warehouse_smoke_completed',
+      mode: 'guarded_live_order_warehouse_smoke_executor',
+      mutation: true,
+      providerCall: true,
+      persistence: true,
+      paymentCreated: false,
+      notificationSent: false,
+      noPaymentNotificationBoundary: {
+        paymentCreateAllowed: false,
+        notificationSendAllowed: false,
+      },
+      checkoutIntent: checkoutIntentEvidence(checkout),
+      orderId,
+      evidence: {
+        beforeReadiness,
+        create: compactOrderEvidence(create),
+        afterCreateReservation: compactWarehouseEvidence(afterCreateReservation),
+        replay: compactOrderEvidence(replay),
+        cancel: compactOrderEvidence(cancel),
+        orderReadback: compactOrderEvidence(orderReadback),
+        afterCancelReservation: compactWarehouseEvidence(afterCancelReservation),
+        afterReadiness,
+      },
+    },
+  };
+}
+
+export async function runLiveOrderWarehouseSmoke(input = {}) {
+  const plan = await liveOrderWarehouseSmokePlan();
+  const blockers = liveOrderWarehouseSmokeExecutionBlockers(input, plan);
+  if (blockers.length) {
+    return {
+      httpStatus: 202,
+      body: {
+        success: true,
+        status: 'approval_required',
+        mode: 'guarded_live_order_warehouse_smoke_executor',
+        mutation: false,
+        providerCall: false,
+        persistence: false,
+        liveExecutionAllowed: false,
+        blockers,
+        approvalRequired: plan.approvalRequired,
+        requiredApprovalIds: plan.requiredApprovalIds,
+        noPaymentNotificationBoundary: plan.noPaymentNotificationBoundary,
+        plan,
+        next: 'Provide ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true, CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID, ORDERS_STATUS_SERVICE_TOKEN, CREATE_REPLAY_CANCEL confirmation, approvedBy, and reasonCode before live smoke execution.',
+      },
+    };
+  }
+
+  return executeLiveOrderWarehouseSmoke(input, plan);
 }
 
 
