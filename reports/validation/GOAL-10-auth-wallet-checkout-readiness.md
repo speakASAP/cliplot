@@ -34,6 +34,12 @@ not approved.
 
 ## Remaining Blockers
 
+- Source-known facts recorded by the verifier:
+  - Cliplot remains guest-checkout first.
+  - Checkout submit posts guest/customer form data to `/api/checkout/submit`.
+  - Auth is currently only a hosted login/register link surface.
+  - Guarded checkout still returns `service_identity_required`.
+  - Runtime manifests point at Auth but do not enable wallet integration.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
@@ -52,6 +58,10 @@ git diff --cached --name-only | xargs -r rg -n "(Bearer [A-Za-z0-9._-]+|eyJ[A-Za
 ## Validation Results
 
 - `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- 2026-07-03 source-known facts refresh validation target:
+  `npm run readiness:auth-wallet-checkout`, `node --check
+  scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff
+  --check`, targeted literal-secret scan.
 - `node --check scripts/auth-wallet-checkout-readiness.js`: PASS.
 - `npm run check`: PASS; repository syntax-check chain includes the new verifier.
 - `git diff --check`: PASS.

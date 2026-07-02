@@ -73,6 +73,15 @@ approved Auth wallet contract covering:
 - Auth live wallet endpoint presence gate is complete: the endpoints above
   return HTTP 401 unauthenticated, proving the wallet routes are deployed and
   protected without exposing wallet data.
+- Cliplot source-known facts are recorded without clearing gates:
+  - checkout remains guest-first and collects manual contact/address/payment
+    fields;
+  - checkout submit posts guest/customer form data to `/api/checkout/submit`
+    and stores a browser-local last-checkout snapshot;
+  - Auth is currently only a hosted login/register link surface;
+  - guarded checkout still returns `service_identity_required` before live
+    order/payment/Warehouse mutation;
+  - runtime manifests point at Auth but do not enable wallet integration.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`

@@ -34,6 +34,14 @@ const blockers = [
   '[UNKNOWN: exact Auth wallet response fields and stable version identifier]',
 ];
 
+const sourceKnownFacts = [
+  'Cliplot remains guest-checkout first: the checkout form collects name, email, phone, address, shipping, and payment fields.',
+  'Checkout submit posts guest/customer form data to /api/checkout/submit and stores a browser-local last-checkout snapshot.',
+  'Auth is currently only a hosted login/register link surface; no Auth wallet endpoint integration is present.',
+  'Guarded checkout still returns service_identity_required before live order/payment/Warehouse mutation.',
+  'Runtime manifests point at Auth but do not enable wallet integration.',
+];
+
 function assert(condition, message, evidence = {}) {
   if (!condition) {
     console.error(JSON.stringify({ ok: false, message, ...evidence }, null, 2));
@@ -116,6 +124,7 @@ console.log(JSON.stringify({
   runtimeWalletIntegrationPresent: false,
   requiredWalletEndpoints: walletEndpoints,
   authWalletPresenceGate,
+  sourceKnownFacts,
   blockers,
   next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, PII exposure, and response-contract approvals are available.',
 }, null, 2));
