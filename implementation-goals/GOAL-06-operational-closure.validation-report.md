@@ -2,9 +2,9 @@
 
 ## Status
 
-In progress. The read-only readiness bundle is implemented and validated.
-Final GOAL-06 closure remains blocked by Docs/RAG embedding backend reachability
-and live checkout approval evidence.
+In progress. The read-only readiness bundle, Docs/RAG preflight, controlled
+Docs/RAG ingestion, and retrieval evidence are implemented and validated.
+Final GOAL-06 closure remains blocked by live checkout approval evidence.
 
 ## Readiness Bundle Validation
 
@@ -219,3 +219,40 @@ CLIPLOT_READINESS_BUNDLE=pass
 Docs/RAG operational preflight is no longer blocked. Live order creation, live
 payment creation, Warehouse reservation, callback persistence, and notification
 sends remain approval-gated.
+
+
+## Controlled Docs/RAG Ingestion And Retrieval
+
+Status: validated.
+
+Commands:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/docs-rag-microservice && npm test -- --runTestsByPath test/ingestion/markdown-chunker.spec.ts && npm run build'
+ssh alfares 'cd /home/ssf/Documents/Github/docs-rag-microservice && ./scripts/deploy.sh'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && ./scripts/publish_docs_rag.sh cliplot'
+```
+
+Evidence:
+
+```text
+docsRagCommit=febd791 fix: cap markdown chunks by character length
+markdownChunkerSpec=pass
+docsRagBuild=pass
+docsRagDeployment.image=localhost:5000/docs-rag-microservice:febd791
+DOCS_RAG_PUBLICATION=pass
+repoName=cliplot
+jobId=7a03ada9-9b99-4ef7-8223-5c5a298244f5
+chunksProcessed=76
+chunksTotal=76
+retrieval.search.http=200
+retrieval.search.count=5
+retrieval.search.top=cliplot/implementation-goals/GOAL-06-operational-closure.execution-plan.md
+retrieval.agentContext.http=200
+retrieval.agentContext.count=6
+retrieval.agentContext.top=cliplot/implementation-goals/GOAL-06-operational-closure.execution-plan.md
+```
+
+Secrets were not printed. Retrieval validation ran inside the Docs/RAG pod using
+the pod-projected `JWT_TOKEN` and emitted only HTTP status, counts, source paths,
+and scores.

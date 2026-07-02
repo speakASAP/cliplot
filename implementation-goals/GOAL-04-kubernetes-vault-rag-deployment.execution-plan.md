@@ -43,7 +43,7 @@ Forbidden:
 | Cliplot order payload prep | ready now | `cliplot-service/src/integrations.js`, `k8s/configmap.yaml` | Orchestrator | Orders contract report | `npm run build`, guarded smoke. |
 | Orders support | running | `orders-microservice` | Orders worker | Repo-specific validation | Worker report. |
 | Payments support | running | `payments-microservice` | Payments worker | Repo-specific validation | Worker report. |
-| Docs/RAG ingestion | blocked | `docs-rag-microservice` runtime | Platform owner/orchestrator | Embedding backend availability | Publication script output. |
+| Docs/RAG ingestion | done | `docs-rag-microservice` runtime | Platform owner/orchestrator | Embedding backend reachable; repoName `cliplot` ingestion passed | Publication and retrieval evidence. |
 
 ## Validation Plan
 
@@ -59,8 +59,6 @@ Forbidden:
 
 ## Handoff
 
-If docs-rag remains blocked by the embedding backend, GOAL-04 can close as
-platform-hardening done with explicit RAG blocker only after scripts and docs
-make the retry path reproducible. GOAL-05 cannot enable live checkout until
+Docs/RAG ingestion is now validated for repoName `cliplot`. GOAL-05 cannot enable live checkout until
 Orders, Payments, Catalog, Warehouse, Notifications, Auth, and Vault blockers
 are resolved.

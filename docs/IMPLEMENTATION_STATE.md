@@ -153,7 +153,8 @@ notification sends, and Docs/RAG ingestion gated.
 
 ### Current Findings
 
-- GOAL-06 readiness bundle now passes after Docs/RAG embedding connectivity was restored via Docker Ollama host port `11435` and `scripts/publish_docs_rag.sh` was hardened to select the newest Running Ready non-deleting Docs/RAG pod.
+- GOAL-06 readiness bundle now passes after Docs/RAG embedding connectivity was restored via Docker Ollama host port `11435`, `scripts/publish_docs_rag.sh` was hardened to select the newest Running Ready non-deleting Docs/RAG pod, and Docs/RAG chunking was capped by character length in `docs-rag-microservice:febd791`.
+- Controlled Docs/RAG ingestion for repoName `cliplot` passed with job `7a03ada9-9b99-4ef7-8223-5c5a298244f5`, `chunksProcessed=76`, `chunksTotal=76`. Retrieval search returned HTTP 200 with 5 results, and agent-context returned HTTP 200 with 6 sources; both top results were `cliplot/implementation-goals/GOAL-06-operational-closure.execution-plan.md`.
 - The full `npm run readiness:bundle` is the operator aggregate check and now passes with Docs/RAG preflight, guarded checkout smoke, Vault presence, and Kubernetes rollout evidence.
 - The Kubernetes readiness monitor lane is endpoint-only and read-only. It
   checks `/health`, `/api/checkout/live-preflight`,
@@ -182,10 +183,7 @@ smoke evidence.
   `x-internal-service-token` plus `x-service-name` machine-auth contract backed
   by Auth-owned `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
   Cliplot is being wired to that existing read path.
-- Docs/RAG publication tooling exists, but ingestion is still blocked by the
-  RAG backend. The latest `./scripts/publish_docs_rag.sh cliplot-service` run
-  returned `DOCS_RAG_PUBLICATION=fail`,
-  `jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183`, and `error=fetch failed`.
+- Docs/RAG publication tooling now uses repoName `cliplot`. Controlled ingestion passed after Docs/RAG chunking was capped by character length; retrieval and agent-context both return Cliplot sources without printing secrets.
 - Warehouse stocked product selection, notification preview, and guarded
   payment-create payload generation have runtime smoke evidence.
 - Payment callback URL implementation has synthetic no-mutation validation as a
@@ -214,8 +212,7 @@ order payload shape while keeping live commerce disabled.
 
 - Vault is reachable with `VAULT_ADDR=http://127.0.0.1:8200`.
 - `secret/prod/cliplot-service` exists and required key names are present.
-- Docs/RAG can trigger `cliplot-service` ingestion from the pod, but ingestion
-  is blocked by `ECONNREFUSED 192.168.88.53:11434`.
+- Docs/RAG can trigger repoName `cliplot` ingestion from the pod. The old `cliplot-service`/`192.168.88.53:11434` blocker is superseded by current `DOCS_RAG_PUBLICATION=pass` evidence for repoName `cliplot`.
 - Auth validates `https://cliplot.alfares.cz/auth/callback`, but
   `cliplot-service` is not documented in the hosted-auth client registry.
 - Catalog is Auth-guarded, has no `cliplot` marketplace key, and Cliplot is
@@ -315,7 +312,7 @@ behavior until those approvals are present.
 | Storefront foundation | done | Frontend source, Dockerfile, K8s manifests, deploy, and public smoke completed. |
 | Shared-service guarded integration | done | Server integration layer, frontend checkout submit, ExternalSecret scaffold, deploy, and public smoke completed. |
 | Vault secret population | done | `secret/prod/cliplot-service`, Cliplot ExternalSecret, and Orders ExternalSecret synced. |
-| Docs/RAG publication | blocked | Embedding backend `192.168.88.53:11434` refused connection. |
+| Docs/RAG publication | done | Controlled repoName `cliplot` ingestion passed with retrieval and agent-context evidence. |
 | Orders Cliplot support | done | `orders-microservice:971a446` deployed. |
 | Payments Cliplot allowlist | done | `payments-microservice:eab6ae7` deployed. |
 | Catalog real product reads | active | Wiring Auth-owned Catalog machine-auth token and real Catalog response normalization. |
@@ -467,12 +464,9 @@ behavior until those approvals are present.
   checkout still returned HTTP `202`, carried the same Warehouse id into
   `orderPreview.items[0]`, and kept order/payment/notification validation
   no-mutation/no-send.
-- GOAL-04/GOAL-05 docs-rag publication was retried after Warehouse routing
-  validation docs were committed. `./scripts/publish_docs_rag.sh cliplot-service`
-  returned `DOCS_RAG_PUBLICATION=fail`,
-  `jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183`, and `error=fetch failed`;
-  runtime checkout evidence is committed locally in the repo, but RAG ingestion
-  remains an external service blocker.
+- GOAL-04/GOAL-05 docs-rag publication previously failed for the old repoName
+  `cliplot-service`. That evidence is superseded by GOAL-06 controlled
+  `./scripts/publish_docs_rag.sh cliplot` pass and retrieval validation.
 - GOAL-05 Warehouse reservation-readiness is now deployed on
   `localhost:5000/cliplot-service:83f251c`. The earlier node-level
   `ContainerCreating` blocker cleared; redeploy succeeded and rollout returned
@@ -534,15 +528,14 @@ behavior until those approvals are present.
 
 
 - GOAL-04/GOAL-06 Docs/RAG publication was hardened into a two-phase flow.
-  `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service`
+  `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot`
   now checks docs-rag pod discovery, `JWT_TOKEN` presence, read-only
   `/ingestion/status`, and embedding backend reachability without calling
   `/ingestion/trigger`. Current preflight evidence: `docsRagStatusHttp=200`,
-  `embeddingBackendUrl=http://192.168.88.53:11434`,
-  `embeddingReason=embedding_backend_fetch_failed`,
-  `DOCS_RAG_PREFLIGHT=blocked`, exit `2`. Normal publication remains the
-  mutating ingestion step and must not run until preflight passes and ingestion
-  is intentionally approved.
+  `embeddingBackendUrl=http://192.168.88.53:11435`, `embeddingHttp=200`,
+  `DOCS_RAG_PREFLIGHT=pass`, exit `0`. Controlled publication for repoName
+  `cliplot` passed with job `7a03ada9-9b99-4ef7-8223-5c5a298244f5` and
+  `chunksProcessed=76`, `chunksTotal=76`.
 
 
 - GOAL-06 read-only operator readiness bundle added as
@@ -550,8 +543,7 @@ behavior until those approvals are present.
   `GET /api/checkout/live-preflight` and integration readiness, verifies K8s
   rollout state, Vault key presence without printing values, Docs/RAG preflight
   only, and guarded checkout smoke. Clean-worktree execution returned
-  `CLIPLOT_READINESS_BUNDLE=blocked`, exit `2`, because Docs/RAG embedding
-  backend fetch still fails. Checkout safety checks passed:
+  `CLIPLOT_READINESS_BUNDLE=pass` after Docs/RAG embedding and ingestion fixes. Checkout safety checks passed:
   `livePreflight.status=blocked`, `wouldMutate=false`, all mutation-plan
   booleans false, all live flags and approval booleans false, and guarded
   checkout `mutation=false`.

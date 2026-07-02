@@ -97,17 +97,18 @@ Resolution target: GOAL-04.
 
 ### VD-004: Docs/RAG embedding backend unavailable
 
-Status: blocks Cliplot documentation ingestion and retrieval.
+Status: resolved by Docs/RAG Ollama endpoint `http://192.168.88.53:11435` and
+validated preflight.
 
 Evidence:
 
 ```text
-docs-rag OLLAMA_URL=http://192.168.88.53:11434
-Error: connect ECONNREFUSED 192.168.88.53:11434
+DOCS_RAG_PREFLIGHT=pass
+embeddingBackendUrl=http://192.168.88.53:11435
+embeddingHttp=200
 ```
 
-Resolution target: restore the Ollama endpoint or migrate docs-rag embeddings to
-an available in-cluster embedding service.
+Resolution target: complete.
 
 ### VD-005: Cliplot unsupported by Orders and Payments live contracts
 
@@ -145,28 +146,22 @@ approved Cliplot SKU/filtering scope when product ownership rules are available.
 
 ### VD-007: Docs RAG publication backend unavailable
 
-Status: active external service blocker.
+Status: resolved for controlled single-repo Cliplot ingestion.
 
 Evidence:
 
 ```text
-./scripts/publish_docs_rag.sh cliplot-service
-DOCS_RAG_PUBLICATION=fail
-jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183
-error=fetch failed
+./scripts/publish_docs_rag.sh cliplot
+DOCS_RAG_PUBLICATION=pass
+jobId=7a03ada9-9b99-4ef7-8223-5c5a298244f5
+chunksProcessed=76
+chunksTotal=76
+retrieval.search.http=200 count=5
+retrieval.agentContext.http=200 count=6
 ```
 
-Resolution target: rerun the non-mutating Docs/RAG preflight until it passes,
-then trigger publication only after ingestion is intentionally approved.
-
-Expected preflight output:
-
-```text
-DOCS_RAG_PREFLIGHT=pass|blocked|fail
-docsRagStatusHttp=<status>
-embeddingBackendConfigured=true
-embeddingHttp=<status>
-```
+Resolution target: complete for repoName `cliplot`; trigger-all registry
+coverage remains separate shared-service work.
 
 ### VD-004: Cliplot 008bacf rollout blocked by node ContainerCreating
 

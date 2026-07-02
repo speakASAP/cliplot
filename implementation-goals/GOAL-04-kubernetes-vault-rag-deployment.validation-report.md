@@ -44,14 +44,14 @@ Done.
 ## Expected Outcomes
 
 - Vault presence gate runs without printing values.
-- Docs-rag publication path is reproducible even when ingestion is blocked.
+- Docs-rag publication path is reproducible and current repoName `cliplot` ingestion is validated.
 - Deployment readiness gate requires platform scripts.
 - Cliplot checkout live submit remains disabled.
 - Future order payload shape matches `orders.create.v1`.
 
 ## Known Blockers
 
-- `[BLOCKED: docs-rag embedding backend at 192.168.88.53:11434 refused connection]`
+- `[RESOLVED: docs-rag embedding backend reachable at http://192.168.88.53:11435]`
 - `[MISSING: Catalog product scope/service-auth path for Cliplot product reads]`
 - `[MISSING: Warehouse Auth role token for Cliplot stock reads/mutations]`
 - `[MISSING: Notification channel/template contract for Cliplot order confirmations]`
@@ -68,7 +68,7 @@ Done.
   checkout still returning `service_identity_required`, `mutation=false`,
   `liveCheckoutPreflight=blocked`, and all mutation-plan booleans false.
 - `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot`
-  returned the expected non-mutating blocker:
+  originally returned a non-mutating blocker that is now superseded:
 
 ```text
 docsRagStatusHttp=200
@@ -80,6 +80,7 @@ DOCS_RAG_PREFLIGHT=blocked
 DOCS_RAG_PREFLIGHT_EXIT=2
 ```
 
-The preflight did not call `/ingestion/trigger`. Docs/RAG publication remains
-blocked on the embedding backend, but the blocker is now isolated before any
-mutating ingestion request.
+The preflight did not call `/ingestion/trigger`. This old blocker is
+superseded by current GOAL-06 evidence: `DOCS_RAG_PREFLIGHT=pass`,
+`DOCS_RAG_PUBLICATION=pass`, and retrieval/agent-context sources for repoName
+`cliplot`.

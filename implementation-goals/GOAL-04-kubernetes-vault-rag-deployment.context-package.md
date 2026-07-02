@@ -28,8 +28,7 @@
   `cliplot-service`.
 - Catalog is Auth-guarded, has no `cliplot` marketplace key, and current
   Cliplot product reads fall back to local placeholder products.
-- Docs/RAG is mounted to `/home/ssf/Documents/Github`, but ingestion/retrieval
-  is blocked by `ECONNREFUSED 192.168.88.53:11434`.
+- Docs/RAG is mounted to `/home/ssf/Documents/Github`, but ingestion/retrieval for repoName `cliplot` is validated.
 
 ## Sensitive Data Rule
 

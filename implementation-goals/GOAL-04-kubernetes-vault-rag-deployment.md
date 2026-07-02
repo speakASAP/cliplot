@@ -34,5 +34,5 @@ Done.
 
 ## Blockers
 
-- `[BLOCKED: docs-rag embedding backend at 192.168.88.53:11434 refused connection]`
+- `[RESOLVED: docs-rag embedding backend reachable at http://192.168.88.53:11435]`
 - `[MISSING: Catalog product scope/service-auth path for Cliplot product reads]`

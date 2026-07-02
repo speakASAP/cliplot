@@ -59,4 +59,4 @@ readiness.
 - `[MISSING: CLIPLOT_LIVE_ORDER_APPROVAL_ID after approved live order-create and Warehouse reservation evidence for Cliplot]`
 - `[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID after approved live payment-create execution evidence for Cliplot]`
 - `[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID after approved live notification send validation for Cliplot order confirmations]`
-- `[BLOCKED: docs-rag embedding backend fetch failed at http://192.168.88.53:11434]`
+- `[RESOLVED: Docs/RAG controlled ingestion for repoName cliplot passed; retrieval and agent-context return Cliplot sources]`

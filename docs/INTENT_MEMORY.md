@@ -51,5 +51,5 @@ architecture decision remains:
 - `[MISSING: Cliplot brand/legal/payment identity approval]`
 - `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
 - `[MISSING: approved live order-create and Warehouse reservation evidence for Cliplot]`
-- `[MISSING: docs-rag publication command and token evidence for cliplot-service]`
+- `[MISSING: docs-rag non-mutating preflight evidence and approved publication evidence for repoName `cliplot`]`
 - `[UNKNOWN: whether Catalog needs new marketplace key cliplot or reuse flipflop connector]`
