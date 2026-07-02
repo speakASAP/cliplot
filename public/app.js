@@ -47,11 +47,14 @@ const fallbackProducts = [
   },
 ];
 
+const cartStorageKey = 'cliplot-cart';
+const checkoutIntentStorageKey = 'cliplot-checkout-intent-v1';
+
 const state = {
   products: fallbackProducts,
   category: 'all',
   search: '',
-  cart: JSON.parse(localStorage.getItem('cliplot-cart') || '{}'),
+  cart: JSON.parse(localStorage.getItem(cartStorageKey) || '{}'),
 };
 
 const currency = new Intl.NumberFormat('cs-CZ', {
@@ -76,8 +79,46 @@ function formatPrice(value) {
   return currency.format(Number(value || 0)).replace('CZK', 'Kč');
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+}
+
 function saveCart() {
-  localStorage.setItem('cliplot-cart', JSON.stringify(state.cart));
+  localStorage.setItem(cartStorageKey, JSON.stringify(state.cart));
+}
+
+function createCheckoutIntentId() {
+  if (globalThis.crypto?.randomUUID) return `cliplot-${globalThis.crypto.randomUUID()}`;
+  return `cliplot-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function cartSignature(entries = cartEntries()) {
+  return entries
+    .map(({ product, quantity }) => `${product.id}:${quantity}:${product.warehouseId || ''}`)
+    .sort()
+    .join('|');
+}
+
+function checkoutIntentFor(entries) {
+  const signature = cartSignature(entries);
+  if (!signature) return '';
+  try {
+    const stored = JSON.parse(localStorage.getItem(checkoutIntentStorageKey) || '{}');
+    if (stored.signature === signature && typeof stored.externalOrderId === 'string' && stored.externalOrderId.startsWith('cliplot-')) {
+      return stored.externalOrderId;
+    }
+  } catch {
+    localStorage.removeItem(checkoutIntentStorageKey);
+  }
+  const externalOrderId = createCheckoutIntentId();
+  localStorage.setItem(checkoutIntentStorageKey, JSON.stringify({ signature, externalOrderId }));
+  return externalOrderId;
 }
 
 function findProduct(productId) {
@@ -128,21 +169,21 @@ function renderProducts() {
       const disabledAttributes = canReserve ? "" : "disabled aria-disabled=true";
       return `
         <article class="product-card">
-          <img src="${product.image}" alt="${product.name}" loading="lazy" />
+          <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" />
           <div class="product-meta">
-            <span>${product.category}</span>
-            <span>${stockLabel}</span>
+            <span>${escapeHtml(product.category)}</span>
+            <span>${escapeHtml(stockLabel)}</span>
           </div>
-          <h3>${product.name}</h3>
-          <p class="product-description">${product.description}</p>
+          <h3>${escapeHtml(product.name)}</h3>
+          <p class="product-description">${escapeHtml(product.description)}</p>
           <div class="product-meta">
-            <span>${product.delivery}</span>
+            <span>${escapeHtml(product.delivery)}</span>
           </div>
           <div class="product-price">
             <strong>${formatPrice(product.price)}</strong>
             ${product.originalPrice ? `<del>${formatPrice(product.originalPrice)}</del>` : ""}
           </div>
-          <button class="primary-button" type="button" data-add-to-cart="${canReserve ? product.id : ""}" data-warehouse-id="${product.warehouseId || ""}" ${disabledAttributes}>${buttonLabel}</button>
+          <button class="primary-button" type="button" data-add-to-cart="${canReserve ? escapeHtml(product.id) : ""}" data-warehouse-id="${escapeHtml(product.warehouseId || "")}" ${disabledAttributes}>${buttonLabel}</button>
         </article>
       `;
     })
@@ -162,13 +203,13 @@ function renderCart() {
           ({ product, quantity }) => `
             <div class="cart-item">
               <div>
-                <strong>${product.name}</strong>
+                <strong>${escapeHtml(product.name)}</strong>
                 <div>${formatPrice(product.price)} / ks</div>
               </div>
-              <div class="qty-controls" aria-label="Množství pro ${product.name}">
-                <button type="button" data-decrease="${product.id}">-</button>
+              <div class="qty-controls" aria-label="Množství pro ${escapeHtml(product.name)}">
+                <button type="button" data-decrease="${escapeHtml(product.id)}">-</button>
                 <span>${quantity}</span>
-                <button type="button" data-increase="${product.id}">+</button>
+                <button type="button" data-increase="${escapeHtml(product.id)}">+</button>
               </div>
             </div>
           `,
@@ -266,7 +307,12 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
   const response = await fetch('/api/checkout/submit', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ customer: data, items: entries, total: cartTotal() }),
+    body: JSON.stringify({
+      externalOrderId: checkoutIntentFor(entries),
+      customer: data,
+      items: entries,
+      total: cartTotal(),
+    }),
   });
   const payload = await response.json();
 
@@ -279,13 +325,17 @@ document.querySelector('#checkoutForm').addEventListener('submit', async (event)
   }
 
   const missing = Array.isArray(payload.missing) && payload.missing.length
-    ? `<ul>${payload.missing.map((item) => `<li>${item}</li>`).join('')}</ul>`
+    ? `<details><summary>Technické ověření</summary><ul>${payload.missing.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></details>`
+    : '';
+  const reference = payload.checkoutIntent?.externalOrderId
+    ? `<p>Referenční číslo: <strong>${escapeHtml(payload.checkoutIntent.externalOrderId)}</strong></p>`
     : '';
 
   selectors.result.innerHTML = `
-    <strong>Objednávka je připravena ke sdíleným službám.</strong>
-    <p>Zákazník: ${data.name} | Celkem: ${formatPrice(cartTotal())}</p>
-    <p>Stav: ${payload.status}. Platba se nespustila, dokud nejsou potvrzené servisní tokeny a provider evidence.</p>
+    <strong>Objednávka je připravena ke kontrole.</strong>
+    <p>Zákazník: ${escapeHtml(data.name)} | Celkem: ${formatPrice(cartTotal())}</p>
+    ${reference}
+    <p>Platba se zatím nespustila. Po finálním zapojení plateb dostanete potvrzení objednávky a odkaz na platbu.</p>
     ${missing}
   `;
 });

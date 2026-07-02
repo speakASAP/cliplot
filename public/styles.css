@@ -623,3 +623,13 @@ select {
     font-size: 20px;
   }
 }
+
+
+.checkout-result details {
+  margin-top: 10px;
+}
+
+.checkout-result summary {
+  cursor: pointer;
+  font-weight: 700;
+}

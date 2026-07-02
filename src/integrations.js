@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 
 const requestTimeoutMs = Number(process.env.SERVICE_REQUEST_TIMEOUT_MS || 2200);
 const orderIdPrefix = process.env.CLIPLOT_ORDER_ID_PREFIX || 'cliplot';
+const externalOrderIdPattern = /^[a-z0-9][a-z0-9-]{7,95}$/;
 
 export const fallbackProducts = [
   {
@@ -337,11 +338,44 @@ function checkoutMissingFacts() {
 }
 
 
+function normalizeExternalOrderId(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96);
+  return externalOrderIdPattern.test(normalized) ? normalized : '';
+}
+
+function createExternalOrderId() {
+  const prefix = normalizeExternalOrderId(orderIdPrefix) || 'cliplot';
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function checkoutIdempotencyKeys(checkout) {
+  return {
+    externalOrderId: checkout.externalOrderId,
+    orderCreate: `cliplot-order-${checkout.externalOrderId}`,
+    orderValidate: `cliplot-order-validate-${checkout.externalOrderId}`,
+    paymentCreate: `cliplot-payment-${checkout.externalOrderId}`,
+    paymentValidate: `cliplot-payment-validate-${checkout.externalOrderId}`,
+    notificationValidate: `cliplot-notification-validate-${checkout.externalOrderId}`,
+  };
+}
+
+function checkoutIntentEvidence(checkout) {
+  return {
+    externalOrderId: checkout.externalOrderId,
+    idempotencyKeys: checkoutIdempotencyKeys(checkout),
+  };
+}
+
 function normalizeCheckout(input) {
   const items = Array.isArray(input?.items) ? input.items : [];
   const customer = input?.customer && typeof input.customer === 'object' ? input.customer : {};
   const total = Number(input?.total || 0);
-  const externalOrderId = String(input?.externalOrderId || `${orderIdPrefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`);
+  const externalOrderId = normalizeExternalOrderId(input?.externalOrderId) || createExternalOrderId();
   return {
     externalOrderId,
     customer: {
@@ -365,6 +399,7 @@ function normalizeCheckout(input) {
 
 function validateCheckout(checkout) {
   const errors = [];
+  if (!externalOrderIdPattern.test(checkout.externalOrderId)) errors.push("invalid_external_order_id");
   if (!checkout.items.length) errors.push("empty_cart");
   if (checkout.items.some((item) => !item.productId || item.quantity < 1)) errors.push("invalid_items");
   if (checkout.items.some((item) => !item.warehouseId)) errors.push("missing_warehouse_id");
@@ -494,7 +529,7 @@ function buildOrderCreatePayload(checkout) {
   };
 }
 
-async function postOrderPayload(path, checkout, orderPayload) {
+async function postOrderPayload(path, checkout, orderPayload, idempotencyKey = checkoutIdempotencyKeys(checkout).orderCreate) {
   const url = new URL(path, serviceConfig.ordersUrl);
   return fetchJson(url, {
     method: 'POST',
@@ -502,7 +537,7 @@ async function postOrderPayload(path, checkout, orderPayload) {
       'content-type': 'application/json',
       'x-internal-service-token': serviceConfig.ordersServiceToken,
       'x-service-name': serviceConfig.serviceName,
-      'idempotency-key': `cliplot-order-${checkout.externalOrderId}`,
+      'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(orderPayload),
   });
@@ -513,7 +548,7 @@ async function createOrder(checkout) {
 }
 
 async function validateOrderCreate(checkout, orderPayload) {
-  return postOrderPayload(serviceConfig.ordersValidateCreatePath, checkout, orderPayload);
+  return postOrderPayload(serviceConfig.ordersValidateCreatePath, checkout, orderPayload, checkoutIdempotencyKeys(checkout).orderValidate);
 }
 
 async function guardedOrderValidation(checkout, orderPayload) {
@@ -580,6 +615,7 @@ function buildPaymentCreatePayload(checkout, order) {
       source: serviceConfig.serviceName,
       externalOrderId: checkout.externalOrderId,
       userId: `cliplot:${checkout.customer.email}`,
+      checkoutIntentId: checkout.externalOrderId,
     },
   };
 }
@@ -591,7 +627,7 @@ async function createPayment(checkout, order) {
     headers: {
       'content-type': 'application/json',
       'x-api-key': serviceConfig.paymentApiKey,
-      'idempotency-key': `cliplot-payment-${checkout.externalOrderId}`,
+      'idempotency-key': checkoutIdempotencyKeys(checkout).paymentCreate,
     },
     body: JSON.stringify(buildPaymentCreatePayload(checkout, order)),
   });
@@ -604,7 +640,7 @@ async function validatePaymentCreate(checkout, paymentPayload) {
     headers: {
       'content-type': 'application/json',
       'x-api-key': serviceConfig.paymentApiKey,
-      'idempotency-key': `cliplot-payment-validate-${checkout.externalOrderId}`,
+      'idempotency-key': checkoutIdempotencyKeys(checkout).paymentValidate,
     },
     body: JSON.stringify(paymentPayload),
   });
@@ -652,7 +688,7 @@ async function validateNotification(checkout, notificationPayload) {
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${serviceConfig.notificationServiceToken}`,
-      'idempotency-key': `cliplot-notification-validate-${checkout.externalOrderId}`,
+      'idempotency-key': checkoutIdempotencyKeys(checkout).notificationValidate,
     },
     body: JSON.stringify(notificationPayload),
   });
@@ -835,6 +871,7 @@ export async function submitCheckout(input) {
         message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
         missing,
         liveMutationApprovals: liveMutationApprovals(),
+        checkoutIntent: checkoutIntentEvidence(checkout),
         orderPreview,
         warehouseReservationReadiness,
         orderValidation,
@@ -873,6 +910,7 @@ export async function submitCheckout(input) {
       order,
       payment,
       liveMutationApprovals: liveMutationApprovals(),
+      checkoutIntent: checkoutIntentEvidence(checkout),
       paymentPreview,
       notification: serviceConfig.liveNotifications
         ? 'pending_live_send_in_payment_lane'
