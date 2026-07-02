@@ -119,6 +119,12 @@ function isApprovalPresent(value) {
   return String(value || '').trim().length > 0;
 }
 
+function isConcreteSmokeWindow(value) {
+  const windowValue = String(value || '').trim();
+  if (!windowValue) return false;
+  return !/required-before-enabling-flag|placeholder|missing|tbd|todo/i.test(windowValue);
+}
+
 function liveMutationApprovals() {
   return {
     order: isApprovalPresent(serviceConfig.liveOrderApprovalId),
@@ -4488,7 +4494,8 @@ export async function liveOrderWarehouseSmokePlan() {
   const approvals = liveMutationApprovals();
   const smokeApprovalPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeApprovalId);
   const cleanupApprovalPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeCleanupApprovalId);
-  const smokeWindowPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeWindow);
+  const smokeWindowPresent = isConcreteSmokeWindow(serviceConfig.liveOrderWarehouseSmokeWindow);
+  const smokeWindowConfigured = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeWindow);
   const rollbackOwnerPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeRollbackOwner);
   const validationOwnerPresent = isApprovalPresent(serviceConfig.liveOrderWarehouseSmokeValidationOwner);
   const smokeMetadataApproved = smokeApprovalPresent
@@ -4508,14 +4515,16 @@ export async function liveOrderWarehouseSmokePlan() {
   const satisfiedEvidence = [
     ...(smokeApprovalPresent ? ['[DONE: owner-approved live Orders/Warehouse create-replay-cancel smoke metadata recorded]'] : []),
     ...(cleanupApprovalPresent ? ['[DONE: deterministic Orders cancel -> Warehouse reservation release cleanup approval recorded]'] : []),
-    ...(smokeWindowPresent ? [`[DONE: operator-selected smoke window recorded: ${serviceConfig.liveOrderWarehouseSmokeWindow}]`] : []),
+    ...(smokeWindowPresent ? [`[DONE: concrete operator-selected smoke window recorded: ${serviceConfig.liveOrderWarehouseSmokeWindow}]`] : []),
+    ...(smokeWindowConfigured && !smokeWindowPresent ? ['[MISSING: concrete owner-approved smoke execution window; current value is placeholder metadata]'] : []),
     ...(rollbackOwnerPresent ? [`[DONE: rollback owner recorded: ${serviceConfig.liveOrderWarehouseSmokeRollbackOwner}]`] : []),
     ...(validationOwnerPresent ? [`[DONE: validation owner recorded: ${serviceConfig.liveOrderWarehouseSmokeValidationOwner}]`] : []),
   ];
   const liveExecutionBlockers = [
     ...(smokeApprovalPresent ? [] : ['[MISSING: explicit owner approval for live Orders/Warehouse create-replay-cancel smoke]']),
     ...(cleanupApprovalPresent ? [] : ['[MISSING: deterministic cleanup approval for Orders cancel -> Warehouse reservation release]']),
-    ...(smokeWindowPresent && rollbackOwnerPresent ? [] : ['[MISSING: operator-selected smoke window and rollback owner]']),
+    ...(smokeWindowPresent ? [] : ['[MISSING: concrete owner-approved smoke execution window]']),
+    ...(rollbackOwnerPresent ? [] : ['[MISSING: live smoke rollback owner]']),
     ...(smokeMetadataApproved && !serviceConfig.liveOrderWarehouseSmoke ? ['[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]'] : []),
     ...preflight.missing,
   ];
@@ -4555,6 +4564,7 @@ export async function liveOrderWarehouseSmokePlan() {
       orderWarehouseSmoke: smokeApprovalPresent,
       orderWarehouseSmokeCleanup: cleanupApprovalPresent,
       orderWarehouseSmokeWindow: smokeWindowPresent,
+      orderWarehouseSmokeWindowConfigured: smokeWindowConfigured,
       orderWarehouseSmokeRollbackOwner: rollbackOwnerPresent,
       orderWarehouseSmokeValidationOwner: validationOwnerPresent,
     },
@@ -4568,7 +4578,7 @@ export async function liveOrderWarehouseSmokePlan() {
     plan: {
       objective: 'Prove one approved Cliplot live order can create exactly one Orders record, reserve Warehouse stock, replay idempotently, and clean up through Orders cancellation.',
       scope: 'Dedicated Orders/Warehouse smoke planning only; this endpoint/script does not execute the plan and does not use normal Cliplot checkout submit.',
-      allowedMutationWindow: smokeWindowPresent ? serviceConfig.liveOrderWarehouseSmokeWindow : '[MISSING: owner-approved time window]',
+      allowedMutationWindow: smokeWindowPresent ? serviceConfig.liveOrderWarehouseSmokeWindow : '[MISSING: concrete owner-approved smoke execution window]',
       rollbackOwner: rollbackOwnerPresent ? serviceConfig.liveOrderWarehouseSmokeRollbackOwner : '[MISSING: named rollback owner]',
       validationOwner: validationOwnerPresent ? serviceConfig.liveOrderWarehouseSmokeValidationOwner : '[MISSING: named validation owner]',
       cleanupApprovalIdPresent: cleanupApprovalPresent,
@@ -4725,6 +4735,7 @@ export async function liveOrderWarehouseSmokeExecutionChecklistPacket() {
       orderWarehouseSmoke: plan.approvals?.orderWarehouseSmoke === true,
       cleanup: plan.approvals?.orderWarehouseSmokeCleanup === true,
       window: plan.approvals?.orderWarehouseSmokeWindow === true,
+      windowConfigured: plan.approvals?.orderWarehouseSmokeWindowConfigured === true,
       rollbackOwner: plan.approvals?.orderWarehouseSmokeRollbackOwner === true,
       validationOwner: plan.approvals?.orderWarehouseSmokeValidationOwner === true,
     },

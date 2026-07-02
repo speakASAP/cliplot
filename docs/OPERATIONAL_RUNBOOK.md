@@ -160,7 +160,7 @@ curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-smoke-execu
 curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-create-replay-cancel-contract-packet
 ```
 
-The plan must report `liveExecutionAllowed=false`, list any remaining execution blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It may return `approved_live_order_warehouse_smoke_metadata_execution_disabled` after owner metadata is recorded, but that is not permission to execute the live smoke while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
+The plan must report `liveExecutionAllowed=false`, list any remaining execution blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It may return `approved_live_order_warehouse_smoke_metadata_execution_disabled` only after owner metadata includes a concrete execution window; placeholder values such as `owner-approved-window-required-before-enabling-flag` must remain `[MISSING: concrete owner-approved smoke execution window]`. Metadata approval is not permission to execute the live smoke while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
 
 The executor endpoint is `POST /api/checkout/live-order-warehouse-smoke-executor`.
 It must remain blocked in normal production and return `approval_required` until

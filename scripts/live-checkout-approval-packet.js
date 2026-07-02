@@ -33,7 +33,7 @@ assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_NOTIFICATION_APPROVAL_I
 assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID'), 'live smoke approval id missing', packet);
 assert(Array.isArray(packet.missing) && packet.missing.length >= 4, 'approval blockers missing', packet);
 assert(packet.wouldMutateNow === false, 'approval packet would mutate now', packet);
-assert(packet.readinessEvidence?.liveSmokePlan === 'approved_live_order_warehouse_smoke_metadata_execution_disabled', 'live smoke metadata approval evidence missing', packet.readinessEvidence || {});
+assert(['approval_required', 'approved_live_order_warehouse_smoke_metadata_execution_disabled'].includes(packet.readinessEvidence?.liveSmokePlan), 'live smoke metadata approval evidence missing', packet.readinessEvidence || {});
 assert(packet.readinessEvidence?.callbackPersistence === 'approval_required_callback_persistence_storage_backend', 'callback persistence blocker evidence missing', packet.readinessEvidence || {});
 assert(packet.paymentBoundary?.callbackPersistenceEnabled === false, 'callback persistence unexpectedly enabled', packet.paymentBoundary || {});
 assert(packet.paymentBoundary?.callbackReplayEnabled === false, 'callback replay unexpectedly enabled', packet.paymentBoundary || {});

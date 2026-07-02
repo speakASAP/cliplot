@@ -33,7 +33,7 @@ assert(plan.noPaymentNotificationBoundary?.notificationSendAllowed === false, 'n
 if (plan.status === 'approved_live_order_warehouse_smoke_metadata_execution_disabled') {
   assert(plan.approvals?.orderWarehouseSmoke === true, 'approved smoke metadata should include smoke approval id evidence', plan);
   assert(plan.approvals?.orderWarehouseSmokeCleanup === true, 'approved smoke metadata should include cleanup approval evidence', plan);
-  assert(plan.approvals?.orderWarehouseSmokeWindow === true, 'approved smoke metadata should include operator window evidence', plan);
+  assert(plan.approvals?.orderWarehouseSmokeWindow === true, 'approved smoke metadata should include concrete operator window evidence', plan);
   assert(plan.approvals?.orderWarehouseSmokeRollbackOwner === true, 'approved smoke metadata should include rollback owner evidence', plan);
   assert(plan.approvals?.orderWarehouseSmokeValidationOwner === true, 'approved smoke metadata should include validation owner evidence', plan);
   assert(plan.satisfiedEvidence?.some((item) => item.includes('owner-approved live Orders/Warehouse')), 'approved smoke metadata evidence missing', plan);
@@ -48,6 +48,10 @@ assert(plan.plan?.endpoints?.cancelOrderThroughOrders === '/api/orders/{orderId}
 assert(plan.plan.steps.some((step) => step.name === 'approved_order_create' && step.endpoint === '/api/orders'), 'approved create step missing', plan.plan || {});
 assert(plan.plan.steps.some((step) => step.name === 'idempotent_order_replay'), 'idempotent replay step missing', plan.plan || {});
 assert(plan.plan.steps.some((step) => step.name === 'approved_order_cancel_release' && step.endpoint === '/api/orders/{orderId}/status'), 'cancel/release step missing', plan.plan || {});
+if (plan.approvals?.orderWarehouseSmokeWindowConfigured === true && plan.approvals?.orderWarehouseSmokeWindow !== true) {
+  assert(plan.liveExecutionBlockers.includes('[MISSING: concrete owner-approved smoke execution window]'), 'placeholder smoke window blocker missing', plan);
+  assert(plan.plan?.allowedMutationWindow === '[MISSING: concrete owner-approved smoke execution window]', 'placeholder smoke window should not become allowed mutation window', plan.plan || {});
+}
 assert(plan.requiredApprovalIds?.includes('CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID'), 'approval IDs missing', plan);
 
 console.log(JSON.stringify({
