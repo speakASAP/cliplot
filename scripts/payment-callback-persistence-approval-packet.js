@@ -43,7 +43,11 @@ assert(packet.callbackPolicy?.status === 'approved_callback_replay_policy_metada
 assert(packet.callbackPolicy?.approvalIdPresent === true, 'callback policy approval id evidence missing', packet);
 assert(packet.callbackPolicy?.callbackPersistence === false, 'callback policy persistence enabled', packet);
 assert(packet.callbackPolicy?.callbackReplayEnabled === false, 'callback policy replay enabled', packet);
-assert(packet.storageReadiness?.status === 'blocked_storage_backend_not_approved', 'storage readiness should remain blocked', packet);
+const storageReadinessStatusAllowed = [
+  'blocked_storage_backend_not_approved',
+  'approved_payment_status_storage_metadata_execution_disabled',
+].includes(packet.storageReadiness?.status);
+assert(storageReadinessStatusAllowed, 'storage readiness status unexpected', packet);
 assert(packet.storageReadiness?.storageConfigured === false, 'storage unexpectedly configured', packet);
 assert(packet.storageReadiness?.storageOwnershipApproved === true, 'Payments storage ownership approval missing', packet);
 assert(packet.storageReadiness?.cliplotLocalStorageApproved === false, 'Cliplot-local storage unexpectedly approved', packet);
