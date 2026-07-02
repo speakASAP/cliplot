@@ -91,3 +91,7 @@ Known current blocker: docs-rag ingestion may fail while
   reservation evidence, approved live payment-create evidence, approved live
   notification-send evidence, owner-specific Catalog product scope, and
   brand/legal/payment identity approvals are present.
+- Warehouse batch availability reservation-readiness preflight runs during
+  guarded checkout and returns `warehouseReservationReadiness` without creating a
+  reservation or decrementing stock. Live Warehouse reservation still requires
+  approved live order-create evidence.

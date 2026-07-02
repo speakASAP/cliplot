@@ -403,17 +403,15 @@ behavior until those approvals are present.
   `jobId=57a4462f-7d67-4e0e-8041-f77d5b2b1183`, and `error=fetch failed`;
   runtime checkout evidence is committed locally in the repo, but RAG ingestion
   remains an external service blocker.
-- GOAL-05 Warehouse reservation-readiness code commit `008bacf` adds a
-  no-mutation checkout preflight that calls Warehouse batch availability for the
-  product and `warehouseId` selected in checkout, returns
-  `warehouseReservationReadiness`, and blocks any future live order path with
-  `warehouse_reservation_not_ready` if availability is not reservable. Static
-  validation passed: `npm run build`, `git diff --check`,
-  `python3 scripts/pre_coding_gate.py`, `python3 scripts/strict_doc_audit.py`,
-  and `python3 scripts/deployment_readiness_gate.py`. The image
-  `localhost:5000/cliplot-service:008bacf` was built and pushed, but Kubernetes
-  rollout could not produce a running new pod because multiple unrelated pods on
-  node `alfares` were stuck in `ContainerCreating` with no pull/create events.
-  The Cliplot deployment was rolled back operationally to the last serving image
-  `localhost:5000/cliplot-service:b72a025`; runtime smoke for
-  `warehouseReservationReadiness` is still pending.
+- GOAL-05 Warehouse reservation-readiness is now deployed on
+  `localhost:5000/cliplot-service:83f251c`. The earlier node-level
+  `ContainerCreating` blocker cleared; redeploy succeeded and rollout returned
+  `deployment "cliplot-service" successfully rolled out`. In-cluster guarded
+  checkout returned HTTP `202`,
+  `warehouseReservationReadiness.status=validated_no_mutation`, `valid=true`,
+  `mutation=false`, `reservationCreated=false`, `stockMutation=false`,
+  `items[0].ready=true`, `items[0].available=63`, and `items[0].warehouseType=own`.
+  Warehouse availability before and after checkout stayed unchanged at
+  `totalAvailable=63`, `totalReserved=0`, `warehouseAvailable=63`, and
+  `warehouseReserved=0`. Live order creation, live Warehouse reservation,
+  payment creation, and notification send remain approval-gated.
