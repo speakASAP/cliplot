@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+import { readFile } from 'node:fs/promises';
+
+const sourceFiles = {
+  checkoutHtml: 'public/index.html',
+  checkoutClient: 'public/app.js',
+  integrations: 'src/integrations.js',
+  server: 'src/server.js',
+};
+
+const walletEndpoints = [
+  '/auth/profile/checkout-data',
+  '/delivery-addresses',
+  '/invoice-profiles',
+];
+
+const blockers = [
+  '[MISSING: Auth live wallet endpoints for checkout-data, delivery-addresses, and invoice-profiles return non-404 with approved contract]',
+  '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
+  '[MISSING: authenticated browser session contract for wallet reads]',
+  '[MISSING: no-PII logging and frontend exposure review for wallet data]',
+  '[UNKNOWN: exact Auth wallet response fields and stable version identifier]',
+];
+
+function assert(condition, message, evidence = {}) {
+  if (!condition) {
+    console.error(JSON.stringify({ ok: false, message, ...evidence }, null, 2));
+    process.exit(1);
+  }
+}
+
+async function readSources() {
+  const entries = await Promise.all(
+    Object.entries(sourceFiles).map(async ([key, path]) => [key, path, await readFile(path, 'utf8')]),
+  );
+  return Object.fromEntries(entries.map(([key, path, contents]) => [key, { path, contents }]));
+}
+
+function includesAll(contents, snippets) {
+  return snippets.every((snippet) => contents.includes(snippet));
+}
+
+const sources = await readSources();
+const checkoutHtml = sources.checkoutHtml.contents;
+const checkoutClient = sources.checkoutClient.contents;
+const integrations = sources.integrations.contents;
+const server = sources.server.contents;
+
+const hasCheckoutForm = includesAll(checkoutHtml, [
+  'id="checkoutForm"',
+  'name="name"',
+  'name="email"',
+  'name="phone"',
+  'name="address"',
+  'name="shipping"',
+  'name="payment"',
+]);
+const hasCartReview = includesAll(checkoutClient, [
+  'cartEntries()',
+  'renderCheckoutReview()',
+  "fetch('/api/checkout/submit'",
+  'saveLastCheckout(',
+]);
+const hasBackendCustomerNormalization = includesAll(integrations, [
+  'customer.name',
+  'customer.email',
+  'customer.phone',
+  'customer.address',
+  'normalizeCheckoutChoice',
+]);
+const hasAuthLinkOnlySurface = includesAll(server, [
+  "url.pathname === '/api/auth/links'",
+  'authLinks()',
+]);
+const runtimeWalletReferences = Object.values(sources)
+  .flatMap(({ path, contents }) => walletEndpoints
+    .filter((endpoint) => contents.includes(endpoint))
+    .map((endpoint) => ({ path, endpoint })));
+
+assert(hasCheckoutForm, 'checkout form customer fields missing', { file: sourceFiles.checkoutHtml });
+assert(hasCartReview, 'cart review/submit surface missing', { file: sourceFiles.checkoutClient });
+assert(hasBackendCustomerNormalization, 'backend customer normalization missing', { file: sourceFiles.integrations });
+assert(hasAuthLinkOnlySurface, 'hosted Auth link surface missing', { file: sourceFiles.server });
+assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integration exists before dependency gates are cleared', {
+  runtimeWalletReferences,
+  blockers,
+});
+
+console.log(JSON.stringify({
+  ok: true,
+  status: 'dependency_gated_auth_wallet_checkout_readiness',
+  mode: 'source_only_no_live_calls',
+  mutation: false,
+  persistence: false,
+  providerCall: false,
+  deployRequired: false,
+  inspectedFiles: Object.values(sourceFiles),
+  surfaces: {
+    checkoutForm: hasCheckoutForm,
+    cartReviewAndSubmit: hasCartReview,
+    backendCustomerNormalization: hasBackendCustomerNormalization,
+    hostedAuthLinks: hasAuthLinkOnlySurface,
+  },
+  runtimeWalletIntegrationPresent: false,
+  requiredWalletEndpoints: walletEndpoints,
+  blockers,
+  next: 'Keep Cliplot checkout wallet integration blocked until Auth wallet endpoints and checkout selector approval are available.',
+}, null, 2));
