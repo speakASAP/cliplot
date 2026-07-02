@@ -82,6 +82,7 @@ const selectors = {
   drawerItems: document.querySelector('[data-drawer-items]'),
   cartTotal: document.querySelector('[data-cart-total]'),
   drawerTotal: document.querySelector('[data-drawer-total]'),
+  drawerStatus: document.querySelector('[data-drawer-status]'),
   reviewItems: document.querySelector('[data-review-items]'),
   orderSubtotal: document.querySelector('[data-order-subtotal]'),
   orderShipping: document.querySelector('[data-order-shipping]'),
@@ -293,15 +294,17 @@ function renderCart() {
         .map(
           ({ product, quantity }) => `
             <div class="cart-item">
-              <div>
+              <div class="cart-item-copy">
                 <strong>${escapeHtml(product.name)}</strong>
-                <div>${formatPrice(product.price)} / ks</div>
+                <span>${formatPrice(product.price)} / ks</span>
               </div>
+              <strong class="cart-line-total">${formatPrice(product.price * quantity)}</strong>
               <div class="qty-controls" aria-label="Množství pro ${escapeHtml(product.name)}">
-                <button type="button" data-decrease="${escapeHtml(product.id)}">-</button>
-                <span>${quantity}</span>
-                <button type="button" data-increase="${escapeHtml(product.id)}">+</button>
+                <button type="button" data-decrease="${escapeHtml(product.id)}" aria-label="Snížit množství produktu ${escapeHtml(product.name)}">-</button>
+                <span aria-label="Počet kusů">${quantity}</span>
+                <button type="button" data-increase="${escapeHtml(product.id)}" aria-label="Zvýšit množství produktu ${escapeHtml(product.name)}">+</button>
               </div>
+              <button class="remove-item" type="button" data-remove="${escapeHtml(product.id)}" aria-label="Odebrat produkt ${escapeHtml(product.name)}">Odebrat</button>
             </div>
           `,
         )
@@ -338,12 +341,19 @@ function renderCheckoutReview() {
 function addToCart(productId) {
   const product = findProduct(productId);
   if (!hasWarehouseOrigin(product)) {
-    selectors.result.hidden = false;
-    selectors.result.textContent = "Produkt teď nejde objednat. Zkuste prosím jinou položku.";
+    if (selectors.result) {
+      selectors.result.hidden = false;
+      selectors.result.textContent = "Produkt teď nejde objednat. Zkuste prosím jinou položku.";
+    }
     return;
   }
   state.cart[productId] = (state.cart[productId] || 0) + 1;
   renderCart();
+  if (selectors.drawerStatus) {
+    selectors.drawerStatus.hidden = false;
+    selectors.drawerStatus.textContent = `${product.name} je v košíku.`;
+  }
+  setDrawer(true);
 }
 function changeQuantity(productId, delta) {
   const product = findProduct(productId);
@@ -356,6 +366,18 @@ function changeQuantity(productId, delta) {
   }
   renderCart();
 }
+
+function removeFromCart(productId) {
+  if (state.cart[productId]) {
+    delete state.cart[productId];
+    renderCart();
+    if (selectors.drawerStatus) {
+      selectors.drawerStatus.hidden = false;
+      selectors.drawerStatus.textContent = 'Položka byla odebrána z košíku.';
+    }
+  }
+}
+
 function setDrawer(open) {
   selectors.drawer.classList.toggle('is-open', open);
   selectors.backdrop.classList.toggle('is-open', open);
@@ -465,10 +487,12 @@ document.addEventListener('click', (event) => {
   const addId = target.dataset.addToCart;
   const increaseId = target.dataset.increase;
   const decreaseId = target.dataset.decrease;
+  const removeId = target.dataset.remove;
 
   if (addId) addToCart(addId);
   if (increaseId) changeQuantity(increaseId, 1);
   if (decreaseId) changeQuantity(decreaseId, -1);
+  if (removeId) removeFromCart(removeId);
   if (target.matches('[data-open-cart]')) setDrawer(true);
   if (target.matches('[data-close-cart]')) setDrawer(false);
 

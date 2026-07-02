@@ -409,10 +409,27 @@ select {
 
 .cart-item {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 12px;
+  align-items: center;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
+}
+
+.cart-item-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cart-item-copy strong,
+.cart-item-copy span {
+  overflow-wrap: anywhere;
+}
+
+.cart-line-total {
+  color: var(--price);
+  white-space: nowrap;
 }
 
 .qty-controls {
@@ -421,13 +438,21 @@ select {
   align-items: center;
 }
 
-.qty-controls button {
-  width: 34px;
-  height: 34px;
+.qty-controls button,
+.remove-item {
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--white);
   cursor: pointer;
+}
+
+.remove-item {
+  justify-self: end;
+  padding: 8px 12px;
+  color: var(--price);
+  font-weight: 750;
 }
 
 .cart-total {
@@ -510,6 +535,15 @@ select {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--white);
+}
+
+.drawer-status {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(47, 107, 79, 0.25);
+  border-radius: 6px;
+  background: rgba(47, 107, 79, 0.08);
+  font-weight: 750;
 }
 
 .drawer-backdrop {
@@ -608,6 +642,15 @@ select {
 
   .product-grid {
     gap: 10px;
+  }
+
+  .cart-item {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-line-total,
+  .remove-item {
+    justify-self: start;
   }
 
   .product-card {

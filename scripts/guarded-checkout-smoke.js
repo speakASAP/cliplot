@@ -65,6 +65,20 @@ const { response: detailResponse, text: detailHtml } = await getText(`/produkt/$
 assert(detailResponse.status === 200 && detailHtml.includes('/app.js'), 'product detail route did not render static shell', {
   httpStatus: detailResponse.status,
 });
+const { response: homeResponse, text: homeHtml } = await getText('/');
+assert(homeResponse.status === 200 && homeHtml.includes('data-drawer-status'), 'cart drawer status live region is missing', {
+  httpStatus: homeResponse.status,
+});
+const { response: appResponse, text: appJs } = await getText('/app.js');
+assert(
+  appResponse.status === 200
+    && appJs.includes('setDrawer(true)')
+    && appJs.includes('je v košíku')
+    && appJs.includes('data-remove')
+    && appJs.includes('removeFromCart'),
+  'add-to-cart and cart edit feedback contract changed',
+  { httpStatus: appResponse.status },
+);
 
 const { response: checkoutResponse, payload: checkout } = await postJson('/api/checkout/submit', checkoutBody);
 assert(checkoutResponse.status === 202, 'guarded checkout did not return HTTP 202', {
@@ -144,6 +158,8 @@ console.log(JSON.stringify({
   baseUrl,
   productId: product.id,
   detailStatus: detailResponse.status,
+  cartFeedbackContract: true,
+  cartEditContract: true,
   warehouseId: product.warehouseId,
   checkoutHttpStatus: checkoutResponse.status,
   checkoutStatus: checkout.status,
