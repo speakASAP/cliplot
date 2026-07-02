@@ -130,8 +130,8 @@ async function main() {
   assertEqual(paymentMapping.body?.ownership?.orders?.authoritative, true, 'payment_status_mapping_orders_owner_missing', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.ownership?.payments?.authoritative, true, 'payment_status_mapping_payments_owner_missing', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.ownership?.cliplot?.authoritative, false, 'payment_status_mapping_cliplot_authoritative', { paymentMapping: paymentMapping.body });
-  assertEqual(paymentMapping.body?.runtimeReadEnabled, false, 'payment_status_mapping_runtime_enabled', { paymentMapping: paymentMapping.body });
-  assertEqual(paymentMapping.body?.paymentsSnapshotReadEnabled, false, 'payment_status_mapping_snapshot_enabled', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.runtimeReadEnabled, true, 'payment_status_mapping_runtime_not_enabled', { paymentMapping: paymentMapping.body });
+  assertEqual(paymentMapping.body?.paymentsSnapshotReadEnabled, true, 'payment_status_mapping_snapshot_not_enabled', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.storageRead, false, 'payment_status_mapping_storage_read_enabled', { paymentMapping: paymentMapping.body });
   assertEqual(paymentMapping.body?.callbackPersistence, false, 'payment_status_mapping_callback_persistence_enabled', { paymentMapping: paymentMapping.body });
   assertFalse(paymentMapping.body?.mutation, 'payment_status_mapping_mutation_enabled', { paymentMapping: paymentMapping.body });

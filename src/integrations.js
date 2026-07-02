@@ -2149,7 +2149,10 @@ export async function paymentStatusMappingOwnershipPacket() {
   const storageReadiness = await paymentStatusStorageReadiness();
   const decisionPacket = await paymentStatusPersistenceDecisionPacket();
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
   const runtimeReadiness = paymentStatusRuntimeReadiness();
+  const approvedRuntimeRead = runtimeReadiness.runtimeReadEnabled === true
+    && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
 
   return {
     success: true,
@@ -2160,11 +2163,11 @@ export async function paymentStatusMappingOwnershipPacket() {
     mutation: false,
     persistence: false,
     providerCall: false,
-    runtimeReadEnabled: readyForApprovedRuntimeRead,
-    paymentsSnapshotReadEnabled: readyForApprovedRuntimeRead,
+    runtimeReadEnabled: approvedRuntimeRead,
+    paymentsSnapshotReadEnabled: approvedRuntimeRead,
     storageRead: false,
     callbackPersistence: false,
-    approvedRuntimeChange: readyForApprovedRuntimeRead,
+    approvedRuntimeChange: approvedRuntimeRead,
     decisionRecord: {
       id: 'ADR-006-order-payment-status-mapping-ownership',
       title: 'Order And Payment Status Mapping Ownership',
@@ -2244,7 +2247,7 @@ export async function paymentStatusMappingOwnershipPacket() {
       paymentStorage: storageReadiness.status,
       paymentDecision: decisionPacket.status,
       callbackReplayPolicy: callbackPolicy.status,
-      snapshotReadApproval: 'approval_required_passive_payments_snapshot_read',
+      snapshotReadApproval: snapshotReadApproval.status,
       runtimeReadiness: runtimeReadiness.status,
       readScopeStatus: statusReadiness.readScopeReadiness?.status || null,
       scopeValidated: statusReadiness.readScopeReadiness?.scopeValidated === true,

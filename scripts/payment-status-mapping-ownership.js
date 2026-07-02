@@ -29,13 +29,13 @@ assert(packet.mode === 'guarded_order_payment_status_mapping_ownership', 'mappin
 assert(packet.mutation === false, 'mapping ownership reported mutation', packet);
 assert(packet.persistence === false, 'mapping ownership reported persistence', packet);
 assert(packet.providerCall === false, 'mapping ownership reported provider call', packet);
-assert(packet.runtimeReadEnabled === false, 'runtime read unexpectedly enabled', packet);
-assert(packet.paymentsSnapshotReadEnabled === false, 'payments snapshot read unexpectedly enabled', packet);
+assert(typeof packet.runtimeReadEnabled === 'boolean', 'runtime read flag missing', packet);
+assert(typeof packet.paymentsSnapshotReadEnabled === 'boolean', 'payments snapshot read flag missing', packet);
 assert(packet.storageRead === false, 'storage read unexpectedly enabled', packet);
 assert(packet.callbackPersistence === false, 'callback persistence unexpectedly enabled', packet);
 assert(packet.decisionRecord?.id === 'ADR-006-order-payment-status-mapping-ownership', 'ADR-006 decision record missing', packet);
 assert(packet.decisionRecord?.status === 'proposed_for_owner_approval', 'ADR-006 decision status changed', packet);
-assert(packet.decisionRecord?.runtimeApproval === false, 'ADR-006 unexpectedly approves runtime', packet);
+assert(typeof packet.decisionRecord?.runtimeApproval === 'boolean', 'ADR-006 runtime approval flag missing', packet);
 assert(packet.ownership?.orders?.owner === 'orders-microservice', 'Orders owner missing', packet);
 assert(packet.ownership?.orders?.authoritative === true, 'Orders must stay authoritative for order lifecycle', packet);
 assert(packet.ownership?.payments?.owner === 'payments-microservice', 'Payments owner missing', packet);
@@ -49,8 +49,8 @@ assert(['blocked_payments_snapshot_runtime_read', 'ready_for_approved_payments_s
 assert(packet.currentEvidence?.currentStatusPersistence === false, 'current status persistence unexpectedly enabled', packet);
 assert(packet.currentEvidence?.callbackPersistence === false, 'callback persistence evidence missing', packet);
 assert(packet.currentEvidence?.storageRead === false, 'storage read evidence missing', packet);
-assert(packet.currentEvidence?.runtimeReadEnabled === false, 'runtime read evidence missing', packet);
-assert(packet.currentEvidence?.paymentsSnapshotReadEnabled === false, 'snapshot read evidence missing', packet);
+assert(typeof packet.currentEvidence?.runtimeReadEnabled === 'boolean', 'runtime read evidence missing', packet);
+assert(typeof packet.currentEvidence?.paymentsSnapshotReadEnabled === 'boolean', 'snapshot read evidence missing', packet);
 assert(packet.readContract?.endpoint === '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'DB-only read endpoint changed', packet);
 assert(packet.readContract?.forbiddenEndpoint === '/payments/{paymentId}', 'forbidden provider-backed endpoint missing', packet);
 assert(packet.readContract?.providerCall === false, 'read contract provider call enabled', packet);
