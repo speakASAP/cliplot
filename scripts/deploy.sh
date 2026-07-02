@@ -38,7 +38,19 @@ kubectl apply -f "$K8S_DIR/ingress.yaml" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/readiness-cronjob.yaml" -n "$NAMESPACE"
 kubectl rollout status "deployment/$SERVICE_NAME" -n "$NAMESPACE" --timeout=360s
 
-POD="$(kubectl get pod -n "$NAMESPACE" -l app="$SERVICE_NAME" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"
+POD="$(kubectl get pod -n "$NAMESPACE" -l app="$SERVICE_NAME" --field-selector=status.phase=Running -o json | node -e '
+let input = "";
+process.stdin.on("data", (chunk) => input += chunk);
+process.stdin.on("end", () => {
+  const pods = JSON.parse(input).items || [];
+  const candidates = pods
+    .filter((pod) => !pod.metadata?.deletionTimestamp)
+    .filter((pod) => (pod.status?.conditions || []).some((condition) => condition.type === "Ready" && condition.status === "True"))
+    .sort((a, b) => String(a.metadata?.creationTimestamp || "").localeCompare(String(b.metadata?.creationTimestamp || "")));
+  const selected = candidates[candidates.length - 1];
+  if (selected) process.stdout.write(selected.metadata.name);
+});
+')"
 test -n "$POD"
 kubectl exec -n "$NAMESPACE" "$POD" -- node -e "fetch('http://127.0.0.1:8080/health').then(async r=>{console.log(await r.text()); if(!r.ok) process.exit(1)}).catch(e=>{console.error(e); process.exit(1)})"
 
