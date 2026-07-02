@@ -17,6 +17,7 @@ REQUIRED_FOR_FRONTEND_DEPLOY = [
     "k8s/ingress.yaml",
     "k8s/configmap.yaml",
     "k8s/external-secret.yaml",
+    "k8s/readiness-cronjob.yaml",
     "scripts/vault_secret_presence_gate.py",
     "scripts/publish_docs_rag.sh",
 ]
@@ -37,6 +38,7 @@ def main() -> int:
     ingress = (root / "k8s/ingress.yaml").read_text()
     configmap = (root / "k8s/configmap.yaml").read_text()
     external_secret = (root / "k8s/external-secret.yaml").read_text()
+    readiness_cronjob = (root / "k8s/readiness-cronjob.yaml").read_text()
     if "cliplot-service" not in deploy or "cliplot.alfares.cz" not in ingress:
         print("DEPLOYMENT_READINESS=fail")
         print("Kubernetes manifests do not target cliplot-service/cliplot.alfares.cz")
@@ -65,6 +67,14 @@ def main() -> int:
     if "secret/prod/cliplot-service" not in external_secret or "vault-backend" not in external_secret:
         print("DEPLOYMENT_READINESS=fail")
         print("ExternalSecret does not map cliplot-service to Vault path secret/prod/cliplot-service")
+        return 1
+    if "k8s-readiness-probe.js" not in readiness_cronjob or "http://cliplot-service:8080" not in readiness_cronjob:
+        print("DEPLOYMENT_READINESS=fail")
+        print("Readiness CronJob must run the internal read-only readiness probe against cliplot-service.")
+        return 1
+    if "POST" in readiness_cronjob or "readiness:bundle" in readiness_cronjob:
+        print("DEPLOYMENT_READINESS=fail")
+        print("Readiness CronJob must stay endpoint-only and must not run operator bundle or POST smoke.")
         return 1
     if "optional: true" not in deploy:
         print("DEPLOYMENT_READINESS=fail")

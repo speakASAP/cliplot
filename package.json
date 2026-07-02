@@ -7,9 +7,10 @@
   "scripts": {
     "start": "node src/server.js",
     "build": "node --check src/server.js && node --check src/integrations.js && node scripts/verify-static-assets.js",
-    "check": "node --check src/server.js && node --check src/integrations.js && node --check public/app.js && node --check scripts/verify-static-assets.js && node --check scripts/guarded-checkout-smoke.js",
+    "check": "node --check src/server.js && node --check src/integrations.js && node --check public/app.js && node --check scripts/verify-static-assets.js && node --check scripts/guarded-checkout-smoke.js && node --check scripts/k8s-readiness-probe.js",
     "smoke:checkout": "node scripts/guarded-checkout-smoke.js",
-    "readiness:bundle": "bash scripts/readiness_bundle.sh"
+    "readiness:bundle": "bash scripts/readiness_bundle.sh",
+    "readiness:k8s": "node scripts/k8s-readiness-probe.js"
   },
   "engines": {
     "node": ">=20"

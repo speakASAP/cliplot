@@ -26,6 +26,7 @@ present.
 - `k8s/deployment.yaml`.
 - `k8s/service.yaml`.
 - `k8s/ingress.yaml`.
+- `k8s/readiness-cronjob.yaml`.
 - Vault secret presence by key name.
 - Build command.
 - Public smoke contract.
@@ -86,3 +87,18 @@ ssh alfares 'cd /home/ssf/Documents/Github/cliplot && npm run readiness:bundle'
 
 The command must not create orders, payments, Warehouse reservations,
 notifications, callback persistence, or Docs/RAG ingestion jobs.
+
+## Kubernetes Readiness CronJob
+
+`./scripts/deploy.sh` applies `k8s/readiness-cronjob.yaml` after the service
+and ingress. The CronJob is intentionally narrower than the operator
+`readiness:bundle`: it runs an endpoint-only GET probe inside the cluster and
+does not require Vault CLI, `kubectl`, Docs/RAG ingestion, or checkout POST
+smoke.
+
+Before deployment:
+
+```bash
+npm run readiness:k8s -- https://cliplot.alfares.cz
+kubectl apply --dry-run=server -f k8s/readiness-cronjob.yaml -n statex-apps
+```

@@ -35,6 +35,7 @@ fi
 kubectl apply -f "$TMP_DEPLOYMENT" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/service.yaml" -n "$NAMESPACE"
 kubectl apply -f "$K8S_DIR/ingress.yaml" -n "$NAMESPACE"
+kubectl apply -f "$K8S_DIR/readiness-cronjob.yaml" -n "$NAMESPACE"
 kubectl rollout status "deployment/$SERVICE_NAME" -n "$NAMESPACE" --timeout=360s
 
 POD="$(kubectl get pod -n "$NAMESPACE" -l app="$SERVICE_NAME" --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')"

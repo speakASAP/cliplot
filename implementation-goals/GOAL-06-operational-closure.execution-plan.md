@@ -13,7 +13,11 @@ readiness.
 ## Allowed Changes
 
 - `scripts/readiness_bundle.sh`
+- `scripts/k8s-readiness-probe.js`
 - `package.json`
+- `k8s/readiness-cronjob.yaml`
+- `scripts/deploy.sh`
+- `scripts/deployment_readiness_gate.py`
 - `docs/OPERATIONAL_RUNBOOK.md`
 - `docs/operations/DEPLOYMENT_READINESS.md`
 - `docs/IMPLEMENTATION_STATE.md`
@@ -37,6 +41,8 @@ readiness.
 4. Run Vault presence check without printing values.
 5. Run Docs/RAG preflight only, accepting exit `2` as operational blocked.
 6. Record evidence and blockers.
+7. Add a Kubernetes scheduled endpoint-only readiness monitor that runs inside the cluster without Kubernetes API permissions.
+8. Keep the cluster monitor read-only: GET `/health`, `/api/checkout/live-preflight`, `/api/integrations/readiness`, and `/api/payments/status` only.
 
 ## Parallel Execution Section
 
@@ -45,6 +51,7 @@ readiness.
 | Readiness bundle script | ready now | main orchestrator | `scripts/readiness_bundle.sh`, `package.json` | `bash -n`, `npm run readiness:bundle` |
 | Operational docs | ready now | main orchestrator | `docs/OPERATIONAL_RUNBOOK.md`, `docs/operations/DEPLOYMENT_READINESS.md` | strict doc audit |
 | Final live revenue closure | dependency-gated | main orchestrator | checkout/order/payment/notification config | approved live evidence and approval IDs |
+| Kubernetes readiness monitor | ready now | main orchestrator | `scripts/k8s-readiness-probe.js`, `k8s/readiness-cronjob.yaml`, `scripts/deploy.sh` | `npm run readiness:k8s -- https://cliplot.alfares.cz`, server dry-run, deployed CronJob inspect |
 | Docs/RAG publication | dependency-gated | main orchestrator | docs-rag service | preflight pass then intentional ingestion approval |
 
 ## Blockers

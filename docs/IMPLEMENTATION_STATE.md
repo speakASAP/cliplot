@@ -4,9 +4,9 @@
 
 **Date:** 2026-07-02
 **Mode:** Goal-driven orchestration enabled  
-**Active goal:** GOAL-05-checkout-revenue-readiness
-**Goal status:** GOAL-05 active
-**Current checkpoint:** GOAL-05 guarded checkout revenue path deployed;
+**Active goal:** GOAL-06-operational-closure
+**Goal status:** GOAL-06 active for safe operational readiness increments; final closure dependency-gated
+**Current checkpoint:** GOAL-06 read-only Kubernetes readiness monitor is being added while GOAL-05 live revenue mutation remains blocked by approval evidence. GOAL-05 guarded checkout revenue path is deployed;
 Warehouse-derived `warehouseId` is carried from product availability into
 checkout order validation payloads, and no-mutation order-create/payment-create
 validation plus no-send notification validation pass while live order creation,
@@ -131,7 +131,28 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `paymentStatusContract=payment_status_guarded_no_persistence`, and preserved
   no-mutation/no-send checkout validations.
 
-## Active Goal: GOAL-05-checkout-revenue-readiness
+
+## Active Goal: GOAL-06-operational-closure
+
+### Objective
+
+Add operator-safe readiness automation and handoff evidence while keeping live
+order creation, payment creation, Warehouse reservation, callback persistence,
+notification sends, and Docs/RAG ingestion gated.
+
+### Current Findings
+
+- The full `npm run readiness:bundle` remains the operator aggregate check and
+  is blocked only by Docs/RAG embedding backend reachability and live approval
+  evidence.
+- The Kubernetes readiness monitor lane is endpoint-only and read-only. It
+  checks `/health`, `/api/checkout/live-preflight`,
+  `/api/integrations/readiness`, and `/api/payments/status` without POST or
+  Kubernetes API permissions.
+- Final live revenue closure remains blocked until approval IDs and runtime
+  evidence exist.
+
+## Dependency-Gated Goal: GOAL-05-checkout-revenue-readiness
 
 ### Objective
 

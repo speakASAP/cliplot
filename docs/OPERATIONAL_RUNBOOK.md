@@ -172,3 +172,28 @@ integration readiness, Vault key presence without printing values, Docs/RAG
 preflight, and guarded checkout smoke. Docs/RAG preflight may return blocked
 while the embedding backend is unreachable; that is an operational blocker, not
 a checkout mutation.
+
+## Kubernetes Readiness Monitor
+
+Deployment applies `k8s/readiness-cronjob.yaml` as
+`cliplot-readiness-monitor` in `statex-apps`.
+
+The CronJob runs every 30 minutes inside the cluster and executes:
+
+```bash
+node scripts/k8s-readiness-probe.js http://cliplot-service:8080
+```
+
+It performs only HTTP `GET` checks against `/health`,
+`/api/checkout/live-preflight`, `/api/integrations/readiness`, and
+`/api/payments/status`. It does not call Kubernetes APIs, does not need RBAC,
+does not run `npm run readiness:bundle`, and must not create orders, payments,
+Warehouse reservations, callback persistence, notifications, or Docs/RAG
+ingestion jobs.
+
+Inspect it with:
+
+```bash
+kubectl get cronjob cliplot-readiness-monitor -n statex-apps
+kubectl get jobs -n statex-apps -l component=readiness-monitor
+```

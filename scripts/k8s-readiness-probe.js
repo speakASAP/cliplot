@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+const baseUrl = normalizeBaseUrl(
+  process.argv[2] || process.env.CLIPLOT_READINESS_BASE_URL || 'http://cliplot-service:8080',
+);
+
+function normalizeBaseUrl(value) {
+  return String(value || '').replace(/\/+$/, '');
+}
+
+function fail(reason, evidence = {}) {
+  console.error(JSON.stringify({ ok: false, reason, ...evidence }, null, 2));
+  process.exit(1);
+}
+
+async function getJson(path) {
+  const url = `${baseUrl}${path}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      'user-agent': 'cliplot-readiness-monitor/1.0',
+    },
+  });
+  const text = await response.text();
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch (error) {
+    fail('non_json_response', { url, status: response.status, body: text.slice(0, 500) });
+  }
+  if (!response.ok) {
+    fail('http_status_not_ok', { url, status: response.status, body });
+  }
+  return { status: response.status, body };
+}
+
+function assertEqual(actual, expected, reason, evidence = {}) {
+  if (actual !== expected) {
+    fail(reason, { actual, expected, ...evidence });
+  }
+}
+
+function assertFalse(value, reason, evidence = {}) {
+  if (value !== false) {
+    fail(reason, { actual: value, expected: false, ...evidence });
+  }
+}
+
+async function main() {
+  const health = await getJson('/health');
+  assertEqual(health.body?.status, 'ok', 'health_not_ok', { health: health.body });
+
+  const preflightResponse = await getJson('/api/checkout/live-preflight');
+  const preflight = preflightResponse.body?.liveCheckoutPreflight || preflightResponse.body;
+  assertEqual(preflight?.status, 'blocked', 'live_preflight_not_blocked', { preflight: preflightResponse.body });
+  assertFalse(preflight?.wouldMutate, 'live_preflight_would_mutate', { preflight: preflightResponse.body });
+  assertFalse(preflight?.mutationPlan?.wouldCreateOrder, 'live_preflight_would_create_order', { preflight: preflightResponse.body });
+  assertFalse(preflight?.mutationPlan?.wouldCreatePayment, 'live_preflight_would_create_payment', { preflight: preflightResponse.body });
+  assertFalse(preflight?.mutationPlan?.wouldSendNotification, 'live_preflight_would_send_notification', { preflight: preflightResponse.body });
+
+  const readinessResponse = await getJson('/api/integrations/readiness');
+  const readiness = readinessResponse.body;
+  const approvals = readiness?.liveMutationApprovals || readiness?.approval || {};
+  const integrations = readiness?.integrations || readiness || {};
+  assertFalse(readiness?.liveOrderSubmit, 'readiness_live_order_enabled', { readiness });
+  assertFalse(readiness?.livePaymentCreate, 'readiness_live_payment_enabled', { readiness });
+  assertFalse(readiness?.liveNotifications, 'readiness_live_notifications_enabled', { readiness });
+  assertFalse(approvals.order, 'readiness_order_approval_present', { readiness });
+  assertFalse(approvals.payment, 'readiness_payment_approval_present', { readiness });
+  assertFalse(approvals.notification, 'readiness_notification_approval_present', { readiness });
+  assertEqual(integrations.orderValidation, 'enabled_no_mutation', 'order_validation_not_guarded', { readiness });
+  assertEqual(integrations.paymentValidation, 'enabled_no_mutation', 'payment_validation_not_guarded', { readiness });
+  assertEqual(integrations.notificationValidation, 'enabled_no_send', 'notification_validation_not_guarded', { readiness });
+  assertEqual(integrations.paymentStatus, 'guarded_no_persistence', 'payment_status_not_guarded', { readiness });
+
+  const paymentStatus = await getJson('/api/payments/status?orderId=cliplot-readiness-monitor');
+  assertEqual(paymentStatus.body?.status, 'payment_status_guarded_no_persistence', 'payment_status_endpoint_not_guarded', { paymentStatus: paymentStatus.body });
+  assertFalse(paymentStatus.body?.mutation, 'payment_status_mutation_enabled', { paymentStatus: paymentStatus.body });
+  assertFalse(paymentStatus.body?.persistence, 'payment_status_persistence_enabled', { paymentStatus: paymentStatus.body });
+  assertFalse(paymentStatus.body?.providerCall, 'payment_status_provider_call_enabled', { paymentStatus: paymentStatus.body });
+
+  console.log(JSON.stringify({
+    ok: true,
+    scope: 'read_only_kubernetes_readiness_monitor',
+    baseUrl,
+    livePreflightStatus: preflight.status,
+    wouldMutate: preflight.wouldMutate,
+    liveOrderSubmit: readiness.liveOrderSubmit,
+    livePaymentCreate: readiness.livePaymentCreate,
+    liveNotifications: readiness.liveNotifications,
+    paymentStatus: paymentStatus.body.status,
+  }, null, 2));
+}
+
+main().catch((error) => fail('probe_exception', { message: error.message }));

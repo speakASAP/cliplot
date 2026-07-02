@@ -78,3 +78,27 @@ READINESS_BUNDLE_EXIT=2
 The bundle is read-only. It does not call `./scripts/deploy.sh`, does not run
 normal Docs/RAG publication, and does not create orders, payments, Warehouse
 reservations, callback persistence, or notifications.
+
+## Kubernetes Readiness Monitor Validation
+
+Status: pending final deployment evidence.
+
+Planned commands:
+
+```bash
+node --check scripts/k8s-readiness-probe.js
+npm run check
+npm run build
+python3 scripts/pre_coding_gate.py --root .
+python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues
+python3 scripts/deployment_readiness_gate.py --root .
+npm run readiness:k8s -- https://cliplot.alfares.cz
+kubectl apply --dry-run=server -f k8s/readiness-cronjob.yaml -n statex-apps
+./scripts/deploy.sh
+kubectl get cronjob cliplot-readiness-monitor -n statex-apps
+npm run smoke:checkout -- https://cliplot.alfares.cz
+```
+
+The Kubernetes monitor must remain read-only. It does not run the full
+operator bundle, does not run checkout POST smoke, and does not mutate orders,
+payments, Warehouse stock, callbacks, notifications, or Docs/RAG ingestion.
