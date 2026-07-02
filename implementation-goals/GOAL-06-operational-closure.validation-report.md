@@ -157,3 +157,23 @@ finalCronJob.suspend=false
 The Kubernetes monitor is read-only. It does not run the full operator bundle,
 does not run checkout POST smoke, and does not mutate orders, payments,
 Warehouse stock, callbacks, notifications, or Docs/RAG ingestion.
+
+## Docs/RAG Pod Selection Fix
+
+Status: validated.
+
+`scripts/publish_docs_rag.sh` now selects the newest Running Ready
+non-deleting `docs-rag-microservice` pod instead of `.items[0]`. This prevents
+operator preflight from execing into a terminating pod during or immediately
+after Docs/RAG rollouts.
+
+Evidence:
+
+```text
+bash -n scripts/publish_docs_rag.sh=pass
+DOCS_RAG_PREFLIGHT=pass
+docsRagStatusHttp=200
+embeddingBackendUrl=http://192.168.88.53:11435
+embeddingHttp=200
+docsRagPreflightExit=0
+```

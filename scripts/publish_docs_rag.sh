@@ -17,7 +17,19 @@ for arg in "$@"; do
   esac
 done
 
-POD="$(kubectl get pod -n "$NAMESPACE" -l "$APP_LABEL" -o jsonpath='{.items[0].metadata.name}')"
+POD="$(kubectl get pod -n "$NAMESPACE" -l "$APP_LABEL" --field-selector=status.phase=Running -o json | node -e '
+let input = "";
+process.stdin.on("data", (chunk) => input += chunk);
+process.stdin.on("end", () => {
+  const pods = JSON.parse(input).items || [];
+  const candidates = pods
+    .filter((pod) => !pod.metadata?.deletionTimestamp)
+    .filter((pod) => (pod.status?.conditions || []).some((condition) => condition.type === "Ready" && condition.status === "True"))
+    .sort((a, b) => String(a.metadata?.creationTimestamp || "").localeCompare(String(b.metadata?.creationTimestamp || "")));
+  const selected = candidates[candidates.length - 1];
+  if (selected) process.stdout.write(selected.metadata.name);
+});
+')"
 if [ -z "$POD" ]; then
   if [ "$PREFLIGHT_ONLY" = "1" ]; then
     echo "DOCS_RAG_PREFLIGHT=blocked"
