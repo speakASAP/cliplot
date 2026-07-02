@@ -631,6 +631,20 @@ live payment creation, Warehouse reservation, notification sends,
 provider-refresh reads, and Cliplot-local payment status storage remain disabled.
 
 
+### 2026-07-03 - Payment-create approval evidence packet
+
+`GET /api/payments/create-approval-evidence-packet` and
+`npm run readiness:payment-create-approval` prove the current Cliplot
+valid-body payment-create payload against Payments `POST /payments/validate-create`
+without creating a payment, calling a provider, persisting a payment row, or
+printing `PAYMENT_API_KEY`. Passing evidence returns
+`ready_for_owner_payment_create_approval_metadata`, `validation.status=validated_no_mutation`,
+`valid=true`, `mutation=false`, `persistence=false`, `providerCall=false`,
+`ENABLE_LIVE_PAYMENT_CREATE=false`, and `paymentApprovalPresent=false`.
+This packet is owner-review evidence only; `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`
+remains empty until owner acceptance and a separate bounded live payment
+execution window are approved.
+
 ### 2026-07-03 - Controlled Orders/Warehouse CREATE_REPLAY_CANCEL smoke
 
 The approved bounded Orders/Warehouse smoke was executed once with

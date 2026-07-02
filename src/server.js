@@ -24,6 +24,7 @@ import {
   paymentCallbackStorageBackendProposalPacket,
   paymentCallbackPersistenceStorageContractPacket,
   paymentCallbackReplayExecutionRolloutProposalPacket,
+  paymentCreateApprovalEvidencePacket,
   paymentLiveStatusWriteApprovalPacket,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
@@ -453,6 +454,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/callback-persistence-approval-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/create-approval-evidence-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentCreateApprovalEvidencePacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/create-approval-evidence-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

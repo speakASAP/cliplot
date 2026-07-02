@@ -1150,6 +1150,170 @@ async function validatePaymentReadScope() {
   }
 }
 
+
+export async function paymentCreateApprovalEvidencePacket() {
+  const products = await fetchCatalogProducts();
+  const catalogSource = productCatalogSource(products);
+  const product = products.find((item) => item?.warehouseId && item?.productSource === 'catalog');
+  const productFilter = await catalogProductFilterReadiness();
+  const approvals = liveMutationApprovals();
+  const blockers = [];
+
+  if (!product) blockers.push('[MISSING: Warehouse-backed Catalog product for payment-create approval evidence]');
+  if (!serviceConfig.paymentCreateValidation) blockers.push('[MISSING: ENABLE_PAYMENT_CREATE_VALIDATION=true]');
+  if (!serviceConfig.paymentApiKey) blockers.push('[MISSING: PAYMENT_API_KEY in Vault]');
+  if (serviceConfig.livePaymentCreate) blockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=false for metadata-only payment-create evidence]');
+  if (approvals.payment) blockers.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID must remain empty until owner accepts payment-create execution evidence]');
+
+  let checkout = null;
+  let paymentPayload = null;
+  let paymentValidation = {
+    status: 'skipped',
+    valid: false,
+    mutation: false,
+    providerCall: false,
+  };
+  let validationErrors = [];
+
+  if (product) {
+    checkout = buildReadinessCheckout(product);
+    validationErrors = validateCheckout(checkout);
+    paymentPayload = buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId });
+    if (validationErrors.length === 0 && serviceConfig.paymentCreateValidation && serviceConfig.paymentApiKey) {
+      paymentValidation = await guardedPaymentValidation(checkout, paymentPayload);
+    }
+  }
+
+  if (validationErrors.length) blockers.push(...validationErrors.map((item) => `[MISSING: checkout validation ${item}]`));
+  if (paymentValidation.status !== 'validated_no_mutation') blockers.push('[MISSING: Payments validate-create accepted valid Cliplot payload with no mutation]');
+  if (paymentValidation.valid !== true) blockers.push('[MISSING: Payments validate-create valid=true]');
+  if (paymentValidation.mutation !== false) blockers.push('[MISSING: Payments validate-create mutation=false]');
+  if (paymentValidation.providerCall !== false) blockers.push('[MISSING: Payments validate-create providerCall=false]');
+  if (paymentValidation.applicationId && paymentValidation.applicationId !== serviceConfig.applicationId) {
+    blockers.push('[MISSING: Payments validate-create returned expected applicationId=cliplot]');
+  }
+  if (paymentValidation.paymentMethod && paymentValidation.paymentMethod !== serviceConfig.paymentMethod) {
+    blockers.push('[MISSING: Payments validate-create returned expected payment method]');
+  }
+
+  const readyForOwnerPaymentApproval = blockers.length === 0;
+  const callbackOrigin = paymentPayload?.callbackUrl ? new URL(paymentPayload.callbackUrl).origin : null;
+  const successOrigin = paymentPayload?.successUrl ? new URL(paymentPayload.successUrl).origin : null;
+  const cancelOrigin = paymentPayload?.cancelUrl ? new URL(paymentPayload.cancelUrl).origin : null;
+
+  return {
+    success: true,
+    status: readyForOwnerPaymentApproval
+      ? 'ready_for_owner_payment_create_approval_metadata'
+      : 'blocked_payment_create_approval_evidence',
+    mode: 'read_only_payment_create_approval_evidence_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    livePaymentCreate: serviceConfig.livePaymentCreate,
+    paymentApprovalPresent: approvals.payment,
+    requiredApprovalId: 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+    approvalIdMayBeRecordedAfterOwnerAcceptance: readyForOwnerPaymentApproval,
+    catalog: {
+      status: productFilter.status,
+      catalogSource,
+      approvedCliplotSkuScope: productFilter.approvedCliplotSkuScope,
+      warehouseBackedProductCount: products.filter((item) => item?.warehouseId).length,
+      sampleProductId: product?.id || null,
+      sampleWarehouseId: product?.warehouseId || null,
+    },
+    checkoutIntent: checkout ? checkoutIntentEvidence(checkout) : null,
+    paymentCreateContract: {
+      endpoint: serviceConfig.paymentValidateCreatePath,
+      liveEndpoint: serviceConfig.paymentCreatePath,
+      applicationId: serviceConfig.applicationId,
+      paymentMethod: serviceConfig.paymentMethod,
+      amount: paymentPayload?.amount || null,
+      currency: paymentPayload?.currency || null,
+      callbackOrigin,
+      successOrigin,
+      cancelOrigin,
+      idempotencyKeyFingerprint: checkout ? stableFingerprint(checkoutIdempotencyKeys(checkout).paymentValidate) : null,
+      payloadFingerprint: paymentPayload ? stableFingerprint({
+        applicationId: paymentPayload.applicationId,
+        orderId: paymentPayload.orderId,
+        amount: paymentPayload.amount,
+        currency: paymentPayload.currency,
+        paymentMethod: paymentPayload.paymentMethod,
+        callbackOrigin,
+        successOrigin,
+        cancelOrigin,
+      }) : null,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    validation: {
+      status: paymentValidation.status,
+      valid: paymentValidation.valid === true,
+      httpStatus: paymentValidation.httpStatus || null,
+      applicationId: paymentValidation.applicationId || null,
+      orderIdPresent: Boolean(paymentValidation.orderId),
+      amount: paymentValidation.amount || null,
+      currency: paymentValidation.currency || null,
+      paymentMethod: paymentValidation.paymentMethod || null,
+      callbackOrigin: paymentValidation.callbackOrigin || null,
+      successOrigin: paymentValidation.successOrigin || null,
+      cancelOrigin: paymentValidation.cancelOrigin || null,
+      mutation: paymentValidation.mutation === true ? true : false,
+      providerCall: paymentValidation.providerCall === true ? true : false,
+    },
+    requiredBeforeLivePaymentCreate: [
+      'owner acceptance of this valid-body Payments validate-create evidence',
+      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID recorded with payment approval metadata',
+      'separate bounded live payment execution window before ENABLE_LIVE_PAYMENT_CREATE=true',
+      'payment provider rollback/cancel/refund owner',
+      'post-execution validation that no duplicate payment was created for the idempotency key',
+    ],
+    mustRemainFalseUntilApprovedWindow: [
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'ENABLE_LIVE_ORDER_SUBMIT unless full checkout approval exists',
+      'ENABLE_LIVE_NOTIFICATIONS',
+      'callback persistence',
+      'callback replay execution',
+      'live status writes',
+      'provider-backed /payments/{paymentId} reads',
+    ],
+    forbiddenOperations: [
+      'POST /payments/create',
+      'create payment',
+      'call payment provider',
+      'persist payment',
+      'write payment status',
+      'persist callback state',
+      'send notification',
+      'print API keys or raw provider payloads',
+    ],
+    satisfiedEvidence: [
+      ...(paymentValidation.status === 'validated_no_mutation' ? ['[DONE: Payments validate-create accepted valid Cliplot payment payload]'] : []),
+      ...(paymentValidation.valid === true ? ['[DONE: valid=true from Payments validate-create]'] : []),
+      ...(paymentValidation.mutation === false ? ['[DONE: Payments validate-create mutation=false]'] : []),
+      ...(paymentValidation.providerCall === false ? ['[DONE: Payments validate-create providerCall=false]'] : []),
+      ...(serviceConfig.livePaymentCreate === false ? ['[DONE: ENABLE_LIVE_PAYMENT_CREATE=false]'] : []),
+      ...(approvals.payment === false ? ['[DONE: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID remains empty before owner acceptance]'] : []),
+    ],
+    blockers: [...new Set(blockers)],
+    sensitiveDataPolicy: [
+      'no PAYMENT_API_KEY value',
+      'no provider payload',
+      'no payment row',
+      'synthetic checkout identity only',
+      'fingerprints instead of idempotency key values',
+    ],
+    next: readyForOwnerPaymentApproval
+      ? 'Owner can review this packet to decide whether to record CLIPLOT_LIVE_PAYMENT_APPROVAL_ID metadata; do not enable ENABLE_LIVE_PAYMENT_CREATE yet.'
+      : 'Resolve the listed payment-create validation blockers before recording payment approval metadata.',
+  };
+}
+
+
 export async function paymentReadScopeReadiness() {
   const now = Date.now();
   if (paymentReadScopeReadinessCache && paymentReadScopeReadinessCache.expiresAt > now) {
@@ -5299,6 +5463,7 @@ export async function liveCheckoutApprovalPacket() {
   const paymentStatusPacket = await paymentStatusReadiness();
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
   const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
+  const paymentCreateApproval = await paymentCreateApprovalEvidencePacket();
   const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
@@ -5313,6 +5478,7 @@ export async function liveCheckoutApprovalPacket() {
     paymentStatus: paymentStatusPacket.status,
     callbackReplayPolicy: callbackPolicy.status,
     callbackPersistence: callbackPersistence.status,
+    paymentCreateApproval: paymentCreateApproval.status,
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
     livePreflight: preflight.status,
@@ -5339,6 +5505,7 @@ export async function liveCheckoutApprovalPacket() {
     ...(preflight.approvals?.order === true ? ['[DONE: live order/Warehouse approval metadata recorded from controlled CREATE_REPLAY_CANCEL evidence]'] : []),
     ...(paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' ? ['[DONE: payment status runtime read is approved and no-persistence]'] : []),
     ...(callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? ['[DONE: callback replay policy metadata approved with execution disabled]'] : []),
+    ...(paymentCreateApproval.status === 'ready_for_owner_payment_create_approval_metadata' ? ['[DONE: valid-body payment-create approval evidence is ready with no mutation]'] : []),
     ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),
   ];
 
@@ -5387,6 +5554,9 @@ export async function liveCheckoutApprovalPacket() {
       callbackReplayPolicy: callbackPolicy.status,
       callbackPersistence: callbackPersistence.status,
       liveStatusWriteApproval: liveStatusWriteApproval.status,
+      paymentCreateApproval: paymentCreateApproval.status,
+      paymentCreateValidation: paymentCreateApproval.validation?.status || null,
+      readyForOwnerPaymentApproval: paymentCreateApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
       callbackPersistenceEnabled: callbackPersistence.callbackPersistence,
       callbackReplayEnabled: callbackPersistence.callbackReplayEnabled,
       livePaymentCreate: serviceConfig.livePaymentCreate,
@@ -5472,6 +5642,7 @@ export async function revenueClosurePacket() {
   const paymentDecision = await paymentStatusPersistenceDecisionPacket();
   const paymentMapping = await paymentStatusMappingOwnershipPacket();
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const paymentCreateApproval = await paymentCreateApprovalEvidencePacket();
   const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
@@ -5487,6 +5658,7 @@ export async function revenueClosurePacket() {
     paymentDecision: paymentDecision.status,
     paymentMapping: paymentMapping.status,
     callbackReplayPolicy: callbackPolicy.status,
+    paymentCreateApproval: paymentCreateApproval.status,
     liveStatusWriteApproval: liveStatusWriteApproval.status,
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
@@ -5607,6 +5779,9 @@ export async function revenueClosurePacket() {
       storageReadiness: paymentStorage.status,
       decision: paymentDecision.status,
       mappingOwnership: paymentMapping.status,
+      paymentCreateApproval: paymentCreateApproval.status,
+      paymentCreateValidation: paymentCreateApproval.validation?.status || null,
+      readyForOwnerPaymentApproval: paymentCreateApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
       snapshotReadRuntime: paymentStatusReadinessPacket.passiveSnapshotAdapter?.currentRuntimeStatus || null,
       mutation: false,
       persistence: false,

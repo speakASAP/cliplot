@@ -496,6 +496,20 @@ through Payments and must continue returning `mutation=false`,
 `callbackPersistence=false`. `GET /payments/{paymentId}` remains forbidden for
 Cliplot passive customer status.
 
+## Payment-Create Approval Evidence
+
+Before recording `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, run:
+
+```bash
+npm run readiness:payment-create-approval -- https://cliplot.alfares.cz
+```
+
+The packet must use only `/payments/validate-create`, return
+`ready_for_owner_payment_create_approval_metadata`, and prove `valid=true`,
+`mutation=false`, `providerCall=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
+`paymentApprovalPresent=false`. It does not call `/payments/create` and does not
+authorize live payment creation without a separate bounded execution window.
+
 ## Controlled Orders/Warehouse Smoke Evidence
 
 The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with
