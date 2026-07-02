@@ -21,6 +21,9 @@ assert(report.service === 'cliplot', 'service identity is not cliplot', { servic
 assert(report.catalog?.catalogSource === 'catalog', 'catalog source is not authenticated Catalog', report.catalog || {});
 assert(report.catalog?.sampleProduct?.productSource === 'catalog', 'sample product is not Catalog-backed', report.catalog || {});
 assert(Boolean(report.catalog?.sampleProduct?.warehouseId), 'sample product lacks warehouseId', report.catalog || {});
+assert(report.catalog?.productScopeEvidence?.approvedCliplotSkuScope === false, 'product SKU scope should remain approval-gated', report.catalog || {});
+assert(['active_catalog_query', 'configured_product_ids'].includes(report.catalog?.productScopeEvidence?.selectionMode), 'product selection mode missing', report.catalog || {});
+assert(Array.isArray(report.catalog?.productScopeEvidence?.blockers) && report.catalog.productScopeEvidence.blockers.some((item) => item.includes('approved Cliplot product SKU list/filtering rule')), 'product filter blocker missing', report.catalog || {});
 assert(report.orderCreateContract?.endpoint === '/api/orders/validate-create', 'Orders endpoint is not validate-create', report.orderCreateContract || {});
 assert(report.orderCreateContract?.contractVersion === 'orders.create.v1', 'Orders contract version mismatch', report.orderCreateContract || {});
 assert(report.orderCreateContract?.channel === 'cliplot', 'Orders channel mismatch', report.orderCreateContract || {});
@@ -48,6 +51,8 @@ console.log(JSON.stringify({
   catalogSource: report.catalog.catalogSource,
   productId: report.catalog.sampleProduct.id,
   warehouseId: report.catalog.sampleProduct.warehouseId,
+  productSelectionMode: report.catalog.productScopeEvidence.selectionMode,
+  approvedCliplotSkuScope: report.catalog.productScopeEvidence.approvedCliplotSkuScope,
   ordersEndpoint: report.orderCreateContract.endpoint,
   ordersContractVersion: report.orderCreateContract.contractVersion,
   ordersChannel: report.orderCreateContract.channel,

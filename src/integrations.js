@@ -336,43 +336,36 @@ async function fetchWarehouseAvailability(productIds, warehouseIds = []) {
 }
 
 
-export async function catalogProductFilterReadiness() {
-  const products = await fetchCatalogProducts();
-  const catalogSource = productCatalogSource(products);
-  const warehouseBackedProducts = products.filter((item) => item?.productSource === 'catalog' && item?.warehouseId);
+
+function productFilterScopeEvidence(products) {
+  const items = Array.isArray(products) ? products : [];
+  const warehouseBackedProducts = items.filter((item) => item?.productSource === 'catalog' && item?.warehouseId);
   const configuredProductIds = serviceConfig.productIds;
-  const filterMode = configuredProductIds.length > 0 ? 'explicit_product_ids' : 'active_catalog_products';
-  const catalogGuarded = catalogSource === 'catalog'
-    && products.length > 0
-    && warehouseBackedProducts.length > 0;
+  const selectionMode = configuredProductIds.length > 0 ? 'configured_product_ids' : 'active_catalog_query';
+  const configuredProductIdFingerprint = configuredProductIds.length > 0
+    ? createHash('sha256').update(configuredProductIds.slice().sort().join('|')).digest('hex')
+    : null;
 
   return {
-    success: true,
-    status: catalogGuarded
-      ? 'approval_required_catalog_product_filter_rule'
-      : 'blocked_catalog_product_filter_evidence_missing',
-    mode: 'guarded_catalog_product_filter_readiness',
-    generatedAt: new Date().toISOString(),
-    service: serviceConfig.serviceName,
-    mutation: false,
-    persistence: false,
-    providerCall: false,
-    catalogSource,
-    productCount: products.length,
+    selectionMode,
+    approvedCliplotSkuScope: false,
+    configuredProductIdCount: configuredProductIds.length,
+    configuredProductIdFingerprint,
+    catalogSource: productCatalogSource(items),
+    productCount: items.length,
     warehouseBackedProductCount: warehouseBackedProducts.length,
-    filterMode,
-    configuredProductIds,
-    configuredProductIdsPresent: configuredProductIds.length > 0,
     currentQueryContract: configuredProductIds.length > 0
       ? {
           source: 'CLIPLOT_PRODUCT_IDS',
           maxProducts: 8,
           endpoint: '/api/products/{productId}',
+          exposesRawProductIds: false,
           requiresOwnerApproval: true,
         }
       : {
           source: 'active_catalog_products',
           endpoint: '/api/products?limit=8&isActive=true&lifecycle=active',
+          exposesRawProductIds: false,
           requiresOwnerApproval: true,
         },
     sampleProducts: warehouseBackedProducts.slice(0, 4).map((product) => ({
@@ -386,6 +379,39 @@ export async function catalogProductFilterReadiness() {
       stockStatus: product.stockStatus,
       productSource: product.productSource,
     })),
+    blockers: [
+      '[MISSING: approved Cliplot product SKU list/filtering rule]',
+    ],
+  };
+}
+
+export async function catalogProductFilterReadiness() {
+  const products = await fetchCatalogProducts();
+  const scopeEvidence = productFilterScopeEvidence(products);
+  const catalogGuarded = scopeEvidence.catalogSource === 'catalog'
+    && scopeEvidence.productCount > 0
+    && scopeEvidence.warehouseBackedProductCount > 0;
+
+  return {
+    success: true,
+    status: catalogGuarded
+      ? 'approval_required_catalog_product_filter_rule'
+      : 'blocked_catalog_product_filter_evidence_missing',
+    mode: 'guarded_catalog_product_filter_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    catalogSource: scopeEvidence.catalogSource,
+    productCount: scopeEvidence.productCount,
+    warehouseBackedProductCount: scopeEvidence.warehouseBackedProductCount,
+    selectionMode: scopeEvidence.selectionMode,
+    approvedCliplotSkuScope: scopeEvidence.approvedCliplotSkuScope,
+    configuredProductIdCount: scopeEvidence.configuredProductIdCount,
+    configuredProductIdFingerprint: scopeEvidence.configuredProductIdFingerprint,
+    currentQueryContract: scopeEvidence.currentQueryContract,
+    sampleProducts: scopeEvidence.sampleProducts,
     approvalRequest: {
       requiredDecision: 'approved Cliplot product SKU list/filtering rule',
       recommendedDecisionPath: '07_decisions/ADR-004-cliplot-product-filter-scope.md',
@@ -2778,6 +2804,7 @@ export async function orderWarehouseReadinessReport() {
         catalogSource,
         productCount: products.length,
         warehouseBackedProductCount: products.filter((item) => item?.warehouseId).length,
+        productScopeEvidence: productFilterScopeEvidence(products),
       },
       liveCheckoutPreflight: preflight,
       blockers: ['missing_warehouse_backed_catalog_product'],
@@ -2826,6 +2853,7 @@ export async function orderWarehouseReadinessReport() {
         warehouseType: product.warehouseType || null,
         availableStock: product.availableStock ?? null,
       },
+      productScopeEvidence: productFilterScopeEvidence(products),
     },
     checkoutIntent: checkoutIntentEvidence(checkout),
     checkoutSummary: checkoutSummary(checkout),

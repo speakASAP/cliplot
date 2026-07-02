@@ -141,7 +141,7 @@ Catalog accepts x-internal-service-token plus x-service-name through the
 Auth-owned CATALOG_INTERNAL_SERVICE_TOKEN pattern.
 ```
 
-Resolution target: add an approved Cliplot SKU/filtering scope when product ownership rules are available.
+Resolution target: add an approved Cliplot SKU/filtering scope when product ownership rules are available. Current product filter readiness exposes selection mode, configured ID count/fingerprint, Warehouse-backed product evidence, and the blocker without printing raw configured product ID lists.
 
 ### VD-007: Docs RAG publication backend unavailable
 

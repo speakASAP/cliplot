@@ -32,9 +32,12 @@ assert(report.providerCall === false, 'product filter readiness reported provide
 assert(report.catalogSource === 'catalog', 'product filter readiness is not using authenticated Catalog', report);
 assert(Number(report.productCount) > 0, 'product filter readiness has no products', report);
 assert(Number(report.warehouseBackedProductCount) > 0, 'product filter readiness has no Warehouse-backed products', report);
-assert(['active_catalog_products', 'explicit_product_ids'].includes(report.filterMode), 'unknown product filter mode', report);
-assert(Array.isArray(report.configuredProductIds), 'configured product IDs must be an array', report);
+assert(['active_catalog_query', 'configured_product_ids'].includes(report.selectionMode), 'unknown product selection mode', report);
+assert(report.approvedCliplotSkuScope === false, 'product SKU scope should not be approved without owner decision', report);
+assert(Number.isInteger(report.configuredProductIdCount), 'configured product ID count missing', report);
+assert(!Array.isArray(report.configuredProductIds), 'raw configured product IDs must not be exposed', report);
 assert(report.currentQueryContract?.requiresOwnerApproval === true, 'query contract should still require owner approval', report);
+assert(report.currentQueryContract?.exposesRawProductIds === false, 'query contract exposes raw product IDs', report);
 assert(Array.isArray(report.sampleProducts) && report.sampleProducts.length > 0, 'sample products missing', report);
 assert(report.sampleProducts.every((product) => product.productSource === 'catalog' && product.warehouseId), 'sample products must be Catalog and Warehouse-backed', report);
 assert(report.approvalRequest?.requiredDecision === 'approved Cliplot product SKU list/filtering rule', 'approval decision missing', report);
@@ -50,8 +53,9 @@ console.log(JSON.stringify({
   catalogSource: report.catalogSource,
   productCount: report.productCount,
   warehouseBackedProductCount: report.warehouseBackedProductCount,
-  filterMode: report.filterMode,
-  configuredProductIdsPresent: report.configuredProductIdsPresent,
+  selectionMode: report.selectionMode,
+  configuredProductIdCount: report.configuredProductIdCount,
+  configuredProductIdFingerprintPresent: Boolean(report.configuredProductIdFingerprint),
   sampleProductId: report.sampleProducts[0]?.id || null,
   sampleWarehouseId: report.sampleProducts[0]?.warehouseId || null,
   blockerCount: report.blockers.length,

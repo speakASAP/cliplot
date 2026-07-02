@@ -26,6 +26,8 @@ assert(plan.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false
 assert(plan.readiness?.status === 'validated_no_mutation', 'order/Warehouse readiness is not validated', plan.readiness || {});
 assert(plan.readiness?.orderValidation?.status === 'validated_no_mutation', 'Orders validation is not ready', plan.readiness?.orderValidation || {});
 assert(plan.readiness?.warehouseReservationReadiness?.status === 'validated_no_mutation', 'Warehouse readiness is not ready', plan.readiness?.warehouseReservationReadiness || {});
+assert(plan.readiness?.catalog?.productScopeEvidence?.approvedCliplotSkuScope === false, 'product SKU scope should remain approval-gated', plan.readiness?.catalog || {});
+assert(Array.isArray(plan.readiness?.catalog?.productScopeEvidence?.blockers) && plan.readiness.catalog.productScopeEvidence.blockers.some((item) => item.includes('approved Cliplot product SKU list/filtering rule')), 'product scope blocker missing from live smoke readiness', plan.readiness?.catalog || {});
 assert(plan.noPaymentNotificationBoundary?.paymentCreateAllowed === false, 'payment boundary is not closed', plan.noPaymentNotificationBoundary || {});
 assert(plan.noPaymentNotificationBoundary?.notificationSendAllowed === false, 'notification boundary is not closed', plan.noPaymentNotificationBoundary || {});
 assert(plan.plan?.scopeEvidence?.productId && plan.plan?.scopeEvidence?.warehouseId, 'plan lacks product or warehouse evidence', plan.plan || {});
