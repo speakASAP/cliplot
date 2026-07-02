@@ -1792,7 +1792,7 @@ export function paymentCallbackReplayPolicyReadiness() {
   const blockers = guarded
     ? (policyApproved
       ? [
-        '[MISSING: callback persistence storage backend approval]',
+        '[MISSING: approved callback persistence storage backend approval]',
         '[MISSING: callback replay execution rollout approval]',
       ]
       : [
@@ -2414,8 +2414,8 @@ export async function paymentStatusStorageReadiness() {
           '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
           '[MISSING: approved externalOrderId/paymentId uniqueness and retention policy]',
         ]),
-    '[MISSING: callback persistence storage backend approval]',
-    '[MISSING: callback persistence rollout plan]',
+    '[MISSING: approved callback persistence storage backend approval]',
+    '[MISSING: approved callback persistence rollout plan]',
     '[MISSING: owner approval before enabling live status writes]',
   ];
 
@@ -2607,7 +2607,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
     ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId)
       ? []
       : ['[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID for shared Payments source-of-truth storage ownership]']),
-    '[MISSING: callback persistence storage backend approval]',
+    '[MISSING: approved callback persistence storage backend approval]',
     '[MISSING: owner approval before enabling live status writes]',
   ];
 
