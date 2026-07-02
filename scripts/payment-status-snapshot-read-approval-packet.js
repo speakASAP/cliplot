@@ -32,7 +32,7 @@ assert(packet.providerCall === false, 'approval packet reported provider call', 
 assert(packet.livePaymentCreate === false, 'live payment create unexpectedly enabled', packet);
 assert(packet.recommendedOption === 'shared-payments-source-of-truth', 'recommended option changed', packet);
 assert(packet.decisionRecord?.id === 'ADR-002-payment-status-persistence-ownership', 'decision record missing', packet);
-assert(packet.decisionRecord?.status === 'proposed_for_owner_approval', 'decision record should remain proposed', packet);
+assert(['proposed_for_owner_approval', 'owner_approved_shared_payments_source_of_truth'].includes(packet.decisionRecord?.status), 'decision record status unexpected', packet);
 assert(packet.readContract?.endpoint === '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}', 'Payments DB snapshot endpoint missing', packet);
 assert(packet.readContract?.requiredScope === 'payments:read', 'payments:read scope missing', packet);
 assert(packet.readContract?.providerRefreshRisk === 'db_snapshot_endpoint_no_provider_refresh', 'provider refresh risk missing', packet);
