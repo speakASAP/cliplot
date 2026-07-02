@@ -128,6 +128,22 @@ keep `/api/checkout/submit` in `service_identity_required` guarded mode even if
 shared-service validation succeeds.
 
 
+
+## Live Checkout Approval Packet
+
+Before enabling any live checkout flag or approval ID, generate the read-only
+approval packet:
+
+```bash
+npm run readiness:approval -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/approval-packet
+```
+
+The packet must report `mutation=false`, `providerCall=false`,
+`persistence=false`, `catalogSource=catalog`, at least one Warehouse-backed
+product, blocked live preflight, and the exact approval ID names still missing.
+It must never print secret values.
+
 ## Guarded Checkout Smoke
 
 After a Cliplot checkout deploy, run:

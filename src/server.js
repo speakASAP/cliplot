@@ -7,6 +7,7 @@ import {
   fetchCatalogProducts,
   productCatalogSource,
   handlePaymentCallback,
+  liveCheckoutApprovalPacket,
   liveCheckoutPreflight,
   paymentStatus,
   serviceReadiness,
@@ -108,6 +109,22 @@ const server = createServer(async (req, res) => {
         success: true,
         status: 'frontend_preview_only',
         next: 'Use /api/checkout/submit for the GOAL-03 guarded shared-service path.',
+      });
+      return;
+    }
+
+
+    if (url.pathname === '/api/checkout/approval-packet' && req.method === 'GET') {
+      sendJson(res, 200, await liveCheckoutApprovalPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/approval-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
       });
       return;
     }

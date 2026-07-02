@@ -256,3 +256,28 @@ retrieval.agentContext.top=cliplot/implementation-goals/GOAL-06-operational-clos
 Secrets were not printed. Retrieval validation ran inside the Docs/RAG pod using
 the pod-projected `JWT_TOKEN` and emitted only HTTP status, counts, source paths,
 and scores.
+
+
+## Live Checkout Approval Packet
+
+Status: implemented as a read-only approval dossier.
+
+Expected validation:
+
+```bash
+npm run readiness:approval -- https://cliplot.alfares.cz
+```
+
+Expected evidence:
+
+```text
+status=approval_required
+catalogSource=catalog
+warehouseBackedProductCount>0
+livePreflight=blocked
+wouldMutate=false
+mutation=false
+providerCall=false
+persistence=false
+requiredApprovalIds=CLIPLOT_LIVE_ORDER_APPROVAL_ID,CLIPLOT_LIVE_PAYMENT_APPROVAL_ID,CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
+```

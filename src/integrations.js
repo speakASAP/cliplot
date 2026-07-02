@@ -1066,6 +1066,64 @@ export async function submitCheckout(input) {
   };
 }
 
+
+export async function liveCheckoutApprovalPacket() {
+  const products = await fetchCatalogProducts();
+  const catalogSource = productCatalogSource(products);
+  const warehouseBackedProducts = products.filter((item) => item?.warehouseId);
+  const readiness = serviceReadiness();
+  const preflight = readiness.liveCheckoutPreflight;
+  const auth = authLinks();
+
+  return {
+    success: true,
+    status: preflight.status === 'blocked' ? 'approval_required' : 'ready_for_owner_review',
+    generatedAt: new Date().toISOString(),
+    mutation: false,
+    providerCall: false,
+    persistence: false,
+    service: serviceConfig.serviceName,
+    host: 'https://cliplot.alfares.cz',
+    catalog: {
+      status: readiness.integrations.catalog,
+      catalogSource,
+      productCount: products.length,
+      warehouseBackedProductCount: warehouseBackedProducts.length,
+      sampleProduct: warehouseBackedProducts[0]
+        ? {
+            id: warehouseBackedProducts[0].id,
+            productSource: warehouseBackedProducts[0].productSource,
+            warehouseId: warehouseBackedProducts[0].warehouseId,
+            warehouseType: warehouseBackedProducts[0].warehouseType,
+            availableStock: warehouseBackedProducts[0].availableStock,
+          }
+        : null,
+    },
+    liveCheckoutPreflight: preflight,
+    validation: preflight.validation,
+    integrations: readiness.integrations,
+    auth: {
+      status: auth.status,
+      missing: auth.missing,
+    },
+    requiredRuntimeKeys: [
+      'CATALOG_INTERNAL_SERVICE_TOKEN',
+      'ORDERS_SERVICE_TOKEN',
+      'WAREHOUSE_SERVICE_TOKEN',
+      'NOTIFICATIONS_SERVICE_TOKEN',
+      'PAYMENT_API_KEY',
+      'PAYMENT_WEBHOOK_API_KEY',
+    ],
+    requiredApprovalIds: [
+      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
+      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+    ],
+    missing: preflight.missing,
+    next: 'Owner approval must provide approved live order/Warehouse, payment, and notification evidence before enabling live flags or approval IDs.',
+  };
+}
+
 export function serviceReadiness() {
   const approvals = liveMutationApprovals();
   return {
