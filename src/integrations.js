@@ -337,6 +337,41 @@ function checkoutMissingFacts() {
   return missing;
 }
 
+function liveCheckoutPreflight() {
+  const approvals = liveMutationApprovals();
+  const liveFlags = {
+    order: serviceConfig.liveOrderSubmit,
+    payment: serviceConfig.livePaymentCreate,
+    notification: serviceConfig.liveNotifications,
+  };
+  const missing = checkoutMissingFacts();
+  const ready = liveFlags.order
+    && liveFlags.payment
+    && liveFlags.notification
+    && approvals.order
+    && approvals.payment
+    && approvals.notification
+    && missing.length === 0;
+
+  return {
+    status: ready ? 'ready_for_approved_live_mutation' : 'blocked',
+    wouldMutate: ready,
+    liveFlags,
+    approvals,
+    validation: {
+      orderCreate: serviceConfig.orderCreateValidation ? 'enabled_no_mutation' : 'disabled',
+      warehouseReservation: serviceConfig.warehouseServiceToken ? 'readiness_check_available' : 'token_missing',
+      paymentCreate: serviceConfig.paymentCreateValidation ? 'enabled_no_mutation' : 'disabled',
+      notificationSend: serviceConfig.notificationValidation ? 'enabled_no_send' : 'disabled',
+      paymentStatus: 'guarded_no_persistence',
+    },
+    missing,
+    next: ready
+      ? 'Live checkout can be enabled only through the approved live mutation path.'
+      : 'Keep checkout guarded until all live flags, approval IDs, service tokens, and no-mutation/no-send validation evidence are present.',
+  };
+}
+
 
 function normalizeExternalOrderId(value) {
   const normalized = String(value || '')
@@ -936,6 +971,7 @@ export async function submitCheckout(input) {
   }
 
   const missing = checkoutMissingFacts();
+  const preflight = liveCheckoutPreflight();
   if (!serviceConfig.liveOrderSubmit || missing.length) {
     const orderPreview = buildOrderCreatePayload(checkout);
     const warehouseReservationReadiness = await guardedWarehouseReservationReadiness(checkout);
@@ -953,6 +989,7 @@ export async function submitCheckout(input) {
         message: 'Objednávka je připravena, ale živé vytvoření objednávky je vypnuté do schválení platebního a notifikačního kroku.',
         missing,
         liveMutationApprovals: liveMutationApprovals(),
+        liveCheckoutPreflight: preflight,
         checkoutIntent: checkoutIntentEvidence(checkout),
         checkoutSummary: checkoutSummary(checkout),
         orderPreview,
@@ -974,6 +1011,7 @@ export async function submitCheckout(input) {
         success: false,
         status: "warehouse_reservation_not_ready",
         mode: "live_order_preflight_blocked",
+        liveCheckoutPreflight: preflight,
         warehouseReservationReadiness,
       },
     };
@@ -993,6 +1031,7 @@ export async function submitCheckout(input) {
       order,
       payment,
       liveMutationApprovals: liveMutationApprovals(),
+      liveCheckoutPreflight: preflight,
       checkoutIntent: checkoutIntentEvidence(checkout),
       checkoutSummary: checkoutSummary(checkout),
       paymentPreview,
@@ -1015,6 +1054,7 @@ export function serviceReadiness() {
     livePaymentCreate: serviceConfig.livePaymentCreate,
     liveNotifications: serviceConfig.liveNotifications,
     liveMutationApprovals: approvals,
+    liveCheckoutPreflight: liveCheckoutPreflight(),
     integrations: {
       catalog: serviceConfig.catalogServiceToken ? 'read_enabled_authenticated' : 'read_enabled_with_fallback',
       warehouse: serviceConfig.warehouseServiceToken ? 'token_present_not_mutating' : 'token_missing',
