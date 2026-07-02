@@ -153,9 +153,8 @@ notification sends, and Docs/RAG ingestion gated.
 
 ### Current Findings
 
-- The full `npm run readiness:bundle` remains the operator aggregate check and
-  is blocked only by Docs/RAG embedding backend reachability and live approval
-  evidence.
+- GOAL-06 readiness bundle now passes after Docs/RAG embedding connectivity was restored via Docker Ollama host port `11435` and `scripts/publish_docs_rag.sh` was hardened to select the newest Running Ready non-deleting Docs/RAG pod.
+- The full `npm run readiness:bundle` is the operator aggregate check and now passes with Docs/RAG preflight, guarded checkout smoke, Vault presence, and Kubernetes rollout evidence.
 - The Kubernetes readiness monitor lane is endpoint-only and read-only. It
   checks `/health`, `/api/checkout/live-preflight`,
   `/api/integrations/readiness`, and `/api/payments/status` without POST or

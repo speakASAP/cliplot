@@ -177,3 +177,45 @@ embeddingBackendUrl=http://192.168.88.53:11435
 embeddingHttp=200
 docsRagPreflightExit=0
 ```
+
+## Final Readiness Bundle Pass
+
+Commit: `872c535`
+
+Evidence:
+
+```text
+READINESS_STEP=git_clean exit=0
+READINESS_STEP=kubernetes_rollout exit=0
+image=localhost:5000/cliplot-service:013b506
+READINESS_STEP=live_preflight exit=0
+livePreflight.status=blocked
+livePreflight.wouldMutate=false
+READINESS_STEP=integrations_readiness exit=0
+readiness.liveOrderSubmit=false
+readiness.livePaymentCreate=false
+readiness.liveNotifications=false
+readiness.approval.order=false
+readiness.approval.payment=false
+readiness.approval.notification=false
+READINESS_STEP=vault_presence exit=0
+VAULT_SECRET_PRESENCE=pass
+READINESS_STEP=docs_rag_preflight exit=0
+docsRagStatusHttp=200
+embeddingBackendUrl=http://192.168.88.53:11435
+embeddingHttp=200
+DOCS_RAG_PREFLIGHT=pass
+READINESS_STEP=guarded_checkout_smoke exit=0
+checkoutHttpStatus=202
+checkoutStatus=service_identity_required
+orderValidation=validated_no_mutation
+paymentValidation=validated_no_mutation
+notificationValidation=validated_no_send
+warehouseReservationReadiness=validated_no_mutation
+mutation=false
+CLIPLOT_READINESS_BUNDLE=pass
+```
+
+Docs/RAG operational preflight is no longer blocked. Live order creation, live
+payment creation, Warehouse reservation, callback persistence, and notification
+sends remain approval-gated.
