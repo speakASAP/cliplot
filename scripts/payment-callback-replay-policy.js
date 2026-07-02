@@ -53,7 +53,13 @@ assert(Array.isArray(policy.mustRemainFalseBeforeApproval) && policy.mustRemainF
 assert(policy.mustRemainFalseBeforeApproval.includes('provider-backed /payments/{paymentId} reads'), 'provider-refresh guard missing', policy);
 assert(Array.isArray(policy.forbiddenOperations) && policy.forbiddenOperations.includes('persist callback state'), 'callback persistence forbidden operation missing', policy);
 assert(policy.forbiddenOperations.includes('call payment provider'), 'provider call forbidden operation missing', policy);
-assert(Array.isArray(policy.blockers) && policy.blockers.some((item) => item.includes('approved callback persistence/replay policy')), 'callback policy blocker missing', policy);
+assert(Array.isArray(policy.blockers), 'callback policy blockers missing', policy);
+if (policy.callbackPolicyApproved === true) {
+  assert(policy.blockers.some((item) => item.includes('callback persistence storage backend approval')), 'callback storage backend blocker missing', policy);
+  assert(policy.blockers.some((item) => item.includes('callback replay execution rollout approval')), 'callback replay execution blocker missing', policy);
+} else {
+  assert(policy.blockers.some((item) => item.includes('callback persistence/replay policy') || item.includes('CLIPLOT_CALLBACK_REPLAY_POLICY_APPROVAL_ID')), 'callback policy blocker missing', policy);
+}
 assert(Array.isArray(policy.sensitiveDataPolicy) && policy.sensitiveDataPolicy.includes('policy metadata only'), 'sensitive data policy missing', policy);
 
 console.log(JSON.stringify({
