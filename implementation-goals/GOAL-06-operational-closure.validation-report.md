@@ -310,5 +310,25 @@ wouldCreatePayment=false
 wouldSendNotification=false
 partialActivationMatrix.order_only_with_all_approvals=blocked,wouldMutate=false
 partialActivationMatrix.order_and_payment_without_notification_flag=blocked,wouldMutate=false
-partialActivationMatrix.all_flags_before_notification_send_implementation=blocked,wouldMutate=false
+partialActivationMatrix.all_flags_with_all_approvals=ready_for_approved_live_mutation,wouldMutate=true
+```
+
+
+## Live Notification Send Path Wiring
+
+Status: implemented and guarded.
+
+Cliplot now has a live notification send path wired to
+`POST /notifications/send` through the existing Notifications service-token
+contract. The live path uses `checkoutIdempotencyKeys().notificationSend`, which
+is separate from no-send validation. Production remains guarded because all live
+flags and approval IDs are empty.
+
+Validation evidence:
+
+```text
+npm run readiness:activation -- https://cliplot.alfares.cz
+partialActivationMatrix.order_only_with_all_approvals=blocked,wouldMutate=false
+partialActivationMatrix.order_and_payment_without_notification_flag=blocked,wouldMutate=false
+partialActivationMatrix.all_flags_with_all_approvals=ready_for_approved_live_mutation,wouldMutate=true
 ```

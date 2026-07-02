@@ -90,6 +90,7 @@ Current evidence: docs-rag preflight reaches
 - Required order contract: `orders.create.v1`.
 - Payments no-mutation validation endpoint: `POST /payments/validate-create`.
 - Notifications no-send validation endpoint: `POST /notifications/validate`.
+- Notifications live send path: `POST /notifications/send`, guarded by full live preflight and a separate notification-send idempotency key.
 - Runtime guarded state:
   `ENABLE_LIVE_ORDER_SUBMIT=false`,
   `ENABLE_LIVE_PAYMENT_CREATE=false`, and

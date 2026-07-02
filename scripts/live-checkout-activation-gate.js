@@ -20,7 +20,7 @@ assert(preflight.status === 'blocked', 'live activation gate is not blocked', pr
 assert(preflight.wouldMutate === false, 'live activation gate would mutate', preflight);
 assert(preflight.mutationPlan?.wouldCreateOrder === false, 'live activation would create order', preflight);
 assert(preflight.mutationPlan?.wouldCreatePayment === false, 'live activation would create payment', preflight);
-assert(preflight.mutationPlan?.wouldSendNotification === false, 'live activation would send notification', preflight);
+assert(preflight.mutationPlan?.wouldSendNotification === false, 'live activation would send notification in guarded deployment', preflight);
 assert(preflight.liveFlags?.order === false && preflight.liveFlags?.payment === false && preflight.liveFlags?.notification === false, 'live flags are not all false', preflight.liveFlags || {});
 assert(preflight.approvals?.order === false && preflight.approvals?.payment === false && preflight.approvals?.notification === false, 'approval IDs are unexpectedly present', preflight.approvals || {});
 assert(Array.isArray(packet.requiredApprovalIds) && packet.requiredApprovalIds.length === 3, 'approval ID names are missing', packet);
@@ -88,7 +88,8 @@ const partialCases = [
     },
   },
   {
-    name: 'all_flags_before_notification_send_implementation',
+    name: 'all_flags_with_all_approvals',
+    expectedReady: true,
     env: {
       ENABLE_LIVE_ORDER_SUBMIT: 'true',
       ENABLE_LIVE_PAYMENT_CREATE: 'true',
@@ -111,11 +112,19 @@ const partialCases = [
 const matrix = [];
 for (const testCase of partialCases) {
   const simulated = await evaluateLocalPreflight(testCase.env);
-  assert(simulated.status === 'blocked', `partial activation case ${testCase.name} is not blocked`, simulated);
-  assert(simulated.wouldMutate === false, `partial activation case ${testCase.name} would mutate`, simulated);
-  assert(simulated.mutationPlan?.wouldCreateOrder === false, `partial activation case ${testCase.name} would create order`, simulated);
-  assert(simulated.mutationPlan?.wouldCreatePayment === false, `partial activation case ${testCase.name} would create payment`, simulated);
-  assert(simulated.mutationPlan?.wouldSendNotification === false, `partial activation case ${testCase.name} would send notification`, simulated);
+  if (testCase.expectedReady) {
+    assert(simulated.status === 'ready_for_approved_live_mutation', `approved activation case ${testCase.name} is not ready`, simulated);
+    assert(simulated.wouldMutate === true, `approved activation case ${testCase.name} would not mutate`, simulated);
+    assert(simulated.mutationPlan?.wouldCreateOrder === true, `approved activation case ${testCase.name} would not create order`, simulated);
+    assert(simulated.mutationPlan?.wouldCreatePayment === true, `approved activation case ${testCase.name} would not create payment`, simulated);
+    assert(simulated.mutationPlan?.wouldSendNotification === true, `approved activation case ${testCase.name} would not send notification`, simulated);
+  } else {
+    assert(simulated.status === 'blocked', `partial activation case ${testCase.name} is not blocked`, simulated);
+    assert(simulated.wouldMutate === false, `partial activation case ${testCase.name} would mutate`, simulated);
+    assert(simulated.mutationPlan?.wouldCreateOrder === false, `partial activation case ${testCase.name} would create order`, simulated);
+    assert(simulated.mutationPlan?.wouldCreatePayment === false, `partial activation case ${testCase.name} would create payment`, simulated);
+    assert(simulated.mutationPlan?.wouldSendNotification === false, `partial activation case ${testCase.name} would send notification`, simulated);
+  }
   matrix.push({
     name: testCase.name,
     status: simulated.status,

@@ -66,6 +66,7 @@ no-send notification payload validation.
 | Cart review readiness lane | done | main orchestrator plus read-only sidecar | Cliplot cart frontend and smoke script | public smoke proves cart feedback/edit contract and guarded checkout remains no-mutation/no-send |
 | Live checkout preflight guard lane | done | main orchestrator plus read-only sidecar | Cliplot readiness and guarded checkout response | public smoke proves preflight is blocked and `wouldMutate=false` until all flags and approval IDs exist |
 | Live checkout preflight endpoint lane | done | main orchestrator plus read-only sidecars | Cliplot read-only checkout preflight endpoint and smoke script | public smoke proves endpoint JSON is blocked, `wouldMutate=false`, and all mutation-plan booleans are false |
+| Live notification send path lane | done/guarded | main orchestrator | Cliplot notification send wiring | activation matrix proves send path only appears in fully approved simulated config |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 

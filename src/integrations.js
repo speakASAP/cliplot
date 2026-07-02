@@ -80,6 +80,7 @@ export const serviceConfig = {
   ordersCreatePath: process.env.ORDERS_CREATE_PATH || '/api/orders',
   ordersValidateCreatePath: process.env.ORDERS_VALIDATE_CREATE_PATH || '/api/orders/validate-create',
   notificationValidatePath: process.env.NOTIFICATION_VALIDATE_PATH || '/notifications/validate',
+  notificationSendPath: process.env.NOTIFICATION_SEND_PATH || '/notifications/send',
   paymentCreatePath: process.env.PAYMENT_CREATE_PATH || '/payments/create',
   paymentValidateCreatePath: process.env.PAYMENT_VALIDATE_CREATE_PATH || '/payments/validate-create',
   paymentMethod: process.env.CLIPLOT_PAYMENT_METHOD || 'invoice',
@@ -340,9 +341,6 @@ function checkoutMissingFacts() {
   if (!serviceConfig.notificationValidation) {
     missing.push('[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]');
   }
-  if (serviceConfig.liveNotifications) {
-    missing.push('[MISSING: implemented live notification send path for Cliplot order confirmations]');
-  }
   if (!approvals.notification) {
     missing.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID after approved live notification send validation for Cliplot order confirmations]');
   }
@@ -350,6 +348,7 @@ function checkoutMissingFacts() {
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.paymentApiKey) missing.push('[MISSING: PAYMENT_API_KEY in Vault]');
   if (!serviceConfig.paymentWebhookApiKey) missing.push('[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]');
+  if (!serviceConfig.notificationServiceToken) missing.push('[MISSING: NOTIFICATIONS_SERVICE_TOKEN in Vault]');
   return missing;
 }
 
@@ -370,7 +369,7 @@ export function liveCheckoutPreflight() {
     && missing.length === 0;
   const wouldCreateOrder = fullyReady;
   const wouldCreatePayment = fullyReady;
-  const wouldSendNotification = false;
+  const wouldSendNotification = fullyReady;
   const wouldMutate = wouldCreateOrder || wouldCreatePayment || wouldSendNotification;
 
   return {
@@ -387,7 +386,9 @@ export function liveCheckoutPreflight() {
       orderCreate: serviceConfig.orderCreateValidation ? 'enabled_no_mutation' : 'disabled',
       warehouseReservation: serviceConfig.warehouseServiceToken ? 'readiness_check_available' : 'token_missing',
       paymentCreate: serviceConfig.paymentCreateValidation ? 'enabled_no_mutation' : 'disabled',
-      notificationSend: serviceConfig.notificationValidation ? 'enabled_no_send' : 'disabled',
+      notificationSend: serviceConfig.liveNotifications && approvals.notification && serviceConfig.notificationServiceToken
+        ? 'live_send_ready'
+        : (serviceConfig.notificationValidation ? 'enabled_no_send' : 'disabled'),
       paymentStatus: 'guarded_no_persistence',
     },
     missing,
@@ -421,6 +422,7 @@ function checkoutIdempotencyKeys(checkout) {
     paymentCreate: `cliplot-payment-${checkout.externalOrderId}`,
     paymentValidate: `cliplot-payment-validate-${checkout.externalOrderId}`,
     notificationValidate: `cliplot-notification-validate-${checkout.externalOrderId}`,
+    notificationSend: `cliplot-notification-send-${checkout.externalOrderId}`,
   };
 }
 
@@ -787,6 +789,19 @@ async function validateNotification(checkout, notificationPayload) {
   });
 }
 
+async function createNotification(checkout, notificationPayload) {
+  const url = new URL(serviceConfig.notificationSendPath, serviceConfig.notificationsUrl);
+  return fetchJson(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${serviceConfig.notificationServiceToken}`,
+      'idempotency-key': checkoutIdempotencyKeys(checkout).notificationSend,
+    },
+    body: JSON.stringify(notificationPayload),
+  });
+}
+
 async function guardedNotificationValidation(checkout, notificationPayload) {
   if (!serviceConfig.notificationValidation) {
     return {
@@ -1048,11 +1063,16 @@ export async function submitCheckout(input) {
   const payment = serviceConfig.livePaymentCreate
     ? await createPayment(checkout, order)
     : null;
+  const notification = serviceConfig.liveNotifications
+    ? await createNotification(checkout, notificationPreview)
+    : null;
   return {
     httpStatus: serviceConfig.livePaymentCreate ? 201 : 202,
     body: {
       success: true,
-      status: serviceConfig.livePaymentCreate ? 'order_created_payment_pending' : 'order_created_payment_guarded',
+      status: serviceConfig.liveNotifications
+        ? 'order_created_payment_pending_notification_sent'
+        : (serviceConfig.livePaymentCreate ? 'order_created_payment_pending' : 'order_created_payment_guarded'),
       order,
       payment,
       liveMutationApprovals: liveMutationApprovals(),
@@ -1060,9 +1080,7 @@ export async function submitCheckout(input) {
       checkoutIntent: checkoutIntentEvidence(checkout),
       checkoutSummary: checkoutSummary(checkout),
       paymentPreview,
-      notification: serviceConfig.liveNotifications
-        ? 'pending_live_send_in_payment_lane'
-        : 'guarded_notification_send',
+      notification,
       notificationPreview,
       next: 'Payment initiation remains gated by GOAL-05 provider-backed validation.',
     },
