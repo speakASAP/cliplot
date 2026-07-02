@@ -135,6 +135,7 @@ run_step vault_presence python3 scripts/vault_secret_presence_gate.py --allow-mi
 run_step docs_rag_preflight docs_rag_preflight
 
 if [ "$critical_failed" -eq 0 ]; then
+  run_critical_step order_warehouse_readiness npm run readiness:order-warehouse -- "$BASE_URL"
   run_step guarded_checkout_smoke npm run smoke:checkout -- "$BASE_URL"
 else
   echo "READINESS_STEP=guarded_checkout_smoke"

@@ -9,6 +9,7 @@ import {
   handlePaymentCallback,
   liveCheckoutApprovalPacket,
   liveCheckoutPreflight,
+  orderWarehouseReadinessReport,
   paymentStatus,
   serviceReadiness,
   submitCheckout,
@@ -120,6 +121,22 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/approval-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+
+    if (url.pathname === '/api/checkout/order-warehouse-readiness' && req.method === 'GET') {
+      sendJson(res, 200, await orderWarehouseReadinessReport());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/order-warehouse-readiness') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

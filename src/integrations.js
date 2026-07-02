@@ -1087,6 +1087,135 @@ export async function submitCheckout(input) {
   };
 }
 
+function buildReadinessCheckout(product) {
+  const subtotal = Number(product.price || 0);
+  return normalizeCheckout({
+    externalOrderId: `cliplot-readiness-${Date.now()}`,
+    customer: {
+      name: 'Readiness Probe',
+      email: 'readiness@cliplot.invalid',
+      phone: '+420000000000',
+      address: 'Readiness 1, Praha',
+    },
+    shipping: 'balikovna',
+    payment: 'invoice',
+    pricing: {
+      subtotal,
+      shippingCost: 69,
+      paymentFee: 0,
+      total: subtotal + 69,
+    },
+    items: [{ product, quantity: 1 }],
+    total: subtotal + 69,
+  });
+}
+
+export async function orderWarehouseReadinessReport() {
+  const products = await fetchCatalogProducts();
+  const catalogSource = productCatalogSource(products);
+  const product = products.find((item) => item?.warehouseId && item?.productSource === 'catalog');
+  const preflight = liveCheckoutPreflight();
+
+  if (!product) {
+    return {
+      success: false,
+      status: 'blocked_no_warehouse_backed_catalog_product',
+      generatedAt: new Date().toISOString(),
+      service: serviceConfig.serviceName,
+      mutation: false,
+      providerCall: false,
+      persistence: false,
+      catalog: {
+        catalogSource,
+        productCount: products.length,
+        warehouseBackedProductCount: products.filter((item) => item?.warehouseId).length,
+      },
+      liveCheckoutPreflight: preflight,
+      blockers: ['missing_warehouse_backed_catalog_product'],
+    };
+  }
+
+  const checkout = buildReadinessCheckout(product);
+  const validationErrors = validateCheckout(checkout);
+  const orderPayload = buildOrderCreatePayload(checkout);
+  const warehouseReservationReadiness = await guardedWarehouseReservationReadiness(checkout);
+  const orderValidation = await guardedOrderValidation(checkout, orderPayload);
+  const idempotency = checkoutIdempotencyKeys(checkout);
+  const valid = validationErrors.length === 0
+    && catalogSource === 'catalog'
+    && product.productSource === 'catalog'
+    && Boolean(product.warehouseId)
+    && warehouseReservationReadiness.status === 'validated_no_mutation'
+    && warehouseReservationReadiness.valid === true
+    && warehouseReservationReadiness.mutation === false
+    && warehouseReservationReadiness.reservationCreated === false
+    && warehouseReservationReadiness.stockMutation === false
+    && orderValidation.status === 'validated_no_mutation'
+    && orderValidation.mutation === false
+    && orderValidation.orderCreated === false
+    && orderValidation.warehouseMutation === false
+    && orderValidation.eventPublished === false
+    && preflight.status === 'blocked'
+    && preflight.wouldMutate === false;
+
+  return {
+    success: true,
+    status: valid ? 'validated_no_mutation' : 'blocked_no_mutation',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    providerCall: false,
+    persistence: false,
+    catalog: {
+      catalogSource,
+      productCount: products.length,
+      warehouseBackedProductCount: products.filter((item) => item?.warehouseId).length,
+      sampleProduct: {
+        id: product.id,
+        productSource: product.productSource,
+        warehouseId: product.warehouseId,
+        warehouseType: product.warehouseType || null,
+        availableStock: product.availableStock ?? null,
+      },
+    },
+    checkoutIntent: checkoutIntentEvidence(checkout),
+    checkoutSummary: checkoutSummary(checkout),
+    orderCreateContract: {
+      endpoint: serviceConfig.ordersValidateCreatePath,
+      contractVersion: orderPayload.contractVersion,
+      channel: orderPayload.channel,
+      channelAccountId: orderPayload.channelAccountId,
+      externalOrderId: orderPayload.externalOrderId,
+      serviceName: serviceConfig.serviceName,
+      idempotencyKey: idempotency.orderValidate,
+      itemCount: orderPayload.items.length,
+      warehouseIds: orderPayload.items.map((item) => item.warehouseId),
+      total: orderPayload.totals.total,
+      currency: orderPayload.totals.currency,
+    },
+    warehouseReadinessContract: {
+      endpoint: '/api/stock/availability/batch',
+      productIds: checkout.items.map((item) => item.productId),
+      warehouseIds: checkout.items.map((item) => item.warehouseId),
+      status: warehouseReservationReadiness.status,
+      itemCount: warehouseReservationReadiness.items.length,
+    },
+    orderValidation,
+    warehouseReservationReadiness,
+    liveCheckoutPreflight: preflight,
+    validationErrors,
+    blockers: valid ? [] : [
+      ...validationErrors,
+      ...(warehouseReservationReadiness.blockers || []),
+      ...(orderValidation.status === 'validated_no_mutation' ? [] : ['order_validate_create_failed']),
+      ...(preflight.status === 'blocked' && preflight.wouldMutate === false ? [] : ['live_preflight_not_guarded']),
+    ],
+    next: valid
+      ? 'No-mutation Orders validate-create and Warehouse availability readiness are proven for the current Cliplot identity.'
+      : 'Keep checkout guarded until order and Warehouse readiness return validated_no_mutation.',
+  };
+}
+
 
 export async function liveCheckoutApprovalPacket() {
   const products = await fetchCatalogProducts();
