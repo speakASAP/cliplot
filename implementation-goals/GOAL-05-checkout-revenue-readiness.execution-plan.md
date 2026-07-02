@@ -62,6 +62,7 @@ no-send notification payload validation.
 | Guarded checkout intent and smoke lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke preserves `externalOrderId` and proves no-mutation/no-send statuses |
 | Checkout review totals lane | done | main orchestrator | Cliplot checkout frontend/backend and smoke script | public smoke proves subtotal, shipping cost, payment fee, total, and no-mutation preview compatibility |
 | Guarded checkout status surface lane | done | main orchestrator | Cliplot status frontend, payment status endpoint, callback ACK evidence, smoke script | public smoke proves status shell, unauthorized callback, guarded payment status, and no live objects |
+| Product detail route lane | done | main orchestrator plus read-only sidecars | Cliplot product frontend and smoke script | public smoke proves `/produkt/:id` static shell and guarded checkout contract remains no-mutation/no-send |
 | Live revenue mutation | dependency-gated | main orchestrator | Cliplot checkout/order/payment/notification mutation paths | approved live order-create/Warehouse, payment-create, and notification-send evidence |
 | Final integration | dependency-gated | main orchestrator | Cliplot checkout/payment code | guarded order/payment/notification smoke |
 
@@ -131,3 +132,17 @@ order confirmation, stock reservation, invoice, tracking, or provider status.
 Payments status is exposed only as `guarded_no_persistence`: it does not call
 the provider, does not persist callback state, and does not create or update an
 order/payment record.
+
+
+## Product Detail Route Lane
+
+Status: deployed and validated in guarded mode.
+
+Product cards now link to `/produkt/:id`. The detail route is client-rendered
+from existing `/api/products` data and does not introduce a local product
+database or product API mutation path. Catalog descriptions are rendered as
+escaped plain text, not raw HTML. The add-to-cart button still reuses the
+existing Warehouse-origin guard through `warehouseId`.
+
+This lane improves buyer confidence before checkout while preserving the
+GOAL-05 live-mutation boundary.

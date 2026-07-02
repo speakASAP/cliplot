@@ -466,3 +466,11 @@ behavior until those approvals are present.
   and still reported `orderCreated=false`, `warehouseMutation=false`,
   `paymentValidation.mutation=false`, `paymentValidation.providerCall=false`,
   and `notificationSent=false`.
+
+- GOAL-05 guarded product detail route deployed as
+  `localhost:5000/cliplot-service:1cebe76`. Product cards now link to
+  `/produkt/:id`, the client route hydrates from existing `/api/products`
+  Catalog/Warehouse data, renders real image, price, stock, delivery, available
+  quantity, payment/return summary, and escaped plain-text Catalog description.
+  No local product truth, backend product mutation, live order, payment,
+  Warehouse reservation, or notification send was added.
