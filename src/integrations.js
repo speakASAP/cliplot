@@ -1092,6 +1092,86 @@ export function paymentCallbackReadiness() {
   };
 }
 
+export function paymentStatusReadiness() {
+  const syntheticOrderId = 'cliplot-payment-status-readiness';
+  const statusResult = paymentStatus({ orderId: syntheticOrderId });
+  const statusBody = statusResult.body || {};
+  const callback = paymentCallbackReadiness();
+  const guarded = statusResult.httpStatus === 200
+    && statusBody.status === 'payment_status_guarded_no_persistence'
+    && statusBody.mutation === false
+    && statusBody.persistence === false
+    && statusBody.providerCall === false
+    && callback.status === 'validated_guarded_ack_no_persistence'
+    && callback.mutation === false
+    && callback.persistence === false
+    && callback.providerCall === false;
+
+  return {
+    success: true,
+    status: guarded ? 'blocked_pending_provider_backed_status_contract' : 'blocked_guarded_payment_status_not_validated',
+    mode: 'guarded_payment_status_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    livePaymentCreate: serviceConfig.livePaymentCreate,
+    currentStatusContract: {
+      endpoint: '/api/payments/status',
+      httpStatus: statusResult.httpStatus,
+      status: statusBody.status || null,
+      mutation: statusBody.mutation,
+      persistence: statusBody.persistence,
+      providerCall: statusBody.providerCall,
+      paymentStatus: statusBody.paymentStatus || null,
+    },
+    callbackReadiness: {
+      endpoint: '/api/payments/callback-readiness',
+      status: callback.status,
+      callbackAccepted: callback.callbackAccepted,
+      mutation: callback.mutation,
+      persistence: callback.persistence,
+      providerCall: callback.providerCall,
+    },
+    futureProviderBackedRead: {
+      paymentsEndpoint: '/payments/{paymentId}',
+      requiredScope: 'payments:read',
+      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      supportsPaymentIdRead: true,
+      supportsOrderIdRead: false,
+      providerRefreshRisk: 'stripe_card_pending_reads_may_call_provider',
+      requiredStoredFields: [
+        'paymentId',
+        'orderId',
+        'status',
+        'amount',
+        'currency',
+        'paymentMethod',
+        'createdAt',
+        'completedAt',
+      ],
+      riskNote: 'Payments GET /payments/{paymentId} reads persisted payment state and may refresh provider status for pending/processing records; Cliplot must not call it until live payment storage/status approval exists.',
+    },
+    blockers: [
+      '[MISSING: approved Cliplot persisted payment id storage contract]',
+      '[MISSING: approved mapping from Cliplot externalOrderId/orderId to Payments paymentId]',
+      '[MISSING: owner approval for provider-backed payment status reads]',
+      '[MISSING: customer-safe status copy for provider-backed pending/failed/completed states]',
+    ],
+    sensitiveDataPolicy: [
+      'no payment API key value',
+      'no provider call',
+      'no persisted payment read',
+      'no order or payment state mutation',
+      'synthetic order id only',
+    ],
+    next: guarded
+      ? 'Design and approve persisted payment id storage before Cliplot calls Payments status read endpoints.'
+      : 'Restore guarded payment status and callback readiness before designing provider-backed status reads.',
+  };
+}
+
 function buildOrderConfirmationNotification(checkout) {
   const itemLines = checkout.items
     .map((item) => `- ${item.title || item.productId} x ${item.quantity}: ${item.unitPrice} Kč`)

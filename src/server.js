@@ -12,6 +12,7 @@ import {
   liveOrderWarehouseSmokePlan,
   orderWarehouseReadinessReport,
   paymentCallbackReadiness,
+  paymentStatusReadiness,
   paymentStatus,
   serviceReadiness,
   runLiveOrderWarehouseSmoke,
@@ -233,6 +234,21 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/api/payments/status' && req.method === 'GET') {
       const result = paymentStatus(Object.fromEntries(url.searchParams.entries()));
       sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-readiness' && req.method === 'GET') {
+      sendJson(res, 200, paymentStatusReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 
