@@ -565,3 +565,7 @@ behavior until those approvals are present.
 
 Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` as a DB-only status snapshot with `payments:read`, `providerCall=false`, `persistence=false`, and `mutation=false`. Cliplot readiness now references that endpoint and no longer lists DB-only/read-by-orderId as missing. Runtime status remains blocked until Cliplot proves `PAYMENT_API_KEY` has `payments:read` in its own runtime evidence and receives owner approval for passive Payments snapshot reads.
 
+### 2026-07-02 - Cliplot Payments read-scope runtime evidence
+
+Added guarded `GET /api/payments/read-scope-readiness` and `npm run readiness:payment-read-scope`. The probe sends Cliplot's `PAYMENT_API_KEY` only in-memory to Payments `GET /payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness`, expects a synthetic missing-order `404`, and records `scopeValidated=true`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing secrets or enabling passive status reads.
+

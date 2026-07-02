@@ -13,6 +13,7 @@ import {
   orderWarehouseReadinessReport,
   paymentCallbackReadiness,
   paymentStatusReadiness,
+  paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
   paymentStatusPersistenceDecisionPacket,
   paymentStatus,
@@ -240,7 +241,22 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/status-readiness' && req.method === 'GET') {
-      sendJson(res, 200, paymentStatusReadiness());
+      sendJson(res, 200, await paymentStatusReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/read-scope-readiness' && req.method === 'GET') {
+      sendJson(res, 200, await paymentReadScopeReadiness());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/read-scope-readiness') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 
@@ -255,7 +271,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/status-storage-readiness' && req.method === 'GET') {
-      sendJson(res, 200, paymentStatusStorageReadiness());
+      sendJson(res, 200, await paymentStatusStorageReadiness());
       return;
     }
 
@@ -270,7 +286,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/status-persistence-decision' && req.method === 'GET') {
-      sendJson(res, 200, paymentStatusPersistenceDecisionPacket());
+      sendJson(res, 200, await paymentStatusPersistenceDecisionPacket());
       return;
     }
 

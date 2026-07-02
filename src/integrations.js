@@ -845,6 +845,117 @@ async function guardedPaymentValidation(checkout, paymentPayload) {
   }
 }
 
+async function validatePaymentReadScope() {
+  const url = new URL('/payments/status/by-order-id', serviceConfig.paymentUrl);
+  url.searchParams.set('applicationId', serviceConfig.applicationId);
+  url.searchParams.set('orderId', 'cliplot-read-scope-readiness');
+  const { controller, timeout } = timeoutSignal();
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        accept: 'application/json',
+        'x-api-key': serviceConfig.paymentApiKey,
+      },
+    });
+    const text = await response.text();
+    let payload = {};
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      payload = { nonJsonBodyPreview: text.slice(0, 160) };
+    }
+    return {
+      httpStatus: response.status,
+      payload,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function paymentReadScopeReadiness() {
+  if (!serviceConfig.paymentApiKey) {
+    return {
+      success: true,
+      status: 'missing_payment_api_key',
+      mode: 'guarded_payment_read_scope_readiness',
+      generatedAt: new Date().toISOString(),
+      service: serviceConfig.serviceName,
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness',
+      requiredScope: 'payments:read',
+      keyPresent: false,
+      scopeValidated: false,
+      routeValidated: false,
+      expectedHttpStatus: 404,
+      expectedErrorCode: 'PAYMENT_STATUS_SNAPSHOT_NOT_FOUND',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      databaseRead: true,
+      blockers: ['[MISSING: PAYMENT_API_KEY in Vault]'],
+      sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
+      next: 'Populate PAYMENT_API_KEY before validating payments:read scope.',
+    };
+  }
+
+  try {
+    const evidence = await validatePaymentReadScope();
+    const errorCode = evidence.payload?.error?.code || evidence.payload?.code || evidence.payload?.error || null;
+    const scopeValidated = evidence.httpStatus === 404 && ['PAYMENT_STATUS_SNAPSHOT_NOT_FOUND', 'Not Found'].includes(String(errorCode));
+    return {
+      success: true,
+      status: scopeValidated ? 'validated_payments_read_scope_no_mutation' : 'blocked_payments_read_scope_not_validated',
+      mode: 'guarded_payment_read_scope_readiness',
+      generatedAt: new Date().toISOString(),
+      service: serviceConfig.serviceName,
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness',
+      requiredScope: 'payments:read',
+      keyPresent: true,
+      scopeValidated,
+      routeValidated: scopeValidated,
+      httpStatus: evidence.httpStatus,
+      expectedHttpStatus: 404,
+      expectedErrorCode: 'PAYMENT_STATUS_SNAPSHOT_NOT_FOUND',
+      observedErrorCode: errorCode,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      databaseRead: true,
+      blockers: scopeValidated
+        ? []
+        : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]'],
+      sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
+      next: scopeValidated
+        ? 'Owner approval is still required before Cliplot enables passive Payments snapshot reads.'
+        : 'Fix PAYMENT_API_KEY scope or Payments route availability before enabling passive status reads.',
+    };
+  } catch (error) {
+    return {
+      success: true,
+      status: 'blocked_payments_read_scope_request_failed',
+      mode: 'guarded_payment_read_scope_readiness',
+      generatedAt: new Date().toISOString(),
+      service: serviceConfig.serviceName,
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness',
+      requiredScope: 'payments:read',
+      keyPresent: true,
+      scopeValidated: false,
+      routeValidated: false,
+      httpStatus: error?.status || 0,
+      error: error instanceof Error ? error.message : String(error),
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      databaseRead: false,
+      blockers: ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]'],
+      sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
+      next: 'Restore Payments reachability and validate payments:read scope before enabling passive status reads.',
+    };
+  }
+}
+
 async function validateNotification(checkout, notificationPayload) {
   const url = new URL(serviceConfig.notificationValidatePath, serviceConfig.notificationsUrl);
   return fetchJson(url, {
@@ -1114,11 +1225,12 @@ export function paymentCallbackReadiness() {
   };
 }
 
-export function paymentStatusReadiness() {
+export async function paymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
   const statusResult = paymentStatus({ orderId: syntheticOrderId });
   const statusBody = statusResult.body || {};
   const callback = paymentCallbackReadiness();
+  const readScope = await paymentReadScopeReadiness();
   const guarded = statusResult.httpStatus === 200
     && statusBody.status === 'payment_status_guarded_no_persistence'
     && statusBody.mutation === false
@@ -1157,6 +1269,23 @@ export function paymentStatusReadiness() {
       persistence: callback.persistence,
       providerCall: callback.providerCall,
       customerSafePaymentStatus: callback.callbackState?.customerSafePaymentStatus || null,
+    },
+    readScopeReadiness: {
+      endpoint: '/api/payments/read-scope-readiness',
+      status: readScope.status,
+      paymentsEndpoint: readScope.endpoint,
+      requiredScope: readScope.requiredScope,
+      keyPresent: readScope.keyPresent,
+      scopeValidated: readScope.scopeValidated,
+      routeValidated: readScope.routeValidated,
+      httpStatus: readScope.httpStatus,
+      expectedHttpStatus: readScope.expectedHttpStatus,
+      expectedErrorCode: readScope.expectedErrorCode,
+      observedErrorCode: readScope.observedErrorCode,
+      mutation: readScope.mutation,
+      persistence: readScope.persistence,
+      providerCall: readScope.providerCall,
+      databaseRead: readScope.databaseRead,
     },
     futureProviderBackedRead: {
       paymentsEndpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
@@ -1217,7 +1346,7 @@ export function paymentStatusReadiness() {
       providerCall: false,
     },
     blockers: [
-      '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      ...(readScope.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
       '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       '[MISSING: owner approval for provider-backed payment status reads]',
       '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
@@ -1237,8 +1366,8 @@ export function paymentStatusReadiness() {
 }
 
 
-export function paymentStatusStorageReadiness() {
-  const paymentReadiness = paymentStatusReadiness();
+export async function paymentStatusStorageReadiness() {
+  const paymentReadiness = await paymentStatusReadiness();
   const callback = paymentCallbackReadiness();
   const sampleRecord = {
     externalOrderId: 'cliplot-storage-readiness-order',
@@ -1299,9 +1428,11 @@ export function paymentStatusStorageReadiness() {
       futureProviderBackedEndpoint: paymentReadiness.futureProviderBackedRead.paymentsEndpoint,
       providerRefreshRisk: paymentReadiness.futureProviderBackedRead.providerRefreshRisk,
       requiredScope: paymentReadiness.futureProviderBackedRead.requiredScope,
+      readScopeStatus: paymentReadiness.readScopeReadiness?.status || null,
+      scopeValidated: paymentReadiness.readScopeReadiness?.scopeValidated || false,
     },
     blockers: [
-      '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
       '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       '[MISSING: owner approval for provider-backed payment status reads]',
       '[MISSING: decision whether persistence belongs in Cliplot-local storage or an approved shared commerce service]',
@@ -1323,9 +1454,9 @@ export function paymentStatusStorageReadiness() {
 }
 
 
-export function paymentStatusPersistenceDecisionPacket() {
-  const paymentReadiness = paymentStatusReadiness();
-  const storageReadiness = paymentStatusStorageReadiness();
+export async function paymentStatusPersistenceDecisionPacket() {
+  const paymentReadiness = await paymentStatusReadiness();
+  const storageReadiness = await paymentStatusStorageReadiness();
   const decisionOptions = [
     {
       id: 'shared-payments-source-of-truth',
@@ -1338,7 +1469,9 @@ export function paymentStatusPersistenceDecisionPacket() {
       ],
       requiredBeforeApproval: [
         '[DONE: Payments DB-only read-by-orderId endpoint deployed as payments-microservice:fc42e72]',
-        '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+        paymentReadiness.readScopeReadiness?.scopeValidated
+          ? '[DONE: Cliplot PAYMENT_API_KEY payments:read runtime scope validated by /api/payments/read-scope-readiness]'
+          : '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
         '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
         '[MISSING: customer-safe status copy reviewed for pending/processing/failed/cancelled/refunded states]',
       ],
@@ -1419,6 +1552,7 @@ export function paymentStatusPersistenceDecisionPacket() {
       currentStatusPersistence: storageReadiness.readContract.currentPersistence,
       callbackPersistence: storageReadiness.callbackContract.currentPersistence,
       providerRefreshRisk: storageReadiness.readContract.providerRefreshRisk,
+      readScopeStatus: paymentReadiness.readScopeReadiness?.status || null,
     },
     approvalPacket: {
       requiredDecisionRecord: 'ADR-payment-status-persistence-ownership',
@@ -1426,6 +1560,7 @@ export function paymentStatusPersistenceDecisionPacket() {
         'payment-status-readiness pass with mutation=false persistence=false providerCall=false',
         'payment-storage-readiness pass with mutation=false persistence=false providerCall=false',
         'deployed Payments read-by-orderId DB snapshot endpoint evidence before any live status reads',
+        'Cliplot PAYMENT_API_KEY payments:read runtime evidence from /api/payments/read-scope-readiness',
         'approved owner decision before any storage writes',
       ],
       mustRemainFalseBeforeApproval: [
@@ -1438,7 +1573,7 @@ export function paymentStatusPersistenceDecisionPacket() {
     blockers: [
       '[MISSING: ADR-payment-status-persistence-ownership]',
       '[DONE: Payments read-by-orderId DB snapshot contract deployed as payments-microservice:fc42e72]',
-      '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+      ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
       '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
       '[MISSING: approved callback persistence/replay plan]',
       '[MISSING: owner approval before live status reads or writes]',

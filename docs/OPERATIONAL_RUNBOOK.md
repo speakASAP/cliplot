@@ -224,6 +224,18 @@ and `providerCall=false`, and it must never print the webhook key. Run it with:
 npm run readiness:payment-callback -- https://cliplot.alfares.cz
 ```
 
+`GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
+`PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
+`payments:read`. It sends only a synthetic missing order id and treats the
+Payments `404` not-found response as proof that the key passed auth/scope and
+reached the DB-only handler. It must return `validated_payments_read_scope_no_mutation`,
+`mutation=false`, `persistence=false`, `providerCall=false`, and it must never
+print the API key. Run it with:
+
+```bash
+npm run readiness:payment-read-scope -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/status-readiness` is the read-only go/no-go contract for
 future provider-backed payment status. It must remain
 `blocked_pending_provider_backed_status_contract` until Cliplot has owner

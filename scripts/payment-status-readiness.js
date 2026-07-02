@@ -32,6 +32,11 @@ assert(readiness.currentStatusContract?.status === 'payment_status_guarded_no_pe
 assert(readiness.currentStatusContract?.providerCall === false, 'current payment status would call provider', readiness);
 assert(readiness.callbackReadiness?.status === 'validated_guarded_ack_no_persistence', 'callback readiness is not validated', readiness);
 assert(readiness.callbackReadiness?.customerSafePaymentStatus?.code === 'payment_received', 'callback customer-safe status mapping missing', readiness);
+assert(readiness.readScopeReadiness?.status === 'validated_payments_read_scope_no_mutation', 'payment read-scope readiness is not validated', readiness);
+assert(readiness.readScopeReadiness?.scopeValidated === true, 'payments:read scope evidence missing', readiness);
+assert(readiness.readScopeReadiness?.mutation === false, 'payment read-scope readiness reported mutation', readiness);
+assert(readiness.readScopeReadiness?.persistence === false, 'payment read-scope readiness reported persistence', readiness);
+assert(readiness.readScopeReadiness?.providerCall === false, 'payment read-scope readiness reported provider call', readiness);
 assert(readiness.currentStatusContract?.customerSafePaymentStatus?.code === 'payment_status_unknown', 'current unknown status fallback missing', readiness);
 assert(readiness.customerSafeStatusContract?.authoritative === false, 'customer-safe status contract should be non-authoritative', readiness);
 assert(readiness.customerSafeStatusContract?.source === 'static_customer_safe_mapping', 'customer-safe status source missing', readiness);
@@ -61,6 +66,8 @@ console.log(JSON.stringify({
   livePaymentCreate: readiness.livePaymentCreate,
   currentStatus: readiness.currentStatusContract.status,
   callbackReadiness: readiness.callbackReadiness.status,
+  readScopeReadiness: readiness.readScopeReadiness.status,
+  scopeValidated: readiness.readScopeReadiness.scopeValidated,
   customerSafePaymentStatus: readiness.callbackReadiness.customerSafePaymentStatus,
   customerSafeSource: readiness.customerSafeStatusContract.source,
   customerSafeSourceStatuses: readiness.customerSafeStatusContract.sourceStatuses,
