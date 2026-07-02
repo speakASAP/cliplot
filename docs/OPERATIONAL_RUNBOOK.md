@@ -4,13 +4,13 @@
 
 ```bash
 ssh alfares
-cd /home/ssf/Documents/Github/cliplot-service
+cd /home/ssf/Documents/Github/cliplot
 ```
 
 One-off:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && <command>'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && <command>'
 ```
 
 ## Standard Checks
@@ -58,13 +58,28 @@ python3 scripts/vault_secret_presence_gate.py --allow-missing
 
 Do not print secret values.
 
-## Docs/RAG Publication
+## Docs/RAG Preflight And Publication
+
+Run the non-mutating preflight first:
+
+```bash
+DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service
+# or
+./scripts/publish_docs_rag.sh --preflight cliplot-service
+```
+
+The preflight checks docs-rag pod discovery, JWT token presence, read-only
+ingestion status, and embedding backend reachability without calling
+`/ingestion/trigger`.
+
+Only after preflight passes and publication is intentionally approved, run the
+mutating ingestion step:
 
 ```bash
 ./scripts/publish_docs_rag.sh cliplot-service
 ```
 
-Known current blocker: docs-rag ingestion may fail while
+Known current blocker: docs-rag ingestion/preflight may fail while
 `OLLAMA_URL=http://192.168.88.53:11434` refuses connections.
 
 ## Checkout Contract Status

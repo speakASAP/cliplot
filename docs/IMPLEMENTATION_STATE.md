@@ -500,3 +500,15 @@ behavior until those approvals are present.
   operators can distinguish full live readiness from whether any mutation would
   occur. The endpoint remains read-only and does not call Orders, Payments,
   Warehouse reservation, Notifications, or persistence.
+
+
+- GOAL-04/GOAL-06 Docs/RAG publication was hardened into a two-phase flow.
+  `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service`
+  now checks docs-rag pod discovery, `JWT_TOKEN` presence, read-only
+  `/ingestion/status`, and embedding backend reachability without calling
+  `/ingestion/trigger`. Current preflight evidence: `docsRagStatusHttp=200`,
+  `embeddingBackendUrl=http://192.168.88.53:11434`,
+  `embeddingReason=embedding_backend_fetch_failed`,
+  `DOCS_RAG_PREFLIGHT=blocked`, exit `2`. Normal publication remains the
+  mutating ingestion step and must not run until preflight passes and ingestion
+  is intentionally approved.

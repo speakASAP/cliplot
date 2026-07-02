@@ -43,7 +43,7 @@ present.
 ## Deploy Command
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && ./scripts/deploy.sh'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && ./scripts/deploy.sh'
 ```
 
 ## Rollback Plan
@@ -61,3 +61,16 @@ ssh alfares 'kubectl rollout undo deployment/cliplot-service -n statex-apps'
   `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` must stay empty until approved live
   mutation evidence exists.
 - Deployment readiness now checks both false live flags and empty approval IDs.
+
+
+## Docs/RAG Operational Readiness
+
+Docs/RAG ingestion is a two-phase operation. Run the non-mutating preflight
+before publication:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service'
+```
+
+Do not run the normal publication command until preflight passes and ingestion
+is intentionally approved.

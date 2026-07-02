@@ -24,14 +24,21 @@ catalog-microservice marketplace connector flipflop structured_blocks cliplot
 
 ## Publication Command
 
-Run from `alfares`:
+Run the non-mutating preflight from `alfares` before any ingestion trigger:
 
 ```bash
-ssh alfares 'cd /home/ssf/Documents/Github/cliplot-service && ./scripts/publish_docs_rag.sh cliplot-service'
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service'
 ```
 
-The script executes inside the docs-rag pod, uses the pod's existing
-`JWT_TOKEN`, and does not print token values.
+The preflight executes inside the docs-rag pod, uses the pod's existing
+`JWT_TOKEN`, checks read-only status plus embedding backend reachability, and
+does not print token values.
+
+Only after preflight passes and publication is intentionally approved, run:
+
+```bash
+ssh alfares 'cd /home/ssf/Documents/Github/cliplot && ./scripts/publish_docs_rag.sh cliplot-service'
+```
 
 ## Publication Plan
 
@@ -54,5 +61,6 @@ Publish or synchronize these docs when the docs-rag ingestion path is confirmed:
 - `[BLOCKED: docs-rag embedding backend at 192.168.88.53:11434 refused connection]`
 - `[MISSING: docs-rag registry entry for cliplot-service]`
 
-Until resolved, keep canonical docs in this repository and query existing RAG
-only when available.
+Until resolved, keep canonical docs in this repository, run only the
+non-mutating preflight for readiness evidence, and query existing RAG only when
+available.

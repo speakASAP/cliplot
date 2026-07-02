@@ -55,3 +55,31 @@ Done.
 - `[MISSING: Catalog product scope/service-auth path for Cliplot product reads]`
 - `[MISSING: Warehouse Auth role token for Cliplot stock reads/mutations]`
 - `[MISSING: Notification channel/template contract for Cliplot order confirmations]`
+
+
+2026-07-02 Docs/RAG two-phase preflight hardening:
+
+- `bash -n scripts/publish_docs_rag.sh` passed.
+- `python3 scripts/pre_coding_gate.py --root .` passed.
+- `python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues`
+  passed.
+- `python3 scripts/deployment_readiness_gate.py --root .` passed.
+- `npm run smoke:checkout -- https://cliplot.alfares.cz` passed with guarded
+  checkout still returning `service_identity_required`, `mutation=false`,
+  `liveCheckoutPreflight=blocked`, and all mutation-plan booleans false.
+- `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot-service`
+  returned the expected non-mutating blocker:
+
+```text
+docsRagStatusHttp=200
+embeddingBackendConfigured=true
+embeddingBackendUrl=http://192.168.88.53:11434
+embeddingReason=embedding_backend_fetch_failed
+embeddingError=fetch_failed
+DOCS_RAG_PREFLIGHT=blocked
+DOCS_RAG_PREFLIGHT_EXIT=2
+```
+
+The preflight did not call `/ingestion/trigger`. Docs/RAG publication remains
+blocked on the embedding backend, but the blocker is now isolated before any
+mutating ingestion request.
