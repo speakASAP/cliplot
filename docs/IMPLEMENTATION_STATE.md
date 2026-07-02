@@ -121,7 +121,7 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 
 - GOAL-06 Kubernetes readiness monitor deployed as
   `cliplot-readiness-monitor` on schedule `*/30 * * * *` with deployed
-  image `localhost:5000/cliplot-service:f5912a8`. Production
+  image `localhost:5000/cliplot-service:013b506`. Production
   `npm run readiness:k8s -- https://cliplot.alfares.cz` returned
   `ok=true`, `livePreflightStatus=blocked`, `wouldMutate=false`,
   `liveOrderSubmit=false`, `livePaymentCreate=false`,

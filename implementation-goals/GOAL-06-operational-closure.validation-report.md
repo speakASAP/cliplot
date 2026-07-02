@@ -73,6 +73,10 @@ warehouseReservationReadiness=validated_no_mutation
 mutation=false
 CLIPLOT_READINESS_BUNDLE=blocked
 READINESS_BUNDLE_EXIT=2
+finalExternalK8sProbe.ok=true
+finalInternalK8sProbe.ok=true
+finalDeployment.image=localhost:5000/cliplot-service:013b506
+finalCronJob.suspend=false
 ```
 
 The bundle is read-only. It does not call `./scripts/deploy.sh`, does not run
@@ -81,7 +85,8 @@ reservations, callback persistence, or notifications.
 
 ## Kubernetes Readiness Monitor Validation
 
-Commit: `f5912a8`
+Code commit: `f5912a8`
+Final deployed evidence commit: `013b506`
 
 Commands:
 
@@ -109,7 +114,7 @@ PRE_CODING_GATE=pass
 STRICT_DOC_AUDIT=pass
 DEPLOYMENT_READINESS=pass
 cronjob.batch/cliplot-readiness-monitor created (server dry run)
-deployment.image=localhost:5000/cliplot-service:f5912a8
+deployment.image=localhost:5000/cliplot-service:013b506
 deployment.updated=1
 deployment.ready=1
 deployment.available=1
@@ -143,6 +148,10 @@ embeddingBackendUrl=http://192.168.88.53:11434
 embeddingReason=embedding_backend_fetch_failed
 CLIPLOT_READINESS_BUNDLE=blocked
 READINESS_BUNDLE_EXIT=2
+finalExternalK8sProbe.ok=true
+finalInternalK8sProbe.ok=true
+finalDeployment.image=localhost:5000/cliplot-service:013b506
+finalCronJob.suspend=false
 ```
 
 The Kubernetes monitor is read-only. It does not run the full operator bundle,
