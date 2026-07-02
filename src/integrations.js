@@ -826,11 +826,22 @@ async function readOrder(orderId, requestOptions = {}) {
   });
 }
 
+
+async function readOrderWithStatusToken(orderId, requestOptions = {}) {
+  return fetchJson(new URL(`/api/orders/${encodeURIComponent(orderId)}`, serviceConfig.ordersUrl), {
+    ...requestOptions,
+    headers: {
+      authorization: `Bearer ${String(serviceConfig.ordersStatusServiceToken || '').trim()}`,
+      'x-service-name': serviceConfig.ordersStatusServiceName,
+    },
+  });
+}
+
 async function readWarehouseReservation(orderId, requestOptions = {}) {
   return fetchJson(new URL(`/api/reservations/order/${encodeURIComponent(orderId)}`, serviceConfig.warehouseUrl), {
     ...requestOptions,
     headers: {
-      authorization: `Bearer ${serviceConfig.warehouseServiceToken}`,
+      authorization: `Bearer ${String(serviceConfig.warehouseServiceToken || '').trim()}`,
       'x-service-name': serviceConfig.serviceName,
     },
   });
@@ -843,7 +854,7 @@ async function cancelOrderThroughOrders(orderId, approval, requestOptions = {}) 
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${serviceConfig.ordersStatusServiceToken}`,
+      authorization: `Bearer ${String(serviceConfig.ordersStatusServiceToken || '').trim()}`,
       'x-service-name': serviceConfig.ordersStatusServiceName,
     },
     body: JSON.stringify({ status: 'cancelled', approval }),
@@ -3763,7 +3774,7 @@ async function attemptLiveOrderWarehouseSmokeCleanup(orderId, approval, checkout
   }
 
   try {
-    cleanup.orderReadback = compactOrderEvidence(await readOrder(orderId, { timeoutMs: liveSmokeRequestTimeoutMs }));
+    cleanup.orderReadback = compactOrderEvidence(await readOrderWithStatusToken(orderId, { timeoutMs: liveSmokeRequestTimeoutMs }));
   } catch (error) {
     cleanup.errors.push({ step: 'read_order_after_cleanup', error: compactSmokeError(error) });
   }
@@ -3920,7 +3931,7 @@ async function executeLiveOrderWarehouseSmoke(input, plan) {
     evidence.cancel = compactOrderEvidence(cancel);
 
     failedStep = 'read_order_after_cancel';
-    const orderReadback = await readOrder(orderId, liveRequestOptions);
+    const orderReadback = await readOrderWithStatusToken(orderId, liveRequestOptions);
     evidence.orderReadback = compactOrderEvidence(orderReadback);
 
     failedStep = 'read_warehouse_reservation_after_cancel';
