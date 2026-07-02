@@ -69,6 +69,13 @@ present.
   `wouldReadPaymentsSnapshot=false`, `wouldRenderRuntimeCustomerStatus=false`,
   `mutation=false`, `persistence=false`, and `providerCall=false` until all
   read-only runtime approvals and flags exist together.
+- The passive Payments DB snapshot adapter behind `/api/payments/status` must
+  remain inactive by default. `/api/payments/status-runtime-readiness` must
+  return `blocked_payments_snapshot_runtime_read`,
+  `runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+  `storageRead=false`, `callbackPersistence=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`; `/payments/{paymentId}` remains
+  forbidden for passive status reads.
 
 ## Deploy Command
 

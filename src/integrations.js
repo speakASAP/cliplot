@@ -1044,12 +1044,160 @@ const customerSafePaymentStatusMap = {
   unknown: { code: 'payment_status_unknown', label: 'Stav platby zatím neznáme', severity: 'info' },
 };
 
+const knownPaymentStatuses = new Set(Object.keys(customerSafePaymentStatusMap).filter((status) => status !== 'unknown'));
+
 function customerSafePaymentStatus(status) {
   const normalized = String(status || '').trim().toLowerCase();
   return customerSafePaymentStatusMap[normalized] || customerSafePaymentStatusMap.unknown;
 }
 
-export function paymentStatus(input = {}) {
+function passivePaymentSnapshotReadAllowed() {
+  const approvals = liveMutationApprovals();
+  const statusRuntimeApprovalPresent = isApprovalPresent(serviceConfig.statusRuntimeApprovalId);
+  const liveMutationRequested = serviceConfig.liveOrderSubmit
+    || serviceConfig.livePaymentCreate
+    || serviceConfig.liveNotifications
+    || approvals.order
+    || approvals.payment
+    || approvals.notification;
+
+  return serviceConfig.customerStatusRuntimeRead === true
+    && serviceConfig.paymentStatusSnapshotRead === true
+    && statusRuntimeApprovalPresent
+    && serviceConfig.paymentApiKey
+    && !liveMutationRequested;
+}
+
+function passivePaymentSnapshotRuntimeState() {
+  const approvals = liveMutationApprovals();
+  const statusRuntimeApprovalPresent = isApprovalPresent(serviceConfig.statusRuntimeApprovalId);
+  const liveMutationRequested = serviceConfig.liveOrderSubmit
+    || serviceConfig.livePaymentCreate
+    || serviceConfig.liveNotifications
+    || approvals.order
+    || approvals.payment
+    || approvals.notification;
+  const blockers = [];
+  if (!serviceConfig.customerStatusRuntimeRead) blockers.push('[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true after owner approval]');
+  if (!serviceConfig.paymentStatusSnapshotRead) blockers.push('[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true after owner approval]');
+  if (!statusRuntimeApprovalPresent) blockers.push('[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]');
+  if (!serviceConfig.paymentApiKey) blockers.push('[MISSING: PAYMENT_API_KEY in Vault]');
+  if (liveMutationRequested) blockers.push('[MISSING: read-only customer status runtime must not be activated together with live checkout mutation flags]');
+
+  return {
+    runtimeReadEnabled: passivePaymentSnapshotReadAllowed(),
+    paymentsSnapshotReadEnabled: passivePaymentSnapshotReadAllowed(),
+    statusRuntimeApprovalPresent,
+    customerStatusRuntimeRead: serviceConfig.customerStatusRuntimeRead,
+    paymentStatusSnapshotRead: serviceConfig.paymentStatusSnapshotRead,
+    paymentApiKeyPresent: Boolean(serviceConfig.paymentApiKey),
+    liveMutationRequested,
+    blockers,
+  };
+}
+
+function normalizePaymentSnapshotPayload(payload, fallbackOrderId) {
+  const data = payload?.data || payload?.payment || payload || {};
+  const status = String(data.status || data.paymentStatus || 'unknown').trim().toLowerCase();
+  const safeStatus = knownPaymentStatuses.has(status) ? status : 'unknown';
+  return {
+    paymentId: data.paymentId || data.id || undefined,
+    orderId: data.orderId || fallbackOrderId || undefined,
+    applicationId: data.applicationId || serviceConfig.applicationId,
+    paymentStatus: safeStatus,
+    rawStatusRecognized: safeStatus !== 'unknown',
+    customerSafePaymentStatus: customerSafePaymentStatus(safeStatus),
+    amount: data.amount ?? undefined,
+    currency: data.currency || undefined,
+    paymentMethod: data.paymentMethod || undefined,
+    createdAt: data.createdAt || undefined,
+    updatedAt: data.updatedAt || undefined,
+    completedAt: data.completedAt || undefined,
+    refundedAt: data.refundedAt || undefined,
+    source: data.source || 'payments_db_snapshot',
+    providerCallExplicit: data.providerCall === false,
+    mutationExplicit: data.mutation === false,
+    persistenceExplicit: data.persistence === false,
+    providerCall: data.providerCall === true,
+    mutation: data.mutation === true,
+    persistence: data.persistence === true,
+  };
+}
+
+async function readPaymentSnapshotByOrderId(orderId) {
+  const url = new URL('/payments/status/by-order-id', serviceConfig.paymentUrl);
+  url.searchParams.set('applicationId', serviceConfig.applicationId);
+  url.searchParams.set('orderId', orderId);
+  const { controller, timeout } = timeoutSignal();
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        accept: 'application/json',
+        'x-api-key': serviceConfig.paymentApiKey,
+      },
+    });
+    const text = await response.text();
+    let payload = {};
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      payload = { nonJsonBodyPreview: text.slice(0, 160) };
+    }
+
+    if (!response.ok) {
+      const error = new Error(`HTTP ${response.status}`);
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+
+    return normalizePaymentSnapshotPayload(payload, orderId);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function guardedPaymentStatusBody(orderId, paymentId) {
+  const runtime = passivePaymentSnapshotRuntimeState();
+  return {
+    success: true,
+    status: 'payment_status_guarded_no_persistence',
+    mode: 'guarded_payment_status',
+    orderId: orderId || undefined,
+    paymentId: paymentId || undefined,
+    paymentStatus: 'unknown',
+    customerSafePaymentStatus: customerSafePaymentStatus('unknown'),
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    runtimeReadEnabled: false,
+    paymentsSnapshotReadEnabled: false,
+    storageRead: false,
+    passiveSnapshotAdapter: {
+      configured: true,
+      active: false,
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      forbiddenEndpoint: '/payments/{paymentId}',
+      runtimeReadEnabled: runtime.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: runtime.paymentsSnapshotReadEnabled,
+      statusRuntimeApprovalPresent: runtime.statusRuntimeApprovalPresent,
+      customerStatusRuntimeRead: runtime.customerStatusRuntimeRead,
+      paymentStatusSnapshotRead: runtime.paymentStatusSnapshotRead,
+      paymentApiKeyPresent: runtime.paymentApiKeyPresent,
+      liveMutationRequested: runtime.liveMutationRequested,
+      providerCall: false,
+      persistence: false,
+      mutation: false,
+      blockers: runtime.blockers,
+    },
+    liveMutationApprovals: liveMutationApprovals(),
+    next: 'Read Payments DB snapshot only after owner-approved read-only status runtime flags and approval ID exist.',
+  };
+}
+
+export async function paymentStatus(input = {}) {
   const orderId = normalizeExternalOrderId(input.orderId || input.externalOrderId);
   const paymentId = normalizeStatusIdentifier(input.paymentId);
   if (!orderId && !paymentId) {
@@ -1066,22 +1214,138 @@ export function paymentStatus(input = {}) {
     };
   }
 
+  const runtime = passivePaymentSnapshotRuntimeState();
+  if (!runtime.runtimeReadEnabled) {
+    return {
+      httpStatus: 200,
+      body: guardedPaymentStatusBody(orderId, paymentId),
+    };
+  }
+
+  if (!orderId) {
+    return {
+      httpStatus: 400,
+      body: {
+        success: false,
+        status: 'payment_status_order_id_required_for_snapshot_read',
+        errors: ['order_id_required_for_payments_db_snapshot_read'],
+        paymentId: paymentId || undefined,
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        forbiddenEndpoint: '/payments/{paymentId}',
+      },
+    };
+  }
+
+  try {
+    const snapshot = await readPaymentSnapshotByOrderId(orderId);
+    const readOnly = snapshot.providerCall === false
+      && snapshot.persistence === false
+      && snapshot.mutation === false
+      && snapshot.providerCallExplicit === true
+      && snapshot.persistenceExplicit === true
+      && snapshot.mutationExplicit === true
+      && snapshot.source === 'payments_db_snapshot'
+      && snapshot.applicationId === serviceConfig.applicationId
+      && snapshot.orderId === orderId;
+    if (!readOnly) {
+      return {
+        httpStatus: 502,
+        body: {
+          success: false,
+          status: 'payment_status_snapshot_contract_violation',
+          orderId,
+          source: snapshot.source,
+          mutation: false,
+          persistence: false,
+          providerCall: false,
+        },
+      };
+    }
+    return {
+      httpStatus: 200,
+      body: {
+        success: true,
+        status: 'payment_status_snapshot_read',
+        mode: 'payments_db_snapshot_read',
+        ...snapshot,
+        runtimeReadEnabled: true,
+        paymentsSnapshotReadEnabled: true,
+        storageRead: false,
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        sensitiveDataPolicy: [
+          'no provider transaction id',
+          'no raw provider payload',
+          'no secret values',
+        ],
+      },
+    };
+  } catch (error) {
+    const errorCode = error?.payload?.error?.code || error?.payload?.code || error?.payload?.error || null;
+    return {
+      httpStatus: error?.status === 404 ? 200 : 502,
+      body: {
+        success: error?.status === 404,
+        status: error?.status === 404 ? 'payment_status_snapshot_not_available' : 'payment_status_snapshot_read_failed',
+        orderId,
+        httpStatus: error?.status || 0,
+        errorCode: error?.status === 404 ? undefined : errorCode,
+        paymentStatus: 'unknown',
+        customerSafePaymentStatus: customerSafePaymentStatus('unknown'),
+        runtimeReadEnabled: true,
+        paymentsSnapshotReadEnabled: true,
+        storageRead: false,
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+      },
+    };
+  }
+}
+
+export function paymentStatusRuntimeReadiness() {
+  const runtime = passivePaymentSnapshotRuntimeState();
   return {
-    httpStatus: 200,
-    body: {
-      success: true,
-      status: 'payment_status_guarded_no_persistence',
-      mode: 'guarded_payment_status',
-      orderId: orderId || undefined,
-      paymentId: paymentId || undefined,
-      paymentStatus: 'unknown',
-      customerSafePaymentStatus: customerSafePaymentStatus('unknown'),
-      mutation: false,
-      persistence: false,
+    success: true,
+    status: runtime.runtimeReadEnabled
+      ? 'ready_for_approved_payments_snapshot_runtime_read'
+      : 'blocked_payments_snapshot_runtime_read',
+    mode: 'guarded_payment_status_runtime_readiness',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    runtimeReadEnabled: false,
+    paymentsSnapshotReadEnabled: false,
+    storageRead: false,
+    callbackPersistence: false,
+    ...runtime,
+    readContract: {
+      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
+      forbiddenEndpoint: '/payments/{paymentId}',
+      applicationId: serviceConfig.applicationId,
+      requiredScope: 'payments:read',
+      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      source: 'payments_db_snapshot',
       providerCall: false,
-      liveMutationApprovals: liveMutationApprovals(),
-      next: 'Read provider-backed payment status only after GOAL-05 live payment status contract is approved.',
+      persistence: false,
+      mutation: false,
     },
+    forbiddenOperations: [
+      'read /payments/{paymentId}',
+      'create payment',
+      'create order',
+      'reserve Warehouse stock',
+      'send notification',
+      'persist callback state',
+      'print API keys or webhook keys',
+      'return provider transaction IDs or raw provider payloads',
+    ],
+    next: 'Keep production blocked until owner-approved read-only status runtime flags and approval ID exist together.',
   };
 }
 
@@ -1230,7 +1494,7 @@ export function paymentCallbackReadiness() {
 
 export async function paymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
-  const statusResult = paymentStatus({ orderId: syntheticOrderId });
+  const statusResult = await paymentStatus({ orderId: syntheticOrderId });
   const statusBody = statusResult.body || {};
   const callback = paymentCallbackReadiness();
   const readScope = await paymentReadScopeReadiness();
@@ -1263,6 +1527,12 @@ export async function paymentStatusReadiness() {
       providerCall: statusBody.providerCall,
       paymentStatus: statusBody.paymentStatus || null,
       customerSafePaymentStatus: statusBody.customerSafePaymentStatus || null,
+    },
+    passiveSnapshotAdapter: {
+      ...(statusBody.passiveSnapshotAdapter || {}),
+      runtimeReadinessEndpoint: '/api/payments/status-runtime-readiness',
+      currentRuntimeStatus: paymentStatusRuntimeReadiness().status,
+      active: statusBody.passiveSnapshotAdapter?.active === true,
     },
     callbackReadiness: {
       endpoint: '/api/payments/callback-readiness',
@@ -1730,7 +2000,7 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
 
 export async function customerStatusSurfaceReadiness() {
   const syntheticOrderId = 'cliplot-status-surface-readiness';
-  const currentPaymentStatus = paymentStatus({ orderId: syntheticOrderId }).body || {};
+  const currentPaymentStatus = (await paymentStatus({ orderId: syntheticOrderId })).body || {};
   const paymentReadiness = await paymentStatusReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
   const guarded = currentPaymentStatus.status === 'payment_status_guarded_no_persistence'

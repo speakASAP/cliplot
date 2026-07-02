@@ -173,6 +173,15 @@ notification sends, and Docs/RAG ingestion gated.
   remains `blocked_read_only_customer_status_runtime_activation` with no
   Payments snapshot read, no runtime status rendering, no mutation, no
   persistence, and no provider call.
+- The disabled-by-default passive Payments DB snapshot adapter is wired behind
+  `/api/payments/status` and reported by
+  `GET /api/payments/status-runtime-readiness` plus
+  `npm run readiness:customer-status-runtime-read`. Default production remains
+  `blocked_payments_snapshot_runtime_read` and
+  `payment_status_guarded_no_persistence`: `runtimeReadEnabled=false`,
+  `paymentsSnapshotReadEnabled=false`, `storageRead=false`, `mutation=false`,
+  `persistence=false`, `providerCall=false`, and `/payments/{paymentId}` is
+  still forbidden for passive Cliplot status reads.
 - The post-rename order/Warehouse readiness report is wired as `GET /api/checkout/order-warehouse-readiness` and `npm run readiness:order-warehouse`. It proves, without live mutation, that `service=cliplot` can use a Catalog-backed product with `warehouseId`, validate `orders.create.v1` through Orders `/api/orders/validate-create`, and verify Warehouse availability through `/api/stock/availability/batch` while returning `mutation=false`, `providerCall=false`, and `persistence=false`.
 - The live activation gate now blocks partial future live configurations. `npm run readiness:activation -- https://cliplot.alfares.cz` proves order-only and order-plus-payment scenarios remain `blocked` with `wouldMutate=false`; a fully approved simulated configuration becomes `ready_for_approved_live_mutation` with order, Warehouse reservation, payment, and notification mutation plan booleans true.
 - The Kubernetes readiness monitor lane is endpoint-only and read-only. It

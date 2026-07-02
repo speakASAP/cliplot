@@ -254,6 +254,25 @@ live order/payment/Warehouse/notification mutation.
 npm run readiness:customer-status-activation -- https://cliplot.alfares.cz
 ```
 
+`GET /api/payments/status-runtime-readiness` reports the disabled-by-default
+passive Payments DB snapshot adapter for `/api/payments/status`. The adapter may
+only use `/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}`
+after owner approval, `CLIPLOT_STATUS_RUNTIME_APPROVAL_ID`,
+`ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true`, and
+`ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true` exist together. Default production
+must remain `blocked_payments_snapshot_runtime_read`,
+`runtimeReadEnabled=false`, `paymentsSnapshotReadEnabled=false`,
+`storageRead=false`, `callbackPersistence=false`, `mutation=false`,
+`persistence=false`, and `providerCall=false`.
+
+The adapter must never call `/payments/{paymentId}` for passive status reads and
+must not expose provider transaction IDs, metadata, callback URLs, raw provider
+payloads, or secret values.
+
+```bash
+npm run readiness:customer-status-runtime-read -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/callback-readiness` validates the configured webhook key
 through an internal synthetic callback ACK. It must return
 `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`,

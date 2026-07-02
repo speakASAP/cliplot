@@ -79,6 +79,9 @@ async function main() {
   assertFalse(paymentStatus.body?.mutation, 'payment_status_mutation_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.persistence, 'payment_status_persistence_enabled', { paymentStatus: paymentStatus.body });
   assertFalse(paymentStatus.body?.providerCall, 'payment_status_provider_call_enabled', { paymentStatus: paymentStatus.body });
+  assertEqual(paymentStatus.body?.runtimeReadEnabled, false, 'payment_status_runtime_read_enabled', { paymentStatus: paymentStatus.body });
+  assertEqual(paymentStatus.body?.paymentsSnapshotReadEnabled, false, 'payment_status_snapshot_read_enabled', { paymentStatus: paymentStatus.body });
+  assertEqual(paymentStatus.body?.passiveSnapshotAdapter?.active, false, 'payment_status_snapshot_adapter_active', { paymentStatus: paymentStatus.body });
 
   const paymentCallback = await getJson('/api/payments/callback-readiness');
   assertEqual(paymentCallback.body?.status, 'validated_guarded_ack_no_persistence', 'payment_callback_readiness_not_validated', { paymentCallback: paymentCallback.body });
@@ -114,6 +117,17 @@ async function main() {
   assertFalse(snapshotReadApproval.body?.mutation, 'payment_status_snapshot_read_approval_mutation_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.persistence, 'payment_status_snapshot_read_approval_persistence_enabled', { snapshotReadApproval: snapshotReadApproval.body });
   assertFalse(snapshotReadApproval.body?.providerCall, 'payment_status_snapshot_read_approval_provider_call_enabled', { snapshotReadApproval: snapshotReadApproval.body });
+
+  const statusRuntimeReadiness = await getJson('/api/payments/status-runtime-readiness');
+  assertEqual(statusRuntimeReadiness.body?.status, 'blocked_payments_snapshot_runtime_read', 'payment_status_runtime_readiness_unexpected', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.runtimeReadEnabled, false, 'payment_status_runtime_readiness_runtime_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.paymentsSnapshotReadEnabled, false, 'payment_status_runtime_readiness_snapshot_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.storageRead, false, 'payment_status_runtime_readiness_storage_read_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.callbackPersistence, false, 'payment_status_runtime_readiness_callback_persistence_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertFalse(statusRuntimeReadiness.body?.mutation, 'payment_status_runtime_readiness_mutation_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertFalse(statusRuntimeReadiness.body?.persistence, 'payment_status_runtime_readiness_persistence_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertFalse(statusRuntimeReadiness.body?.providerCall, 'payment_status_runtime_readiness_provider_call_enabled', { statusRuntimeReadiness: statusRuntimeReadiness.body });
+  assertEqual(statusRuntimeReadiness.body?.readContract?.forbiddenEndpoint, '/payments/{paymentId}', 'payment_status_runtime_readiness_forbidden_endpoint_missing', { statusRuntimeReadiness: statusRuntimeReadiness.body });
 
   const checkoutStatusSurface = await getJson('/api/checkout/status-surface-contract');
   assertEqual(checkoutStatusSurface.body?.status, 'guarded_customer_status_surface_contract', 'checkout_status_surface_unexpected', { checkoutStatusSurface: checkoutStatusSurface.body });
@@ -161,6 +175,7 @@ async function main() {
     paymentStatusStorageReadiness: paymentStatusStorage.body.status,
     paymentStatusPersistenceDecision: paymentDecision.body.status,
     paymentStatusSnapshotReadApproval: snapshotReadApproval.body.status,
+    paymentStatusRuntimeReadiness: statusRuntimeReadiness.body.status,
     checkoutStatusSurface: checkoutStatusSurface.body.status,
     customerStatusRollout: customerStatusRollout.body.status,
     customerStatusActivation: customerStatusActivation.body.status,
