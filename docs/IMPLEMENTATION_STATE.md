@@ -799,3 +799,15 @@ revenue closure approval-required for future mutations, and records authority
 boundaries for Orders, Payments, Warehouse, Notifications, and Cliplot. The
 packet must keep live flags closed and must not mutate, persist, call providers,
 send notifications, replay callbacks, write statuses, or expose secrets/PII.
+
+
+### 2026-07-03 - Callback/payment status reconciliation readiness
+
+Added a read-only callback/payment status reconciliation packet at
+`GET /api/payments/status-reconciliation-readiness-packet` with
+`npm run readiness:payment-status-reconciliation`. It freezes guarded callback
+ACK, callback replay policy, passive Payments snapshot read, mapping ownership,
+and live-status-write metadata for owner review while keeping callback
+persistence, replay execution, status writes, payment creation, notification
+sends, provider-backed payment detail reads, and Cliplot-local payment truth
+disabled.

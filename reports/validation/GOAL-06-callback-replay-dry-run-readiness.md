@@ -48,3 +48,22 @@ The replay rollout packet exposes `syntheticReplayDryRunAssertions` for these no
 - `retention_and_deletion_metadata`: retention/deletion metadata is present without enabling storage.
 - `rollback_and_validation_owner`: rollback and validation owners are present.
 - `runtime_guard_closed`: replay execution, callback persistence, and live status writes remain disabled.
+
+
+## Callback/Payment Status Reconciliation Readiness
+
+The reconciliation readiness packet is read-only and intended for owner review:
+
+```bash
+npm run readiness:payment-status-reconciliation -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/status-reconciliation-readiness-packet
+```
+
+Expected status:
+`ready_for_callback_payment_status_reconciliation_review_execution_disabled`.
+
+It must keep callback persistence, callback replay execution, live status
+writes, payment creation, notification sends, provider-backed payment detail
+reads, and Cliplot-local payment truth disabled. It must report
+`mutation=false`, `persistence=false`, `providerCall=false`,
+`liveExecutionAllowed=false`, and `failedAssertionCount=0`.

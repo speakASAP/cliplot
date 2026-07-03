@@ -404,6 +404,24 @@ payments, or send notifications.
 npm run readiness:payment-live-status-write -- https://cliplot.alfares.cz
 ```
 
+
+`GET /api/payments/status-reconciliation-readiness-packet` is the read-only
+callback/payment status reconciliation packet. It aggregates the guarded
+callback ACK, callback replay policy metadata, approved passive Payments
+snapshot read, order/payment mapping ownership, and live-status-write metadata
+while keeping callback persistence, callback replay execution, live status
+writes, payment creation, notification sends, provider-backed payment detail
+reads, and Cliplot-local payment truth disabled. It may return
+`ready_for_callback_payment_status_reconciliation_review_execution_disabled`
+only when all assertions prove `mutation=false`, `persistence=false`,
+`providerCall=false`, `liveExecutionAllowed=false`, and all live flags remain
+closed.
+
+```bash
+npm run readiness:payment-status-reconciliation -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/status-reconciliation-readiness-packet
+```
+
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the

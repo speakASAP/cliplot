@@ -4909,6 +4909,149 @@ export async function paymentLiveStatusWriteApprovalPacket() {
 }
 
 
+export async function paymentStatusReconciliationReadinessPacket() {
+  const liveStatusWrite = await paymentLiveStatusWriteApprovalPacket();
+  const runtime = paymentStatusRuntimeReadiness();
+  const callbackReadiness = paymentCallbackReadiness();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const writeGuards = liveStatusWrite.currentWriteGuards || {};
+  const passiveRead = liveStatusWrite.passiveReadEvidence || {};
+  const assertions = [
+    { name: 'guarded_callback_ack_no_persistence', passed: callbackReadiness.status === 'validated_guarded_ack_no_persistence' && callbackReadiness.persistence === false },
+    { name: 'callback_policy_metadata_approved_execution_disabled', passed: callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' && callbackPolicy.callbackPersistence === false && callbackPolicy.callbackReplayEnabled === false },
+    { name: 'passive_payment_snapshot_read_approved', passed: passiveRead.paymentStatus === 'ready_for_approved_payment_status_runtime_read' && passiveRead.snapshotReadApproval === 'approved_passive_payments_snapshot_read' },
+    { name: 'mapping_ownership_approved_non_authoritative', passed: passiveRead.mappingOwnership === 'approved_order_payment_status_mapping_ownership' },
+    { name: 'live_status_write_metadata_approved_execution_disabled', passed: liveStatusWrite.status === 'approved_live_status_write_metadata_execution_disabled' && liveStatusWrite.liveStatusWritesNow === false },
+    { name: 'runtime_read_only_snapshot_enabled', passed: runtime.runtimeReadEnabled === true && runtime.paymentsSnapshotReadEnabled === true && runtime.storageRead === false },
+    { name: 'callback_persistence_disabled', passed: writeGuards.callbackPersistence === false && liveStatusWrite.callbackPersistence === false },
+    { name: 'callback_replay_execution_disabled', passed: writeGuards.replayExecutionAllowed === false && liveStatusWrite.callbackReplayEnabled === false },
+    { name: 'current_status_persistence_disabled', passed: writeGuards.currentStatusPersistence === false && writeGuards.liveWritesEnabled === false },
+    { name: 'live_status_writes_disabled', passed: writeGuards.liveStatusWritesNow === false && liveStatusWrite.liveStatusWritesEnabled === false },
+    { name: 'live_payment_and_notification_flags_closed', passed: liveFlagsClosed && serviceConfig.livePaymentCreate === false && serviceConfig.liveNotifications === false },
+    { name: 'packet_side_effects_disabled', passed: liveStatusWrite.mutation === false && liveStatusWrite.persistence === false && liveStatusWrite.providerCall === false },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+
+  return {
+    success: true,
+    status: failedAssertions.length === 0
+      ? 'ready_for_callback_payment_status_reconciliation_review_execution_disabled'
+      : 'blocked_callback_payment_status_reconciliation_readiness',
+    mode: 'read_only_callback_payment_status_reconciliation_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    reconciliationPurpose: 'Freeze callback/payment status reconciliation readiness for owner review without enabling persistence, replay execution, status writes, payment creation, notification sends, or provider-backed payment reads.',
+    callbackEvidence: {
+      callbackReadiness: callbackReadiness.status,
+      callbackPolicy: callbackPolicy.status,
+      callbackPersistence: callbackPolicy.callbackPersistence,
+      callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
+      guardedAckOnly: callbackReadiness.callbackAccepted === true,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    passivePaymentStatusRead: {
+      paymentStatus: passiveRead.paymentStatus,
+      snapshotReadApproval: passiveRead.snapshotReadApproval,
+      mappingOwnership: passiveRead.mappingOwnership,
+      runtimeReadiness: passiveRead.runtimeReadiness,
+      runtimeReadEnabled: runtime.runtimeReadEnabled,
+      paymentsSnapshotReadEnabled: runtime.paymentsSnapshotReadEnabled,
+      storageRead: runtime.storageRead,
+      callbackPersistence: runtime.callbackPersistence,
+      approvedReadContract: liveStatusWrite.approvedReadContract,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    reconciliationBoundaries: {
+      ordersOwner: 'orders-microservice',
+      paymentsOwner: 'payments-microservice',
+      cliplotRole: 'non_authoritative_customer_safe_renderer_and_guarded_callback_ack',
+      callbackPersistenceOwnerAfterApproval: 'payments-microservice',
+      liveStatusWriteOwnerAfterApproval: 'payments-microservice',
+      noCliplotLocalPaymentTruth: true,
+      noProviderBackedPaymentIdReads: true,
+      noOrderStatusWritesFromCliplot: true,
+      noPaymentStatusWritesNow: true,
+      noNotificationSendsNow: true,
+    },
+    currentRuntimeGuards: {
+      liveFlagsClosed,
+      callbackPersistence: liveStatusWrite.callbackPersistence,
+      callbackReplayEnabled: liveStatusWrite.callbackReplayEnabled,
+      replayExecutionAllowed: writeGuards.replayExecutionAllowed,
+      liveStatusWritesEnabled: liveStatusWrite.liveStatusWritesEnabled,
+      liveStatusWritesNow: liveStatusWrite.liveStatusWritesNow,
+      currentStatusPersistence: writeGuards.currentStatusPersistence,
+      liveWritesEnabled: writeGuards.liveWritesEnabled,
+      livePaymentCreate: serviceConfig.livePaymentCreate,
+      liveNotifications: serviceConfig.liveNotifications,
+      liveOrderSubmit: serviceConfig.liveOrderSubmit,
+      liveOrderWarehouseSmoke: serviceConfig.liveOrderWarehouseSmoke,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    dryRunReconciliationMatrix: {
+      status: 'metadata_only_reconciliation_review_ready',
+      cases: [
+        { id: 'duplicate_callback_same_semantic_status', expected: 'idempotent_after_future_approval', runtimeMutationNow: false },
+        { id: 'terminal_status_conflict', expected: 'manual_review_no_auto_update', runtimeMutationNow: false },
+        { id: 'payments_snapshot_stale_or_429', expected: 'use_last_known_success_or_unknown_without_write', runtimeMutationNow: false },
+        { id: 'post_window_payment_status_review', expected: 'read_only_owner_review_no_reconciliation_write', runtimeMutationNow: false },
+      ],
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    futureEnablementRequiresSeparateWindow: [
+      'ENABLE_PAYMENT_CALLBACK_PERSISTENCE=true after storage approval',
+      'ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION=true after replay approval',
+      'ENABLE_PAYMENT_LIVE_STATUS_WRITE=true after bounded status-write approval',
+      'approved rollback owner and validation owner for live status writes',
+      'post-window read-only reconciliation report',
+    ],
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    forbiddenOperationsNow: [
+      'do not persist callback state',
+      'do not execute callback replay',
+      'do not write payment status',
+      'do not write order status',
+      'do not create payment',
+      'do not send notification',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not expose callback payloads, payment rows, provider payloads, provider transaction ids, customer PII, or secrets',
+    ],
+    sensitiveDataPolicy: [
+      'metadata only',
+      'synthetic reconciliation cases only',
+      'no real callback payload',
+      'no payment rows',
+      'no provider payload',
+      'no customer PII',
+      'no secrets',
+    ],
+    next: failedAssertions.length === 0
+      ? 'Use this packet as read-only callback/payment status reconciliation evidence; open a separate bounded window before any callback persistence, replay execution, or live status writes.'
+      : 'Resolve failed callback/payment status reconciliation assertions before owner review.',
+  };
+}
+
+
 export async function paymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
   const statusResult = await paymentStatus({ orderId: syntheticOrderId });
