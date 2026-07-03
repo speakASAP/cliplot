@@ -787,3 +787,15 @@ bounded checkout window for order
 `failedAssertionCount=0`, `mutation=false`, `persistence=false`, and
 `providerCall=false`. `npm run readiness:bundle` passes with the
 `post_live_revenue_closure` step included.
+
+
+### 2026-07-03 - Revenue handoff reconciliation packet
+
+Added a read-only revenue handoff reconciliation packet at
+`GET /api/checkout/revenue-handoff-reconciliation-packet` with
+`npm run readiness:revenue-handoff-reconciliation`. It packages the completed
+full-checkout evidence for owner review while the runtime is closed, keeps
+revenue closure approval-required for future mutations, and records authority
+boundaries for Orders, Payments, Warehouse, Notifications, and Cliplot. The
+packet must keep live flags closed and must not mutate, persist, call providers,
+send notifications, replay callbacks, write statuses, or expose secrets/PII.

@@ -26,6 +26,7 @@ import {
   orderWarehouseReadinessReport,
   revenueClosurePacket,
   postLiveRevenueClosureEvidencePacket,
+  revenueHandoffReconciliationPacket,
   paymentCallbackReadiness,
   paymentCallbackReplayPolicyReadiness,
   paymentCallbackPersistenceApprovalPacket,
@@ -289,6 +290,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/post-live-revenue-closure-evidence-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/revenue-handoff-reconciliation-packet' && req.method === 'GET') {
+      sendJson(res, 200, await revenueHandoffReconciliationPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/revenue-handoff-reconciliation-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

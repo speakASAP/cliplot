@@ -137,3 +137,24 @@ the single `617c23e` pod, the packet returned JSON and the full readiness bundle
 passed. The current runtime remains closed and this packet does not open flags,
 call the bounded executor, or perform order, Warehouse, payment, notification,
 callback, status-write, provider-read, or secret-printing side effects.
+
+
+## Revenue Handoff Reconciliation Packet
+
+The follow-on handoff packet is read-only and intended for owner review of the
+closed full-checkout window:
+
+```bash
+npm run readiness:revenue-handoff-reconciliation -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/revenue-handoff-reconciliation-packet
+```
+
+Expected status:
+`ready_for_revenue_handoff_reconciliation_review_execution_disabled`.
+
+The packet must keep `mutation=false`, `persistence=false`,
+`providerCall=false`, `sideEffects=false`, and `liveExecutionAllowed=false`.
+It must leave revenue closure guarded for future bounded windows and must not
+persist callback state, replay callbacks, write live statuses, read
+provider-backed payment detail, open live flags, or expose raw PII/provider
+payloads.

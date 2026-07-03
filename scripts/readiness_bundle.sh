@@ -173,6 +173,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_step live_smoke_executor_guard npm run readiness:live-smoke-executor -- "$BASE_URL"
   run_step revenue_closure_packet npm run readiness:revenue-closure -- "$BASE_URL"
   run_step post_live_revenue_closure npm run readiness:post-live-revenue-closure -- "$BASE_URL"
+  run_step revenue_handoff_reconciliation npm run readiness:revenue-handoff-reconciliation -- "$BASE_URL"
   run_step guarded_checkout_smoke npm run smoke:checkout -- "$BASE_URL"
 else
   echo "READINESS_STEP=guarded_checkout_smoke"

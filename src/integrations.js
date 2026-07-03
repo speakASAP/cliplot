@@ -7748,6 +7748,113 @@ export async function postLiveRevenueClosureEvidencePacket() {
 }
 
 
+export async function revenueHandoffReconciliationPacket() {
+  const revenue = await revenueClosurePacket();
+  const postLive = await postLiveRevenueClosureEvidencePacket();
+  const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
+  const runbook = await liveOwnerExecutionRunbookPacket();
+  const preflight = liveCheckoutPreflight();
+  const completedWindow = postLive.completedWindow || completedFullCheckoutLiveWindowEvidenceSummary();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const revenueBlockers = Array.isArray(revenue.blockers) ? revenue.blockers : [];
+  const assertions = [
+    { name: 'post_live_window_validated', passed: postLive.status === 'validated_completed_full_checkout_live_window_closed' },
+    { name: 'post_live_assertions_clean', passed: Array.isArray(postLive.failedAssertions) && postLive.failedAssertions.length === 0 },
+    { name: 'current_live_flags_closed', passed: liveFlagsClosed },
+    { name: 'current_preflight_blocked_no_mutation', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
+    { name: 'revenue_closure_guarded', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false },
+    { name: 'handoff_contract_execution_disabled', passed: handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' && handoff.liveExecutionAllowed === false },
+    { name: 'owner_runbook_execution_disabled', passed: runbook.status === 'approved_owner_live_execution_runbook_contract_execution_disabled' && runbook.liveExecutionAllowed === false },
+    { name: 'callback_persistence_disabled', passed: revenue.callbackPolicy?.callbackPersistence === false },
+    { name: 'callback_replay_disabled', passed: revenue.callbackPolicy?.callbackReplayEnabled === false },
+    { name: 'live_status_writes_disabled', passed: revenue.liveStatusWriteApproval?.liveStatusWritesNow === false },
+    { name: 'packet_side_effects_disabled', passed: postLive.mutation === false && postLive.persistence === false && postLive.providerCall === false && postLive.sideEffects === false },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+  const status = failedAssertions.length === 0
+    ? 'ready_for_revenue_handoff_reconciliation_review_execution_disabled'
+    : 'blocked_revenue_handoff_reconciliation_review';
+
+  return {
+    success: true,
+    status,
+    mode: 'read_only_revenue_handoff_reconciliation_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    handoffPurpose: 'Provide closed-window revenue evidence for owner review without opening live flags or reconciling mutable state.',
+    completedRevenueEvidence: {
+      evidenceRecord: completedWindow.evidenceRecord,
+      executedAt: completedWindow.executedAt,
+      orderId: completedWindow.orderId,
+      externalOrderId: completedWindow.externalOrderId,
+      executorStatus: completedWindow.executorStatus,
+      orderReplaySameOrderId: completedWindow.orderReplaySameOrderId,
+      orderFinalStatus: completedWindow.orderReadbackStatus,
+      warehouseActiveReservationCount: completedWindow.warehouseAfterCancel?.activeReservationCount,
+      paymentStatus: completedWindow.paymentEvidence?.status,
+      notificationStatus: completedWindow.notificationEvidence?.status,
+      fingerprintsOnly: true,
+    },
+    currentClosedRuntime: {
+      liveFlagsClosed,
+      livePreflight: preflight.status,
+      wouldMutateNow: revenue.wouldMutateNow,
+      revenueClosure: revenue.status,
+      revenueBlockerCount: revenueBlockers.length,
+      liveReadinessHandoff: handoff.status,
+      ownerRunbook: runbook.status,
+      callbackPersistence: revenue.callbackPolicy?.callbackPersistence,
+      callbackReplayEnabled: revenue.callbackPolicy?.callbackReplayEnabled,
+      liveStatusWritesNow: revenue.liveStatusWriteApproval?.liveStatusWritesNow,
+    },
+    reconciliationBoundaries: {
+      ordersLifecycleAuthority: 'Orders service remains authoritative for order lifecycle and cancellation status.',
+      paymentStatusAuthority: 'Payments service remains authoritative for payment status; Cliplot records fingerprints only.',
+      warehouseReservationAuthority: 'Warehouse service remains authoritative for stock reservations and release state.',
+      notificationAuthority: 'Notifications service remains authoritative for send result; Cliplot records fingerprints only.',
+      cliplotRole: 'read-only storefront evidence renderer and operator handoff packet provider',
+      noLocalRevenueLedger: true,
+      noCallbackPersistence: true,
+      noCallbackReplayExecution: true,
+      noLiveStatusWrites: true,
+      noProviderBackedPaymentIdReads: true,
+    },
+    revenueClosureDisposition: {
+      status: revenue.status,
+      currentlyReadyForNewMutation: false,
+      completedWindowMayBeReviewed: failedAssertions.length === 0,
+      remainingBlockersRequireFutureBoundedWindow: true,
+      blockerCount: revenueBlockers.length,
+      blockers: revenueBlockers,
+    },
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    forbiddenOperationsNow: [
+      'do not open live flags from this packet',
+      'do not call checkout/order/payment/notification mutation endpoints',
+      'do not persist callbacks or replay callbacks',
+      'do not reconcile or write order/payment status from Cliplot',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not expose customer PII, provider payloads, provider transaction ids, recipients, message bodies, or secrets',
+    ],
+    sensitiveDataPolicy: completedWindow.sensitiveDataPolicy,
+    next: failedAssertions.length === 0
+      ? 'Use this packet as the read-only owner handoff for closed-window revenue review; open a separate bounded execution window before any new live mutation or reconciliation write.'
+      : 'Resolve failed handoff assertions before using this packet for revenue review.',
+  };
+}
+
+
 export async function revenueClosurePacket() {
   const approvalPacket = await liveCheckoutApprovalPacket();
   const productFilter = await catalogProductFilterReadiness();

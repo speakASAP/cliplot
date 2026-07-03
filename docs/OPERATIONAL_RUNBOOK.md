@@ -688,6 +688,29 @@ default. It may contain only order ids and fingerprints; it must not expose raw
 customer PII, provider payloads, provider transaction ids, notification
 recipients, message bodies, service tokens, or API keys.
 
+
+## Revenue Handoff Reconciliation Packet
+
+After the post-live revenue closure packet is clean, use the handoff
+reconciliation packet for owner review of the closed live window:
+
+```bash
+npm run readiness:revenue-handoff-reconciliation -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/revenue-handoff-reconciliation-packet
+```
+
+The packet must return
+`ready_for_revenue_handoff_reconciliation_review_execution_disabled`, keep all
+live flags closed, and preserve `mutation=false`, `persistence=false`,
+`providerCall=false`, and `liveExecutionAllowed=false`. It summarizes only
+order ids and fingerprints from the completed live window, records that revenue
+closure remains `approval_required_live_revenue_closure`, and names the
+authority boundaries: Orders for order lifecycle, Payments for payment status,
+Warehouse for reservation state, Notifications for send results, and Cliplot as
+read-only evidence renderer. It is not permission to reconcile, persist
+callbacks, replay callbacks, update order/payment status, read provider-backed
+payment detail, open flags, or call mutation endpoints.
+
 ## Operator Readiness Bundle
 
 Run the read-only bundle before handoff or live-mutation approval reviews:
