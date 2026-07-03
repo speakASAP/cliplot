@@ -303,3 +303,29 @@ Auth wallet row-to-checkout/order field mapping implementation, and guest
 fallback implementation are now covered by source/runtime evidence. Checkout
 submit, Auth wallet mutation, payment, Warehouse, notification, DB, Kubernetes,
 Vault, and ungated wallet fetch execution remain blocked until separately scoped.
+
+## 2026-07-03 Gate 7 Approved Browser/Session Wallet-Fetch Evidence
+
+Gate 7 live wallet-fetch smoke passed with approval id
+`CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE7` against `https://auth.alfares.cz`.
+
+Sanitized evidence:
+
+- Status: `sanitized_auth_wallet_browser_session_fetch_recorded`.
+- Endpoint count: 3.
+- `/auth/profile/checkout-data`: HTTP 200, schema version
+  `auth.customer-data-wallet.checkout-data.v1`.
+- `/auth/profile/delivery-addresses`: HTTP 200.
+- `/auth/profile/invoice-profiles`: HTTP 200.
+- `authWalletFetch=true` and `browserSessionRead=true` for the approved
+  evidence window only.
+- `checkoutSubmit=false`, `authWalletMutation=false`,
+  `paymentCreation=false`, `warehouseReservation=false`,
+  `notificationSend=false`, `databaseMutation=false`,
+  `kubernetesMutation=false`, and `vaultUsage=false`.
+- `bodyPrinted=false`, `tokenPrinted=false`, and
+  `customerDataPrinted=false` for all wallet-read results.
+
+This closes the approved browser/session wallet-fetch evidence gate. Checkout
+submit, Auth wallet mutation, payment, Warehouse, notification, DB, Kubernetes,
+Vault, and live commerce mutation remain blocked until separately scoped.

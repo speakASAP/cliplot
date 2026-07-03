@@ -143,6 +143,17 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   no-mutation/no-send checkout validations.
 
 
+
+- GOAL-10 Auth wallet browser-session fetch evidence passed with approval id
+  `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE7`: the approved synthetic
+  browser/session smoke fetched `/auth/profile/checkout-data`,
+  `/auth/profile/delivery-addresses`, and `/auth/profile/invoice-profiles`
+  from `https://auth.alfares.cz` with HTTP `200`, preserved
+  `auth.customer-data-wallet.checkout-data.v1`, and printed no token, body, or
+  customer data. Checkout submit, Auth wallet mutation, payment, Warehouse,
+  notification, DB, Kubernetes, Vault, and live commerce mutation stayed
+  disabled. Commit `5ea0804` also cached guarded payment readiness probes.
+
 ## Active Goal: GOAL-06-operational-closure
 
 ### Objective
