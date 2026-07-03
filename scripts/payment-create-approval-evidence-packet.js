@@ -24,15 +24,16 @@ assert(response.status === 200 && packet.success, 'payment create approval evide
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'ready_for_owner_payment_create_approval_metadata', 'payment create approval evidence is not ready', packet);
+assert(['ready_for_owner_payment_create_approval_metadata', 'approved_payment_create_metadata_execution_disabled'].includes(packet.status), 'payment create approval evidence is not ready', packet);
 assert(packet.mode === 'read_only_payment_create_approval_evidence_packet', 'payment create evidence mode changed', packet);
 assert(packet.mutation === false, 'payment create evidence reported mutation', packet);
 assert(packet.persistence === false, 'payment create evidence reported persistence', packet);
 assert(packet.providerCall === false, 'payment create evidence reported provider call', packet);
 assert(packet.livePaymentCreate === false, 'live payment create unexpectedly enabled', packet);
-assert(packet.paymentApprovalPresent === false, 'payment approval metadata should remain absent before owner acceptance', packet);
+assert(typeof packet.paymentApprovalPresent === 'boolean', 'payment approval metadata presence missing', packet);
 assert(packet.requiredApprovalId === 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID', 'payment approval id placeholder missing', packet);
 assert(packet.approvalIdMayBeRecordedAfterOwnerAcceptance === true, 'owner payment approval metadata readiness missing', packet);
+assert(packet.liveExecutionAllowed !== true, 'payment metadata approval allowed live execution', packet);
 assert(packet.catalog?.approvedCliplotSkuScope === true, 'approved Cliplot SKU scope missing', packet);
 assert(packet.catalog?.catalogSource === 'catalog', 'Catalog source evidence missing', packet);
 assert(packet.catalog?.warehouseBackedProductCount > 0, 'Warehouse-backed product evidence missing', packet);
@@ -76,6 +77,8 @@ console.log(JSON.stringify({
   valid: packet.validation.valid,
   livePaymentCreate: packet.livePaymentCreate,
   paymentApprovalPresent: packet.paymentApprovalPresent,
+  approvalMetadataRecorded: packet.approvalMetadataRecorded,
+  liveExecutionAllowed: packet.liveExecutionAllowed,
   approvalReady: packet.approvalIdMayBeRecordedAfterOwnerAcceptance,
   applicationId: packet.paymentCreateContract.applicationId,
   paymentMethod: packet.paymentCreateContract.paymentMethod,

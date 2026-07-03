@@ -243,12 +243,14 @@ smoke evidence.
   payment-create payload generation have runtime smoke evidence.
 - Payment callback URL implementation has synthetic no-mutation validation as a
   guarded ACK path for downstream callbacks from payments-microservice.
-- GOAL-05 live notification send path is wired to `POST /notifications/send` with a separate `cliplot-notification-send-*` idempotency key, but remains unreachable in production because live flags and approval IDs are empty.
+- GOAL-05 live notification send path is wired to `POST /notifications/send` with a separate `cliplot-notification-send-*` idempotency key, but remains unreachable in production because live flags stay false.
 - Valid order payload validation now has a no-mutation Orders endpoint. Valid
   payment payload validation now has a no-mutation Payments endpoint. Valid
   notification payload validation now has a no-send Notifications endpoint.
-  Live order creation, live payment creation, and live notification sends still
-  require explicit approved runtime evidence.
+  Payment and notification approval metadata IDs are recorded from those
+  no-mutation/no-send packets as execution-disabled metadata only. Live order
+  creation, live payment creation, and live notification sends still require
+  explicit approved runtime evidence and a separate bounded flag-opening window.
 - Cliplot now selects a Warehouse availability origin for each displayed
   product and carries the Warehouse-owned `warehouseId` through checkout
   normalization into `orders.create.v1` validation. This is payload enrichment

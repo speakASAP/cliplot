@@ -74,8 +74,8 @@ async function main() {
   assertFalse(readiness?.livePaymentCreate, 'readiness_live_payment_enabled', { readiness });
   assertFalse(readiness?.liveNotifications, 'readiness_live_notifications_enabled', { readiness });
   assertEqual(approvals.order, true, 'readiness_order_approval_metadata_missing', { readiness });
-  assertFalse(approvals.payment, 'readiness_payment_approval_present', { readiness });
-  assertFalse(approvals.notification, 'readiness_notification_approval_present', { readiness });
+  assertEqual(typeof approvals.payment, 'boolean', 'readiness_payment_approval_metadata_state_missing', { readiness });
+  assertEqual(typeof approvals.notification, 'boolean', 'readiness_notification_approval_metadata_state_missing', { readiness });
   assertEqual(integrations.orderValidation, 'enabled_no_mutation', 'order_validation_not_guarded', { readiness });
   assertEqual(integrations.paymentValidation, 'enabled_no_mutation', 'payment_validation_not_guarded', { readiness });
   assertEqual(integrations.notificationValidation, 'enabled_no_send', 'notification_validation_not_guarded', { readiness });

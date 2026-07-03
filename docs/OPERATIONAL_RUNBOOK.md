@@ -125,10 +125,15 @@ CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 ```
 
 `CLIPLOT_LIVE_ORDER_APPROVAL_ID` is recorded as `owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel` from
-the controlled Orders/Warehouse smoke evidence. This is not enough to mutate:
-`ENABLE_LIVE_ORDER_SUBMIT` remains `false`, and payment/notification approval IDs
-remain empty. Empty payment and notification approval IDs intentionally keep
-`/api/checkout/submit` in guarded mode even if shared-service validation succeeds.
+the controlled Orders/Warehouse smoke evidence. `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`
+is recorded as `owner-approved-2026-07-03-payment-create-metadata` from the
+no-mutation payment-create evidence packet, and
+`CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` is recorded as
+`owner-approved-2026-07-03-notification-send-metadata` from the no-send
+notification evidence packet. These are metadata approvals only: all live flags
+remain `false`, `/api/checkout/submit` stays guarded, and live payment creation
+or notification sends still require a separate bounded execution window plus the
+corresponding false-to-true flag change.
 
 
 
@@ -504,12 +509,14 @@ Before recording `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID`, run:
 npm run readiness:notification-send-approval -- https://cliplot.alfares.cz
 ```
 
-The packet must use only `/notifications/validate`, return
-`ready_for_owner_notification_send_approval_metadata`, and prove
+The packet must use only `/notifications/validate` and may return either
+`ready_for_owner_notification_send_approval_metadata` before metadata acceptance
+or `approved_notification_send_metadata_execution_disabled` after
+`CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` is recorded. It must prove
 `validated_no_send`, `mutation=false`, `providerCall=false`,
 `notificationSent=false`, `ENABLE_LIVE_NOTIFICATIONS=false`, and
-`notificationApprovalPresent=false`. It does not call `/notifications/send` and
-does not authorize live notification sends without a separate bounded execution
+`liveExecutionAllowed=false`. It does not call `/notifications/send` and does
+not authorize live notification sends without a separate bounded execution
 window.
 
 ## Payment-Create Approval Evidence
@@ -520,10 +527,12 @@ Before recording `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, run:
 npm run readiness:payment-create-approval -- https://cliplot.alfares.cz
 ```
 
-The packet must use only `/payments/validate-create`, return
-`ready_for_owner_payment_create_approval_metadata`, and prove `valid=true`,
+The packet must use only `/payments/validate-create` and may return either
+`ready_for_owner_payment_create_approval_metadata` before metadata acceptance or
+`approved_payment_create_metadata_execution_disabled` after
+`CLIPLOT_LIVE_PAYMENT_APPROVAL_ID` is recorded. It must prove `valid=true`,
 `mutation=false`, `providerCall=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
-`paymentApprovalPresent=false`. It does not call `/payments/create` and does not
+`liveExecutionAllowed=false`. It does not call `/payments/create` and does not
 authorize live payment creation without a separate bounded execution window.
 
 ## Controlled Orders/Warehouse Smoke Evidence

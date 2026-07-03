@@ -522,17 +522,26 @@ function checkoutMissingFacts() {
   if (!approvals.order) {
     missing.push('[MISSING: CLIPLOT_LIVE_ORDER_APPROVAL_ID after approved live order-create and Warehouse reservation evidence for Cliplot]');
   }
+  if (!serviceConfig.liveOrderSubmit) {
+    missing.push('[MISSING: ENABLE_LIVE_ORDER_SUBMIT=true only during the approved bounded live checkout window]');
+  }
   if (!serviceConfig.paymentCreateValidation) {
     missing.push('[MISSING: approved valid-body payment-create validation evidence for Cliplot]');
   }
   if (!approvals.payment) {
-    missing.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID after approved live payment-create execution evidence for Cliplot]');
+    missing.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID metadata after owner accepts no-mutation payment-create evidence]');
+  }
+  if (!serviceConfig.livePaymentCreate) {
+    missing.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true only during a separate approved bounded payment execution window]');
   }
   if (!serviceConfig.notificationValidation) {
     missing.push('[MISSING: approved no-send notification validation evidence for Cliplot order confirmations]');
   }
   if (!approvals.notification) {
-    missing.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID after approved live notification send validation for Cliplot order confirmations]');
+    missing.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID metadata after owner accepts no-send notification evidence]');
+  }
+  if (!serviceConfig.liveNotifications) {
+    missing.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=true only during a separate approved bounded notification execution window]');
   }
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
@@ -1164,7 +1173,6 @@ export async function notificationSendApprovalEvidencePacket() {
   if (!serviceConfig.notificationValidation) blockers.push('[MISSING: ENABLE_NOTIFICATION_VALIDATION=true]');
   if (!serviceConfig.notificationServiceToken) blockers.push('[MISSING: NOTIFICATIONS_SERVICE_TOKEN in Vault]');
   if (serviceConfig.liveNotifications) blockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=false for metadata-only notification evidence]');
-  if (approvals.notification) blockers.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID must remain empty until owner accepts notification send evidence]');
 
   let checkout = null;
   let notificationPayload = null;
@@ -1191,16 +1199,19 @@ export async function notificationSendApprovalEvidencePacket() {
   if (notificationValidation.notificationSent !== false) blockers.push('[MISSING: Notifications validate notificationSent=false]');
   if (notificationValidation.providerCall !== false) blockers.push('[MISSING: Notifications validate providerCall=false]');
 
-  const readyForOwnerNotificationApproval = blockers.length === 0;
+  const notificationEvidenceReady = blockers.length === 0;
+  const notificationMetadataApproved = notificationEvidenceReady && approvals.notification && serviceConfig.liveNotifications === false;
   const recipientDomain = notificationPayload?.recipient?.includes('@')
     ? notificationPayload.recipient.split('@').pop()
     : null;
 
   return {
     success: true,
-    status: readyForOwnerNotificationApproval
-      ? 'ready_for_owner_notification_send_approval_metadata'
-      : 'blocked_notification_send_approval_evidence',
+    status: notificationMetadataApproved
+      ? 'approved_notification_send_metadata_execution_disabled'
+      : (notificationEvidenceReady
+        ? 'ready_for_owner_notification_send_approval_metadata'
+        : 'blocked_notification_send_approval_evidence'),
     mode: 'read_only_notification_send_approval_evidence_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -1211,7 +1222,9 @@ export async function notificationSendApprovalEvidencePacket() {
     liveNotifications: serviceConfig.liveNotifications,
     notificationApprovalPresent: approvals.notification,
     requiredApprovalId: 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
-    approvalIdMayBeRecordedAfterOwnerAcceptance: readyForOwnerNotificationApproval,
+    approvalIdMayBeRecordedAfterOwnerAcceptance: notificationEvidenceReady,
+    approvalMetadataRecorded: approvals.notification,
+    liveExecutionAllowed: false,
     catalog: {
       status: productFilter.status,
       catalogSource,
@@ -1277,6 +1290,7 @@ export async function notificationSendApprovalEvidencePacket() {
       ...(notificationValidation.providerCall === false ? ['[DONE: Notifications validate providerCall=false]'] : []),
       ...(serviceConfig.liveNotifications === false ? ['[DONE: ENABLE_LIVE_NOTIFICATIONS=false]'] : []),
       ...(approvals.notification === false ? ['[DONE: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID remains empty before owner acceptance]'] : []),
+      ...(approvals.notification === true ? ['[DONE: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID metadata recorded with execution disabled]'] : []),
     ],
     blockers: [...new Set(blockers)],
     sensitiveDataPolicy: [
@@ -1286,9 +1300,11 @@ export async function notificationSendApprovalEvidencePacket() {
       'synthetic checkout identity only',
       'fingerprints instead of idempotency key and message values',
     ],
-    next: readyForOwnerNotificationApproval
-      ? 'Owner can review this packet before deciding whether to record CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID metadata; do not enable ENABLE_LIVE_NOTIFICATIONS yet.'
-      : 'Resolve the listed notification validation blockers before recording notification approval metadata.',
+    next: notificationMetadataApproved
+      ? 'Notification approval metadata is recorded; keep ENABLE_LIVE_NOTIFICATIONS=false until a separate bounded execution window is approved.'
+      : (notificationEvidenceReady
+        ? 'Owner can review this packet before deciding whether to record CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID metadata; do not enable ENABLE_LIVE_NOTIFICATIONS yet.'
+        : 'Resolve the listed notification validation blockers before recording notification approval metadata.'),
   };
 }
 
@@ -1305,7 +1321,6 @@ export async function paymentCreateApprovalEvidencePacket() {
   if (!serviceConfig.paymentCreateValidation) blockers.push('[MISSING: ENABLE_PAYMENT_CREATE_VALIDATION=true]');
   if (!serviceConfig.paymentApiKey) blockers.push('[MISSING: PAYMENT_API_KEY in Vault]');
   if (serviceConfig.livePaymentCreate) blockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=false for metadata-only payment-create evidence]');
-  if (approvals.payment) blockers.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID must remain empty until owner accepts payment-create execution evidence]');
 
   let checkout = null;
   let paymentPayload = null;
@@ -1338,16 +1353,19 @@ export async function paymentCreateApprovalEvidencePacket() {
     blockers.push('[MISSING: Payments validate-create returned expected payment method]');
   }
 
-  const readyForOwnerPaymentApproval = blockers.length === 0;
+  const paymentEvidenceReady = blockers.length === 0;
+  const paymentMetadataApproved = paymentEvidenceReady && approvals.payment && serviceConfig.livePaymentCreate === false;
   const callbackOrigin = paymentPayload?.callbackUrl ? new URL(paymentPayload.callbackUrl).origin : null;
   const successOrigin = paymentPayload?.successUrl ? new URL(paymentPayload.successUrl).origin : null;
   const cancelOrigin = paymentPayload?.cancelUrl ? new URL(paymentPayload.cancelUrl).origin : null;
 
   return {
     success: true,
-    status: readyForOwnerPaymentApproval
-      ? 'ready_for_owner_payment_create_approval_metadata'
-      : 'blocked_payment_create_approval_evidence',
+    status: paymentMetadataApproved
+      ? 'approved_payment_create_metadata_execution_disabled'
+      : (paymentEvidenceReady
+        ? 'ready_for_owner_payment_create_approval_metadata'
+        : 'blocked_payment_create_approval_evidence'),
     mode: 'read_only_payment_create_approval_evidence_packet',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -1357,7 +1375,9 @@ export async function paymentCreateApprovalEvidencePacket() {
     livePaymentCreate: serviceConfig.livePaymentCreate,
     paymentApprovalPresent: approvals.payment,
     requiredApprovalId: 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
-    approvalIdMayBeRecordedAfterOwnerAcceptance: readyForOwnerPaymentApproval,
+    approvalIdMayBeRecordedAfterOwnerAcceptance: paymentEvidenceReady,
+    approvalMetadataRecorded: approvals.payment,
+    liveExecutionAllowed: false,
     catalog: {
       status: productFilter.status,
       catalogSource,
@@ -1440,6 +1460,7 @@ export async function paymentCreateApprovalEvidencePacket() {
       ...(paymentValidation.providerCall === false ? ['[DONE: Payments validate-create providerCall=false]'] : []),
       ...(serviceConfig.livePaymentCreate === false ? ['[DONE: ENABLE_LIVE_PAYMENT_CREATE=false]'] : []),
       ...(approvals.payment === false ? ['[DONE: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID remains empty before owner acceptance]'] : []),
+      ...(approvals.payment === true ? ['[DONE: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID metadata recorded with execution disabled]'] : []),
     ],
     blockers: [...new Set(blockers)],
     sensitiveDataPolicy: [
@@ -1449,9 +1470,11 @@ export async function paymentCreateApprovalEvidencePacket() {
       'synthetic checkout identity only',
       'fingerprints instead of idempotency key values',
     ],
-    next: readyForOwnerPaymentApproval
-      ? 'Owner can review this packet to decide whether to record CLIPLOT_LIVE_PAYMENT_APPROVAL_ID metadata; do not enable ENABLE_LIVE_PAYMENT_CREATE yet.'
-      : 'Resolve the listed payment-create validation blockers before recording payment approval metadata.',
+    next: paymentMetadataApproved
+      ? 'Payment approval metadata is recorded; keep ENABLE_LIVE_PAYMENT_CREATE=false until a separate bounded execution window is approved.'
+      : (paymentEvidenceReady
+        ? 'Owner can review this packet to decide whether to record CLIPLOT_LIVE_PAYMENT_APPROVAL_ID metadata; do not enable ENABLE_LIVE_PAYMENT_CREATE yet.'
+        : 'Resolve the listed payment-create validation blockers before recording payment approval metadata.'),
   };
 }
 
@@ -5663,8 +5686,10 @@ export async function liveCheckoutApprovalPacket() {
     ...(preflight.approvals?.order === true ? ['[DONE: live order/Warehouse approval metadata recorded from controlled CREATE_REPLAY_CANCEL evidence]'] : []),
     ...(paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' ? ['[DONE: payment status runtime read is approved and no-persistence]'] : []),
     ...(callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? ['[DONE: callback replay policy metadata approved with execution disabled]'] : []),
-    ...(paymentCreateApproval.status === 'ready_for_owner_payment_create_approval_metadata' ? ['[DONE: valid-body payment-create approval evidence is ready with no mutation]'] : []),
-    ...(notificationSendApproval.status === 'ready_for_owner_notification_send_approval_metadata' ? ['[DONE: notification send approval evidence is ready with no send]'] : []),
+    ...(['ready_for_owner_payment_create_approval_metadata', 'approved_payment_create_metadata_execution_disabled'].includes(paymentCreateApproval.status) ? ['[DONE: valid-body payment-create approval evidence is ready with no mutation]'] : []),
+    ...(paymentCreateApproval.status === 'approved_payment_create_metadata_execution_disabled' ? ['[DONE: payment approval metadata recorded with execution disabled]'] : []),
+    ...(['ready_for_owner_notification_send_approval_metadata', 'approved_notification_send_metadata_execution_disabled'].includes(notificationSendApproval.status) ? ['[DONE: notification send approval evidence is ready with no send]'] : []),
+    ...(notificationSendApproval.status === 'approved_notification_send_metadata_execution_disabled' ? ['[DONE: notification approval metadata recorded with execution disabled]'] : []),
     ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),
   ];
 
@@ -5861,6 +5886,8 @@ export async function revenueClosurePacket() {
   const blockerClassification = {
     mode: 'read_only_blocker_classification',
     metadataPacketEligible: [
+      'payment-create approval metadata ID after no-mutation evidence',
+      'notification-send approval metadata ID after no-send evidence',
       'callback persistence storage backend proposal',
       'callback persistence storage contract packet',
       'callback persistence rollout plan',
@@ -5871,9 +5898,6 @@ export async function revenueClosurePacket() {
       'validation owner checklist',
     ],
     requiresOwnerLiveMutationApproval: [
-      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
-      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
-      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
       'ENABLE_LIVE_ORDER_SUBMIT=true',
       'ENABLE_LIVE_PAYMENT_CREATE=true',
       'ENABLE_LIVE_NOTIFICATIONS=true',
@@ -5909,10 +5933,6 @@ export async function revenueClosurePacket() {
       missingCount: approvalPacket.missing?.length || 0,
     },
     requiredApprovalIds: [
-      'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
-      'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
-      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
-      'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
     ],
     requiredRuntimeKeys: [
       'ORDERS_SERVICE_TOKEN',
