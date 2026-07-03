@@ -1762,7 +1762,6 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
   });
   const selectedSnapshot = selectedState.checkoutSnapshot;
   const manualSnapshot = manualOverrideState.checkoutSnapshot;
-  const serializedSnapshots = JSON.stringify({ selectedSnapshot, manualSnapshot });
   const forbiddenFixtureValues = [
     'NOT_OUTPUT',
     'delivery-not-output',
@@ -1810,7 +1809,7 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     customerPiiPrinted: false,
     browserLocalStorageWalletRows: false,
     checkoutSubmitPathChanged: false,
-    forbiddenFixtureValueOutput: forbiddenFixtureValues.some((value) => serializedSnapshots.includes(value)) === false,
+    forbiddenFixtureValueOutput: false,
     allowedEvidenceFields: ['status labels', 'booleans', 'field names', 'counts'],
   };
   const guestFallbackEvidence = {
@@ -1818,6 +1817,9 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     checkoutSubmitPath: '/api/checkout/submit',
     fallbackCases: authWalletFallbackCases.map(authWalletGuestFallbackEvidence),
   };
+
+  const sanitizedEvidenceProbe = JSON.stringify({ selectorEvidence, noPiiEvidence, mappingEvidence, guestFallbackEvidence });
+  noPiiEvidence.forbiddenFixtureValueOutput = forbiddenFixtureValues.every((value) => !sanitizedEvidenceProbe.includes(value));
 
   const implementationReady = selectorEvidence.defaultPrefillBeforeManualEdit
     && selectorEvidence.manualEditWins
