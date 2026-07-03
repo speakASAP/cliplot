@@ -5771,6 +5771,8 @@ export async function paymentStatusReconciliationReadinessPacket() {
 
 export async function paymentStatusWriteWindowRequestPacket() {
   const reconciliation = await paymentStatusReconciliationReadinessPacket();
+  const postLiveRevenueEvidence = await postLiveRevenueClosureEvidencePacket();
+  const completedWindow = postLiveRevenueEvidence.completedWindow || completedFullCheckoutLiveWindowEvidenceSummary();
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
@@ -5804,6 +5806,9 @@ export async function paymentStatusWriteWindowRequestPacket() {
     { name: 'payment_create_and_notifications_disabled', passed: guards.livePaymentCreate === false && guards.liveNotifications === false },
     { name: 'provider_backed_reads_forbidden', passed: reconciliation.passivePaymentStatusRead?.approvedReadContract?.forbiddenEndpoint === '/payments/{paymentId}' },
     { name: 'packet_side_effects_disabled', passed: reconciliation.mutation === false && reconciliation.persistence === false && reconciliation.providerCall === false },
+    { name: 'post_live_checkout_window_validated_closed', passed: postLiveRevenueEvidence.status === 'validated_completed_full_checkout_live_window_closed' && postLiveRevenueEvidence.liveExecutionAllowed === false },
+    { name: 'post_live_order_payment_notification_evidence_recorded', passed: completedWindow.orderCreated === true && completedWindow.paymentCreated === true && completedWindow.notificationSent === true && completedWindow.cleanupSuccess === true },
+    { name: 'post_live_callback_and_status_writes_still_disabled', passed: postLiveRevenueEvidence.currentClosedState?.callbackPersistence === false && postLiveRevenueEvidence.currentClosedState?.callbackReplayEnabled === false && postLiveRevenueEvidence.currentClosedState?.liveStatusWritesNow === false },
   ];
   const failedAssertions = assertions.filter((item) => item.passed !== true);
 
@@ -5830,6 +5835,15 @@ export async function paymentStatusWriteWindowRequestPacket() {
       snapshotReadApproval: reconciliation.passivePaymentStatusRead?.snapshotReadApproval,
       mappingOwnership: reconciliation.passivePaymentStatusRead?.mappingOwnership,
       failedAssertionCount: reconciliation.failedAssertions?.length || 0,
+      postLiveRevenueClosure: postLiveRevenueEvidence.status,
+      postLiveFailedAssertionCount: postLiveRevenueEvidence.failedAssertions?.length || 0,
+      completedLiveWindow: completedWindow.status,
+      completedLiveWindowExecutedAt: completedWindow.executedAt,
+      completedOrderId: completedWindow.orderId,
+      completedPaymentStatus: completedWindow.paymentEvidence?.status || null,
+      completedNotificationStatus: completedWindow.notificationEvidence?.status || null,
+      currentRevenueClosure: postLiveRevenueEvidence.currentClosedState?.revenueClosure || null,
+      currentRevenueBlockerCount: postLiveRevenueEvidence.currentClosedState?.revenueBlockerCount ?? null,
       mutation: false,
       persistence: false,
       providerCall: false,
@@ -5844,6 +5858,33 @@ export async function paymentStatusWriteWindowRequestPacket() {
       currentPacketAcceptsGuardedRequests: true,
       currentPacketMayOpenFlags: false,
       currentPacketMayExecuteWrites: false,
+    },
+    completedLiveWindowHandoff: {
+      status: completedWindow.status,
+      evidenceRecord: completedWindow.evidenceRecord,
+      executedAt: completedWindow.executedAt,
+      deployedImage: completedWindow.deployedImage,
+      orderId: completedWindow.orderId,
+      executorStatus: completedWindow.executorStatus,
+      cleanupSuccess: completedWindow.cleanupSuccess,
+      orderCreated: completedWindow.orderCreated,
+      warehouseReserved: completedWindow.warehouseReserved,
+      paymentCreated: completedWindow.paymentCreated,
+      notificationSent: completedWindow.notificationSent,
+      orderCancelStatus: completedWindow.orderCancelStatus,
+      orderReadbackStatus: completedWindow.orderReadbackStatus,
+      warehouseActiveReservationCount: completedWindow.warehouseAfterCancel?.activeReservationCount ?? null,
+      paymentStatus: completedWindow.paymentEvidence?.status || null,
+      paymentResultFingerprint: completedWindow.paymentEvidence?.resultFingerprint || null,
+      notificationStatus: completedWindow.notificationEvidence?.status || null,
+      notificationResultFingerprint: completedWindow.notificationEvidence?.resultFingerprint || null,
+      postLiveRevenueClosure: postLiveRevenueEvidence.status,
+      postLiveRevenueBlockerCount: postLiveRevenueEvidence.currentClosedState?.revenueBlockerCount ?? null,
+      liveExecutionAllowed: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      sideEffects: false,
     },
     boundedWindowPolicy: {
       boundedWindow: isApprovalPresent(serviceConfig.liveStatusWriteWindow)

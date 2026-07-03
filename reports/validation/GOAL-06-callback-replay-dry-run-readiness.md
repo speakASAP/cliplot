@@ -86,6 +86,42 @@ post-window reconciliation evidence while keeping callback persistence, callback
 replay execution, live status writes, payment creation, notification sends,
 provider-backed payment reads, and Cliplot-local payment truth disabled.
 
+
+## 2026-07-03 Post-Live Status-Write Handoff
+
+After the controlled full-checkout live window completed and all live flags were
+restored to `false`, the payment status write-window request packet now carries
+a sanitized completed-window handoff. This links the successful order/payment/
+notification evidence to any future bounded status-write review without enabling
+callback persistence, callback replay execution, live status writes, provider
+reads, payment creation, notification sends, or local Cliplot status truth.
+
+Expected packet evidence:
+
+```text
+status=ready_for_bounded_payment_status_write_window_request_execution_disabled
+postLiveRevenueClosure=validated_completed_full_checkout_live_window_closed
+completedLiveWindow=validated_completed_full_checkout_live_window_closed
+completedOrderId=7938b1c4-1fb8-44e3-a4f3-e61e71052afb
+completedPaymentStatus=processing
+completedNotificationStatus=sent
+liveExecutionAllowed=false
+mutation=false
+persistence=false
+providerCall=false
+failedAssertionCount=0
+```
+
+The handoff is still read-only metadata. It must be validated before any later
+status-write window with:
+
+```bash
+npm run readiness:payment-status-write-window-request -- https://cliplot.alfares.cz
+npm run readiness:payment-status-write-bounded-executor -- https://cliplot.alfares.cz
+npm run readiness:revenue-handoff-reconciliation -- https://cliplot.alfares.cz
+npm run readiness:bundle
+```
+
 ## Payment Status Write Bounded Executor Guard
 
 The disabled guard endpoint is `POST /api/payments/status-write-bounded-executor`

@@ -154,6 +154,14 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   notification, DB, Kubernetes, Vault, and live commerce mutation stayed
   disabled. Commit `5ea0804` also cached guarded payment readiness probes.
 
+- GOAL-06 post-live status-write handoff lane records the completed
+  `2026-07-03T20:06:24Z` full-checkout window inside the read-only payment
+  status write-window request packet. The packet now ties the sanitized
+  order/payment/notification evidence to any future bounded status-write review
+  while keeping callback persistence, callback replay execution, live status
+  writes, provider-backed payment reads, payment creation, notifications, and
+  all live flags disabled.
+
 ## Active Goal: GOAL-06-operational-closure
 
 ### Objective

@@ -35,11 +35,24 @@ assert(packet.currentPacketEnablesRuntime === false, 'request packet enables run
 assert(packet.prerequisiteEvidence?.reconciliation === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled', 'reconciliation prerequisite missing', packet);
 assert(packet.prerequisiteEvidence?.callbackReadiness === 'validated_guarded_ack_no_persistence', 'callback readiness prerequisite missing', packet);
 assert(packet.prerequisiteEvidence?.paymentStatus === 'ready_for_approved_payment_status_runtime_read', 'payment status prerequisite missing', packet);
+assert(packet.prerequisiteEvidence?.postLiveRevenueClosure === 'validated_completed_full_checkout_live_window_closed', 'post-live revenue closure prerequisite missing', packet);
+assert(packet.prerequisiteEvidence?.completedLiveWindow === 'validated_completed_full_checkout_live_window_closed', 'completed live-window prerequisite missing', packet);
+assert(packet.prerequisiteEvidence?.completedOrderId === '7938b1c4-1fb8-44e3-a4f3-e61e71052afb', 'completed order handoff evidence missing', packet);
+assert(packet.prerequisiteEvidence?.completedPaymentStatus === 'processing', 'completed payment status handoff missing', packet);
+assert(packet.prerequisiteEvidence?.completedNotificationStatus === 'sent', 'completed notification status handoff missing', packet);
 assert(packet.operatorRequestContract?.currentPacketAcceptsRequests === false, 'packet accepts runtime write requests', packet);
 assert(packet.operatorRequestContract?.currentPacketAcceptsGuardedRequests === true, 'packet missing guarded request endpoint', packet);
 assert(packet.operatorRequestContract?.endpoint === '/api/payments/status-write-bounded-executor', 'guarded executor endpoint missing', packet);
 assert(packet.operatorRequestContract?.currentPacketMayOpenFlags === false, 'packet may open flags', packet);
 assert(packet.operatorRequestContract?.currentPacketMayExecuteWrites === false, 'packet may execute writes', packet);
+assert(packet.completedLiveWindowHandoff?.status === 'validated_completed_full_checkout_live_window_closed', 'completed live-window handoff missing', packet);
+assert(packet.completedLiveWindowHandoff?.paymentCreated === true, 'completed payment evidence missing from handoff', packet);
+assert(packet.completedLiveWindowHandoff?.notificationSent === true, 'completed notification evidence missing from handoff', packet);
+assert(packet.completedLiveWindowHandoff?.cleanupSuccess === true, 'completed cleanup evidence missing from handoff', packet);
+assert(packet.completedLiveWindowHandoff?.liveExecutionAllowed === false, 'handoff allows live execution', packet);
+assert(packet.completedLiveWindowHandoff?.mutation === false, 'handoff reports mutation', packet);
+assert(packet.completedLiveWindowHandoff?.persistence === false, 'handoff reports persistence', packet);
+assert(packet.completedLiveWindowHandoff?.providerCall === false, 'handoff reports provider call', packet);
 assert(packet.operatorRequestContract?.requestFields?.some((field) => field.name === 'confirm' && field.requiredValue === 'PAYMENT_STATUS_WRITE_WINDOW'), 'confirm request field missing', packet);
 assert(packet.operatorRequestContract?.requestFields?.some((field) => field.name === 'approvalId' && field.requiredValue === 'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID'), 'approval request field missing', packet);
 assert(packet.operatorRequestContract?.requestFields?.some((field) => field.name === 'postWindowReconciliationEvidence'), 'post-window evidence request field missing', packet);
@@ -52,8 +65,10 @@ assert(packet.currentRuntimeGuards?.callbackPersistence === false, 'callback per
 assert(packet.currentRuntimeGuards?.replayExecutionAllowed === false, 'replay execution guard enabled', packet);
 assert(packet.currentRuntimeGuards?.liveStatusWritesNow === false, 'live status writes active now', packet);
 assert(packet.rollbackPlan?.includes('set ENABLE_PAYMENT_LIVE_STATUS_WRITE=false'), 'rollback flag close missing', packet);
+assert(packet.validationPlan?.includes('pre-window: completed full-checkout live-window handoff evidence recorded'), 'completed live-window handoff validation missing', packet);
 assert(packet.validationPlan?.includes('post-window: readiness:bundle pass'), 'post-window bundle validation missing', packet);
 assert(packet.postWindowEvidenceRequired?.includes('payment status reconciliation packet after close'), 'post-window reconciliation evidence missing', packet);
+assert(packet.postWindowEvidenceRequired?.includes('completed full-checkout live-window handoff evidence before any status write'), 'completed live-window handoff evidence requirement missing', packet);
 assert(Array.isArray(packet.failedAssertions) && packet.failedAssertions.length === 0, 'write-window request assertions failed', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length === 0, 'write-window request blockers should be empty', packet);
 assert(packet.forbiddenOperationsNow?.includes('do not open ENABLE_PAYMENT_LIVE_STATUS_WRITE'), 'status write flag forbidden operation missing', packet);
@@ -71,6 +86,9 @@ console.log(JSON.stringify({
   reconciliation: packet.prerequisiteEvidence.reconciliation,
   callbackReadiness: packet.prerequisiteEvidence.callbackReadiness,
   paymentStatus: packet.prerequisiteEvidence.paymentStatus,
+  postLiveRevenueClosure: packet.prerequisiteEvidence.postLiveRevenueClosure,
+  completedLiveWindow: packet.prerequisiteEvidence.completedLiveWindow,
+  completedOrderId: packet.prerequisiteEvidence.completedOrderId,
   requestFieldCount: packet.operatorRequestContract.requestFields.length,
   liveStatusWriteFlag: packet.currentRuntimeFlags.ENABLE_PAYMENT_LIVE_STATUS_WRITE,
   callbackPersistenceFlag: packet.currentRuntimeFlags.ENABLE_PAYMENT_CALLBACK_PERSISTENCE,
