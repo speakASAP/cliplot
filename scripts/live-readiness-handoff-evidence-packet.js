@@ -50,9 +50,11 @@ assert(packet.readinessEvidence?.notificationSend === 'approved_notification_sen
 assert(packet.readinessEvidence?.notificationSendValidation === 'validated_no_send', 'notification validation mismatch', packet);
 assert(packet.readinessEvidence?.paymentStatus === 'ready_for_approved_payment_status_runtime_read', 'payment status evidence mismatch', packet);
 assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.readinessEvidence?.paymentReadScopeStatus), 'payment read scope status not accepted', packet);
-assert(['fresh', 'stale_rate_limited'].includes(packet.readinessEvidence?.paymentReadScopeFreshness), 'payment read scope freshness missing', packet);
+const paymentReadScopeFreshness = packet.readinessEvidence?.paymentReadScopeFreshness;
+const paymentReadScopeFreshnessStatus = typeof paymentReadScopeFreshness === 'string' ? paymentReadScopeFreshness : paymentReadScopeFreshness?.status;
+assert(['fresh', 'stale_rate_limited'].includes(paymentReadScopeFreshnessStatus), 'payment read scope freshness missing', packet);
 if (packet.readinessEvidence?.paymentReadScopeStatus === 'validated_payments_read_scope_no_mutation_cached') {
-  assert(packet.readinessEvidence?.paymentReadScopeFreshness === 'stale_rate_limited', 'cached payment read scope must be labeled stale_rate_limited', packet);
+  assert(paymentReadScopeFreshnessStatus === 'stale_rate_limited', 'cached payment read scope must be labeled stale_rate_limited', packet);
 }
 assert(packet.readinessEvidence?.checkoutStatusSurface === 'approved_read_only_customer_status_surface_contract', 'checkout status surface mismatch', packet);
 assert(packet.readinessEvidence?.revenueClosure === 'approval_required_live_revenue_closure', 'revenue closure evidence mismatch', packet);

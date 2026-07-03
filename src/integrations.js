@@ -2025,6 +2025,198 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
 }
 
 
+export async function liveOwnerExecutionRunbookPacket() {
+  const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
+  const executionRequest = await liveCheckoutExecutionRequestPacket();
+  const flagPreflight = await liveFlagsOperatorPreflightChecklistPacket();
+  const executionEvidence = await liveCheckoutExecutionEvidencePacket();
+  const createReplayCancel = await liveOrderWarehouseSmokeExecutionChecklistPacket();
+  const revenue = await revenueClosurePacket();
+  const preflight = liveCheckoutPreflight();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const status = handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled'
+    && executionRequest.status === 'approved_live_checkout_execution_request_contract_execution_disabled'
+    && flagPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled'
+    && liveFlagsClosed
+    && preflight.status === 'blocked'
+    && preflight.wouldMutate === false
+    ? 'approved_owner_live_execution_runbook_contract_execution_disabled'
+    : 'approval_required_owner_live_execution_runbook_contract';
+  const assertions = [
+    { name: 'handoff_ready_execution_disabled', passed: handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' },
+    { name: 'execution_request_contract_ready', passed: executionRequest.status === 'approved_live_checkout_execution_request_contract_execution_disabled' },
+    { name: 'flag_preflight_ready_disabled', passed: flagPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled' },
+    { name: 'execution_evidence_recorded_disabled', passed: executionEvidence.status === 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled' },
+    { name: 'create_replay_cancel_ready_for_bounded_window', passed: createReplayCancel.readyForBoundedWindow === true },
+    { name: 'revenue_only_execution_window_blockers', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.blockers?.length === 5 },
+    { name: 'current_live_flags_closed', passed: liveFlagsClosed },
+    { name: 'current_preflight_blocked_non_mutating', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+
+  return {
+    success: true,
+    status,
+    mode: 'read_only_owner_live_execution_runbook_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    executorCalled: false,
+    orderCreated: false,
+    warehouseReserved: false,
+    paymentCreated: false,
+    notificationSent: false,
+    callbackPersistence: false,
+    callbackReplay: false,
+    statusWrite: false,
+    providerRead: false,
+    liveFlagsClosed,
+    currentLiveFlags: {
+      ENABLE_LIVE_ORDER_SUBMIT: serviceConfig.liveOrderSubmit,
+      ENABLE_LIVE_PAYMENT_CREATE: serviceConfig.livePaymentCreate,
+      ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    readinessEvidence: {
+      handoff: handoff.status,
+      executionRequest: executionRequest.status,
+      flagPreflight: flagPreflight.status,
+      executionEvidence: executionEvidence.status,
+      createReplayCancel: createReplayCancel.status,
+      revenueClosure: revenue.status,
+      revenueBlockerCount: revenue.blockers?.length || 0,
+      livePreflight: preflight.status,
+      livePreflightWouldMutate: preflight.wouldMutate,
+      paymentReadScopeStatus: handoff.readinessEvidence?.paymentReadScopeStatus || null,
+      paymentReadScopeFreshness: handoff.readinessEvidence?.paymentReadScopeFreshness || null,
+    },
+    ownerRunbook: {
+      currentState: 'execution_disabled_contract_only',
+      phaseOrder: [
+        'pre_open_evidence',
+        'open_flags_temporarily',
+        'execute_bounded_checkout_and_create_replay_cancel',
+        'restore_flags_immediately',
+        'post_close_evidence',
+      ],
+      preOpenEvidenceRequired: [
+        'npm run readiness:live-readiness-handoff-evidence -- https://cliplot.alfares.cz',
+        'npm run readiness:live-checkout-execution-request -- https://cliplot.alfares.cz',
+        'npm run readiness:live-flags-operator-preflight -- https://cliplot.alfares.cz',
+        'npm run readiness:create-replay-cancel-evidence-lane -- https://cliplot.alfares.cz',
+        'record one unused order/payment/notification idempotency tuple',
+        'record operator approvedBy and reasonCode',
+      ],
+      temporaryFlagOpenRequired: {
+        ENABLE_LIVE_ORDER_SUBMIT: 'true',
+        ENABLE_LIVE_PAYMENT_CREATE: 'true',
+        ENABLE_LIVE_NOTIFICATIONS: 'true',
+        ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'true',
+      },
+      executionRequestsRequired: {
+        fullCheckout: executionRequest.ownerExecutionRequest?.executorRequest || null,
+        createReplayCancel: executionRequest.ownerExecutionRequest?.createReplayCancelRequest || null,
+      },
+      restoreFlagsRequired: {
+        ENABLE_LIVE_ORDER_SUBMIT: 'false',
+        ENABLE_LIVE_PAYMENT_CREATE: 'false',
+        ENABLE_LIVE_NOTIFICATIONS: 'false',
+        ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'false',
+      },
+      postCloseEvidenceRequired: [
+        'all live flags restored false',
+        'exactly one order create result for orderIdempotencyKey',
+        'exactly one payment create result for paymentIdempotencyKey',
+        'exactly one notification send result for notificationIdempotencyKey',
+        'idempotent replay returns the same order/payment/notification result without duplicate side effects',
+        'cancel/rollback evidence shows Orders status cancelled and Warehouse reservation released',
+        'no callback persistence, callback replay execution, live status writes, provider-backed payment reads, or secret/PII output',
+        'npm run readiness:bundle',
+        'npm run readiness:live-readiness-handoff-evidence -- https://cliplot.alfares.cz',
+      ],
+    },
+    evidenceCaptureSchema: {
+      preOpen: [
+        'timestamp',
+        'operatorId',
+        'reasonCode',
+        'executionWindow',
+        'idempotencyTupleFingerprint',
+        'readinessCommandOutputsRedacted',
+      ],
+      execution: [
+        'orderId',
+        'externalOrderId',
+        'orderIdempotencyKeyFingerprint',
+        'paymentId',
+        'paymentIdempotencyKeyFingerprint',
+        'notificationId',
+        'notificationIdempotencyKeyFingerprint',
+        'warehouseReservationStatus',
+      ],
+      restore: [
+        'restoredAt',
+        'allLiveFlagsFalse',
+        'rolloutImage',
+        'kubectlRolloutStatus',
+      ],
+      postClose: [
+        'orderStatus',
+        'paymentStatus',
+        'notificationStatus',
+        'warehouseReservationReleased',
+        'duplicateCounts',
+        'forbiddenSideEffectsFalse',
+        'redactionProof',
+      ],
+    },
+    guardrails: {
+      getOnlyRoute: true,
+      currentMethodAllowsMutation: false,
+      executorCalled: false,
+      liveFlagsClosed,
+      liveFlagPatchAllowedNow: false,
+      callbackPersistenceAllowed: false,
+      callbackReplayAllowed: false,
+      liveStatusWritesAllowed: false,
+      dbWriteAllowed: false,
+      providerCallAllowed: false,
+      secretPrintingAllowed: false,
+      rawProviderPayloadAllowed: false,
+      rawRecipientAllowed: false,
+      rawMessageBodyAllowed: false,
+    },
+    forbiddenOperationsNow: [
+      'do not patch ENABLE_LIVE_* flags from this packet',
+      'do not call POST /api/checkout/live-bounded-executor',
+      'do not call POST /api/checkout/live-order-warehouse-smoke-executor',
+      'do not call POST /api/checkout/submit',
+      'do not call POST /api/orders',
+      'do not reserve Warehouse stock',
+      'do not call POST /payments/create',
+      'do not call POST /notifications/send',
+      'do not persist callbacks or live status writes',
+      'do not call provider-backed /payments/{paymentId}',
+      'do not print secrets, provider payloads, customer PII, recipients, or message bodies',
+    ],
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    next: failedAssertions.length === 0
+      ? 'Runbook contract is ready for owner review; this packet does not authorize opening live flags.'
+      : 'Resolve failed runbook assertions before owner review.',
+  };
+}
+
+
 export async function runBoundedLiveCheckoutExecutor(request = {}) {
   const packet = await liveCheckoutExecutionWindowPacket();
   const blockers = [...packet.executionBlockers];
