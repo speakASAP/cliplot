@@ -988,14 +988,14 @@ function buildPaymentCreatePayload(checkout, order) {
   };
 }
 
-async function createPayment(checkout, order) {
+async function createPayment(checkout, order, idempotencyKey = checkoutIdempotencyKeys(checkout).paymentCreate) {
   const url = new URL(serviceConfig.paymentCreatePath, serviceConfig.paymentUrl);
   return fetchJson(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'x-api-key': serviceConfig.paymentApiKey,
-      'idempotency-key': checkoutIdempotencyKeys(checkout).paymentCreate,
+      'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(buildPaymentCreatePayload(checkout, order)),
   });
@@ -1324,35 +1324,106 @@ export async function runBoundedPaymentCreateExecutor(request = {}) {
   if (request.rollbackPlan !== 'PAYMENT_VOID_OR_CANCEL_OWNER_ASSIGNED') blockers.push('missing_payment_rollback_plan');
   if (request.validationPlan !== 'EXACTLY_ONE_PAYMENT_RESULT_BY_IDEMPOTENCY_KEY') blockers.push('missing_payment_validation_plan');
 
-  return {
-    httpStatus: 202,
-    body: {
-      success: true,
-      status: 'approval_required',
-      mode: 'guarded_payment_create_bounded_executor_stub',
-      mutation: false,
-      persistence: false,
-      providerCall: false,
-      paymentCreated: false,
-      liveExecutionAllowed: false,
-      approvalRequired: {
-        owner: true,
-        paymentCreate: true,
-        idempotencyKey: true,
-        duplicateCheck: true,
-        rollbackPlan: true,
-        validationPlan: true,
+  if (blockers.length) {
+    return {
+      httpStatus: 202,
+      body: {
+        success: true,
+        status: 'approval_required',
+        mode: 'guarded_payment_create_bounded_executor',
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        paymentCreated: false,
+        liveExecutionAllowed: false,
+        approvalRequired: {
+          owner: true,
+          paymentCreate: true,
+          idempotencyKey: true,
+          duplicateCheck: true,
+          rollbackPlan: true,
+          validationPlan: true,
+        },
+        endpointBoundary: {
+          forbiddenLiveEndpoint: serviceConfig.paymentCreatePath,
+          validationEndpointAllowedBeforeWindow: serviceConfig.paymentValidateCreatePath,
+          fullCheckoutActivationAllowed: false,
+        },
+        blockers: [...new Set(blockers)],
+        packet,
+        sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
       },
-      endpointBoundary: {
-        forbiddenLiveEndpoint: serviceConfig.paymentCreatePath,
-        validationEndpointAllowedBeforeWindow: serviceConfig.paymentValidateCreatePath,
-        fullCheckoutActivationAllowed: false,
+    };
+  }
+
+  const products = await fetchCatalogProducts();
+  const product = products.find((item) => item?.warehouseId && item?.productSource === 'catalog');
+  if (!product) {
+    return {
+      httpStatus: 409,
+      body: {
+        success: false,
+        status: 'payment_create_live_product_scope_missing',
+        mode: 'guarded_payment_create_bounded_executor',
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        paymentCreated: false,
+        liveExecutionAllowed: false,
       },
-      blockers: [...new Set(blockers)],
-      packet,
-      sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
-    },
-  };
+    };
+  }
+
+  const checkout = buildReadinessCheckout(product);
+  const orderId = normalizeExternalOrderId(request.orderId) || checkout.externalOrderId;
+  const paymentPayload = buildPaymentCreatePayload(checkout, { id: orderId });
+  try {
+    const payment = await createPayment(checkout, { id: orderId }, idempotencyKey);
+    return {
+      httpStatus: 201,
+      body: {
+        success: true,
+        status: 'bounded_payment_create_completed',
+        mode: 'guarded_payment_create_bounded_executor',
+        mutation: true,
+        persistence: true,
+        providerCall: true,
+        paymentCreated: true,
+        liveExecutionAllowed: true,
+        orderId,
+        paymentEvidence: {
+          status: payment?.status || payment?.data?.status || null,
+          resultFingerprint: stableFingerprint(payment),
+          payloadFingerprint: stableFingerprint({
+            orderId,
+            applicationId: paymentPayload.applicationId,
+            amount: paymentPayload.amount,
+            currency: paymentPayload.currency,
+            paymentMethod: paymentPayload.paymentMethod,
+          }),
+          idempotencyKeyFingerprint: stableFingerprint(idempotencyKey),
+        },
+        sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
+      },
+    };
+  } catch (error) {
+    return {
+      httpStatus: 502,
+      body: {
+        success: false,
+        status: 'bounded_payment_create_failed',
+        mode: 'guarded_payment_create_bounded_executor',
+        mutation: true,
+        persistence: true,
+        providerCall: true,
+        paymentCreated: 'unknown',
+        liveExecutionAllowed: true,
+        orderId,
+        error: compactSmokeError(error),
+        sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
+      },
+    };
+  }
 }
 
 export async function runBoundedNotificationSendExecutor(request = {}) {
@@ -1370,35 +1441,103 @@ export async function runBoundedNotificationSendExecutor(request = {}) {
   if (request.rollbackPlan !== 'NOTIFICATION_DUPLICATE_RESPONSE_OWNER_ASSIGNED') blockers.push('missing_notification_rollback_plan');
   if (request.validationPlan !== 'EXACTLY_ONE_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEY') blockers.push('missing_notification_validation_plan');
 
-  return {
-    httpStatus: 202,
-    body: {
-      success: true,
-      status: 'approval_required',
-      mode: 'guarded_notification_send_bounded_executor_stub',
-      mutation: false,
-      persistence: false,
-      providerCall: false,
-      notificationSent: false,
-      liveExecutionAllowed: false,
-      approvalRequired: {
-        owner: true,
-        notificationSend: true,
-        idempotencyKey: true,
-        duplicateCheck: true,
-        rollbackPlan: true,
-        validationPlan: true,
+  if (blockers.length) {
+    return {
+      httpStatus: 202,
+      body: {
+        success: true,
+        status: 'approval_required',
+        mode: 'guarded_notification_send_bounded_executor',
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        notificationSent: false,
+        liveExecutionAllowed: false,
+        approvalRequired: {
+          owner: true,
+          notificationSend: true,
+          idempotencyKey: true,
+          duplicateCheck: true,
+          rollbackPlan: true,
+          validationPlan: true,
+        },
+        endpointBoundary: {
+          forbiddenLiveEndpoint: serviceConfig.notificationSendPath,
+          validationEndpointAllowedBeforeWindow: serviceConfig.notificationValidatePath,
+          fullCheckoutActivationAllowed: false,
+        },
+        blockers: [...new Set(blockers)],
+        packet,
+        sensitiveDataPolicy: ['no NOTIFICATIONS_SERVICE_TOKEN value', 'no raw recipient', 'no raw message payload'],
       },
-      endpointBoundary: {
-        forbiddenLiveEndpoint: serviceConfig.notificationSendPath,
-        validationEndpointAllowedBeforeWindow: serviceConfig.notificationValidatePath,
-        fullCheckoutActivationAllowed: false,
+    };
+  }
+
+  const products = await fetchCatalogProducts();
+  const product = products.find((item) => item?.warehouseId && item?.productSource === 'catalog');
+  if (!product) {
+    return {
+      httpStatus: 409,
+      body: {
+        success: false,
+        status: 'notification_send_live_product_scope_missing',
+        mode: 'guarded_notification_send_bounded_executor',
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        notificationSent: false,
+        liveExecutionAllowed: false,
       },
-      blockers: [...new Set(blockers)],
-      packet,
-      sensitiveDataPolicy: ['no NOTIFICATIONS_SERVICE_TOKEN value', 'no raw recipient', 'no raw message payload'],
-    },
-  };
+    };
+  }
+
+  const checkout = buildReadinessCheckout(product);
+  const notificationPayload = buildOrderConfirmationNotification(checkout);
+  try {
+    const notification = await createNotification(checkout, notificationPayload, idempotencyKey);
+    return {
+      httpStatus: 201,
+      body: {
+        success: true,
+        status: 'bounded_notification_send_completed',
+        mode: 'guarded_notification_send_bounded_executor',
+        mutation: true,
+        persistence: true,
+        providerCall: true,
+        notificationSent: true,
+        liveExecutionAllowed: true,
+        notificationEvidence: {
+          status: notification?.status || notification?.data?.status || null,
+          resultFingerprint: stableFingerprint(notification),
+          payloadFingerprint: stableFingerprint({
+            channel: notificationPayload.channel,
+            type: notificationPayload.type,
+            service: notificationPayload.service,
+            purpose: notificationPayload.purpose,
+            orderId: notificationPayload.templateData?.orderId || null,
+          }),
+          idempotencyKeyFingerprint: stableFingerprint(idempotencyKey),
+        },
+        sensitiveDataPolicy: ['no NOTIFICATIONS_SERVICE_TOKEN value', 'no raw recipient', 'no raw message payload'],
+      },
+    };
+  } catch (error) {
+    return {
+      httpStatus: 502,
+      body: {
+        success: false,
+        status: 'bounded_notification_send_failed',
+        mode: 'guarded_notification_send_bounded_executor',
+        mutation: true,
+        persistence: true,
+        providerCall: true,
+        notificationSent: 'unknown',
+        liveExecutionAllowed: true,
+        error: compactSmokeError(error),
+        sensitiveDataPolicy: ['no NOTIFICATIONS_SERVICE_TOKEN value', 'no raw recipient', 'no raw message payload'],
+      },
+    };
+  }
 }
 
 
@@ -2887,14 +3026,14 @@ async function validateNotification(checkout, notificationPayload) {
   });
 }
 
-async function createNotification(checkout, notificationPayload) {
+async function createNotification(checkout, notificationPayload, idempotencyKey = checkoutIdempotencyKeys(checkout).notificationSend) {
   const url = new URL(serviceConfig.notificationSendPath, serviceConfig.notificationsUrl);
   return fetchJson(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${serviceConfig.notificationServiceToken}`,
-      'idempotency-key': checkoutIdempotencyKeys(checkout).notificationSend,
+      'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(notificationPayload),
   });

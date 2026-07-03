@@ -57,7 +57,7 @@ const executor = executorResult.payload;
 assert(executorResult.response.status === 202, 'payment executor should return 202 while blocked', executor);
 assert(executor.success === true, 'payment executor envelope failed', executor);
 assert(executor.status === 'approval_required', 'payment executor should require approval', executor);
-assert(executor.mode === 'guarded_payment_create_bounded_executor_stub', 'payment executor mode mismatch', executor);
+assert(executor.mode === 'guarded_payment_create_bounded_executor', 'payment executor mode mismatch', executor);
 assert(executor.mutation === false, 'payment executor reports mutation', executor);
 assert(executor.persistence === false, 'payment executor reports persistence', executor);
 assert(executor.providerCall === false, 'payment executor reports provider call', executor);

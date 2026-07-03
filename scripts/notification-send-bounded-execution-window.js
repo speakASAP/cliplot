@@ -57,7 +57,7 @@ const executor = executorResult.payload;
 assert(executorResult.response.status === 202, 'notification executor should return 202 while blocked', executor);
 assert(executor.success === true, 'notification executor envelope failed', executor);
 assert(executor.status === 'approval_required', 'notification executor should require approval', executor);
-assert(executor.mode === 'guarded_notification_send_bounded_executor_stub', 'notification executor mode mismatch', executor);
+assert(executor.mode === 'guarded_notification_send_bounded_executor', 'notification executor mode mismatch', executor);
 assert(executor.mutation === false, 'notification executor reports mutation', executor);
 assert(executor.persistence === false, 'notification executor reports persistence', executor);
 assert(executor.providerCall === false, 'notification executor reports provider call', executor);
