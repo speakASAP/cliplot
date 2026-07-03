@@ -7749,12 +7749,13 @@ export async function postLiveRevenueClosureEvidencePacket() {
 
 
 export async function revenueHandoffReconciliationPacket() {
-  const revenue = await revenueClosurePacket();
-  const postLive = await postLiveRevenueClosureEvidencePacket();
-  const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
-  const runbook = await liveOwnerExecutionRunbookPacket();
+  const [revenue, handoff, runbook] = await Promise.all([
+    revenueClosurePacket(),
+    checkoutLiveReadinessHandoffEvidencePacket(),
+    liveOwnerExecutionRunbookPacket(),
+  ]);
   const preflight = liveCheckoutPreflight();
-  const completedWindow = postLive.completedWindow || completedFullCheckoutLiveWindowEvidenceSummary();
+  const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
