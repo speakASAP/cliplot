@@ -116,6 +116,15 @@ if (callbackPersistenceMetadataApproved) {
 }
 assert(!packet.blockers.some((item) => item.startsWith('[DONE:')), 'satisfied evidence should not be counted as blockers', packet);
 assert(packet.sensitiveDataPolicy?.includes('metadata only'), 'sensitive data policy missing', packet);
+assert(packet.futureCallbackPersistenceContract?.duplicateHandling?.includes('idempotent'), 'duplicate/idempotency handling description missing', packet);
+assert(packet.futureCallbackPersistenceContract?.conflictHandling?.includes('manual review'), 'manual conflict handling description missing', packet);
+assert(packet.futureCallbackPersistenceContract?.retentionPolicy === 'approved_metadata_only_90_days_minimum_until_storage_backend_approval', 'retention policy metadata changed', packet);
+assert(packet.futureCallbackPersistenceContract?.retentionApprovalPresent === callbackPersistenceMetadataApproved, 'retention approval evidence inconsistent with approval status', packet);
+assert(packet.futureCallbackPersistenceContract?.uniquenessApprovalPresent === callbackPersistenceMetadataApproved, 'uniqueness/conflict approval evidence inconsistent with approval status', packet);
+assert(packet.storageBackendProposal?.proposedOwner === 'payments-microservice', 'callback storage owner changed', packet);
+assert(packet.approvedPassiveReadContract?.mutation === false, 'approved passive read contract reports mutation', packet);
+assert(packet.approvedPassiveReadContract?.persistence === false, 'approved passive read contract reports persistence', packet);
+assert(packet.approvedPassiveReadContract?.providerCall === false, 'approved passive read contract reports provider call', packet);
 
 console.log(JSON.stringify({
   ok: true,
@@ -128,9 +137,43 @@ console.log(JSON.stringify({
   callbackPersistence: packet.callbackPersistence,
   callbackReplayEnabled: packet.callbackReplayEnabled,
   blockerCount: packet.blockers.length,
-  storageBackendProposal: packet.storageBackendProposal.status,
-  rolloutPlan: packet.rolloutPlan.status,
-  replayDryRunContract: packet.replayDryRunContract.mode,
+  storageBackendProposal: {
+    status: packet.storageBackendProposal.status,
+    proposedOwner: packet.storageBackendProposal.proposedOwner,
+    approvalIdPresent: packet.storageBackendProposal.approvalIdPresent,
+    callbackPersistenceNow: packet.storageBackendProposal.callbackPersistenceNow,
+    callbackReplayEnabledNow: packet.storageBackendProposal.callbackReplayEnabledNow,
+    liveStatusWritesNow: packet.storageBackendProposal.liveStatusWritesNow,
+  },
+  futureCallbackPersistenceContract: {
+    idempotencyKeys: packet.futureCallbackPersistenceContract.idempotencyKeys,
+    uniqueKeys: packet.futureCallbackPersistenceContract.uniqueKeys,
+    duplicateHandling: packet.futureCallbackPersistenceContract.duplicateHandling,
+    conflictHandling: packet.futureCallbackPersistenceContract.conflictHandling,
+    retentionPolicy: packet.futureCallbackPersistenceContract.retentionPolicy,
+    retentionApprovalPresent: packet.futureCallbackPersistenceContract.retentionApprovalPresent,
+    uniquenessApprovalPresent: packet.futureCallbackPersistenceContract.uniquenessApprovalPresent,
+    rollbackOwner: packet.futureCallbackPersistenceContract.rollbackOwner,
+    validationOwner: packet.futureCallbackPersistenceContract.validationOwner,
+    currentPersistence: packet.futureCallbackPersistenceContract.currentPersistence,
+    replayExecution: packet.futureCallbackPersistenceContract.replayExecution,
+  },
+  rolloutPlan: {
+    status: packet.rolloutPlan.status,
+    approvalIdPresent: packet.rolloutPlan.approvalIdPresent,
+    dryRunOnlyNow: packet.rolloutPlan.dryRunOnlyNow,
+    runtimeEnablementNow: packet.rolloutPlan.runtimeEnablementNow,
+    callbackPersistenceNow: packet.rolloutPlan.callbackPersistenceNow,
+    callbackReplayEnabledNow: packet.rolloutPlan.callbackReplayEnabledNow,
+    liveStatusWritesNow: packet.rolloutPlan.liveStatusWritesNow,
+  },
+  replayDryRunContract: {
+    mode: packet.replayDryRunContract.mode,
+    syntheticOnlyNow: packet.replayDryRunContract.syntheticOnlyNow,
+    replayExecutionNow: packet.replayDryRunContract.replayExecutionNow,
+    callbackPersistenceNow: packet.replayDryRunContract.callbackPersistenceNow,
+    liveStatusWritesNow: packet.replayDryRunContract.liveStatusWritesNow,
+  },
   mutation: packet.mutation,
   persistence: packet.persistence,
   providerCall: packet.providerCall,

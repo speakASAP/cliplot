@@ -59,6 +59,13 @@ assert(packet.executionWindowProposal?.persistence === false, 'execution window 
 assert(packet.executionWindowProposal?.providerCall === false, 'execution window reports provider call', packet);
 assert(packet.dryRunPlan?.mode === 'synthetic_dry_run_only', 'dry-run mode changed', packet);
 assert(packet.dryRunPlan?.phases?.every((phase) => phase.runtimeMutation === false), 'dry-run phase would mutate', packet);
+assert(packet.dryRunPlan?.syntheticReplayDryRunAssertions?.length >= 6, 'synthetic replay dry-run assertions missing', packet);
+assert(packet.dryRunPlan.syntheticReplayDryRunAssertions.every((item) => item.mutation === false && item.persistence === false && item.providerCall === false), 'synthetic replay dry-run assertion would mutate or call provider', packet);
+assert(packet.dryRunPlan.syntheticReplayDryRunAssertions.some((item) => item.caseId === 'duplicate_same_semantic_callback' && item.result === 'dry_run_passed_no_write'), 'duplicate callback dry-run assertion missing', packet);
+assert(packet.dryRunPlan.syntheticReplayDryRunAssertions.some((item) => item.caseId === 'incompatible_terminal_status_conflict' && item.result === 'dry_run_passed_manual_review_required'), 'terminal conflict dry-run assertion missing', packet);
+assert(packet.dryRunPlan.syntheticReplayDryRunAssertions.some((item) => item.caseId === 'retention_and_deletion_metadata' && item.result === 'dry_run_passed_metadata_present'), 'retention dry-run assertion missing', packet);
+assert(packet.dryRunPlan.syntheticReplayDryRunAssertions.some((item) => item.caseId === 'rollback_and_validation_owner' && item.result === 'dry_run_passed_owner_present'), 'rollback/validation owner dry-run assertion missing', packet);
+assert(packet.dryRunPlan.syntheticReplayDryRunAssertions.some((item) => item.caseId === 'runtime_guard_closed' && item.replayExecutionAllowed === false && item.callbackPersistenceNow === false && item.liveStatusWritesNow === false), 'runtime guard dry-run assertion missing', packet);
 assert(packet.dryRunPlan?.idempotencyKeys?.includes('paymentId'), 'paymentId idempotency missing', packet);
 assert(packet.dryRunPlan?.idempotencyKeys?.includes('paymentStatus'), 'paymentStatus idempotency missing', packet);
 assert(packet.futureExecutionPlan?.status === 'approval_required_before_runtime_use', 'future execution plan status changed', packet);
@@ -96,6 +103,13 @@ console.log(JSON.stringify({
   dryRunOnlyNow: packet.dryRunOnlyNow,
   executionWindow: packet.executionWindowProposal.status,
   dryRunPlan: packet.dryRunPlan.status,
+  syntheticReplayDryRunAssertions: packet.dryRunPlan.syntheticReplayDryRunAssertions.map((item) => ({
+    caseId: item.caseId,
+    result: item.result,
+    mutation: item.mutation,
+    persistence: item.persistence,
+    providerCall: item.providerCall,
+  })),
   blockerCount: packet.blockers.length,
   mutation: packet.mutation,
   persistence: packet.persistence,
