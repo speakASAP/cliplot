@@ -63,7 +63,8 @@ evidence.
 - `docs/auth-wallet-checkout-contract.md`
 - `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`
 - `scripts/auth-wallet-checkout-readiness.js`
-- `package.json` script wiring for the verifier
+- `scripts/auth-wallet-browser-session-smoke.js`
+- `package.json` script wiring for the verifier and guarded smoke harness
 
 ## Forbidden Changes In This Lane
 
@@ -144,6 +145,7 @@ evidence.
 | --- | --- | --- | --- | --- |
 | Auth wallet endpoint presence | complete | Auth owner | Auth service/API docs | Auth `/health` 200 and wallet endpoint HTTP 401 evidence without secrets |
 | Cliplot source readiness verifier | ready now | Cliplot worker | `scripts/auth-wallet-checkout-readiness.js`, `package.json` | `npm run readiness:auth-wallet-checkout` |
+| Guarded synthetic browser-session wallet smoke harness | ready now; live execution approval-gated | Gate 5 Cliplot worker | `scripts/auth-wallet-browser-session-smoke.js`, `package.json`, wallet contract docs | `npm run readiness:auth-wallet-browser-session-smoke` default blocked evidence plus future owner-approved runtime command shape |
 | Checkout wallet contract | source-prepared | Cliplot coordinator | `docs/auth-wallet-checkout-contract.md`, readiness verifier | source validation only |
 | Checkout wallet UX plan | source-session-policy-prepared; runtime-gated | product/checkout owner | future checkout UI files | browser-session implementation, runtime selector evidence, and guest fallback implementation |
 | Runtime integration | blocked | integration owner | future Cliplot runtime files | only after session, runtime selector/no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
@@ -160,8 +162,11 @@ evidence.
 4. Add the source-only Cliplot wallet checkout contract and verifier markers
    for selector behavior, browser-session handoff, no-PII exposure, pure fixture
    field mapping, and guest fallback policy.
-5. Record validation evidence in `reports/validation`.
-6. Commit the repo-local readiness work only; do not deploy.
+5. Add a guarded synthetic browser/session smoke harness that defaults to
+   approval-required no-network evidence and only supports future approved,
+   sanitized GET reads of the three Auth wallet endpoints.
+6. Record validation evidence in `reports/validation`.
+7. Commit the repo-local readiness work only; do not deploy.
 
 ## Coding Prompt
 
@@ -177,6 +182,8 @@ Primary validation:
 ```bash
 npm run readiness:auth-wallet-checkout
 node --check scripts/auth-wallet-checkout-readiness.js
+node --check scripts/auth-wallet-browser-session-smoke.js
+npm run readiness:auth-wallet-browser-session-smoke
 git diff --check
 ```
 

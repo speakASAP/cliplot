@@ -84,11 +84,30 @@ missing.
 - `[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]`
 - `[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]`
 
+2026-07-03 Gate 5 guarded browser/session harness update:
+
+- Added `scripts/auth-wallet-browser-session-smoke.js` as an inert-by-default
+  approval-gated harness for future synthetic browser/session Auth wallet read
+  evidence.
+- Default execution performs no network calls and reports
+  `approval_required_auth_wallet_browser_session_smoke`.
+- Future execution requires `ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true`, a
+  non-secret `CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID`, and an owner-approved
+  synthetic `AUTH_WALLET_SYNTHETIC_BEARER` only for the evidence window.
+- Scope remains limited to GET reads of `/auth/profile/checkout-data`,
+  `/auth/profile/delivery-addresses`, and `/auth/profile/invoice-profiles`.
+- Harness evidence forbids printing Authorization headers, bearer tokens,
+  cookies, decoded token claims, raw response bodies, customer PII, checkout
+  submit, Auth wallet mutation, payment creation, Warehouse reservation,
+  notification sending, DB mutation, Kubernetes mutation, and Vault usage.
+
 ## Validation Commands
 
 ```bash
 npm run readiness:auth-wallet-checkout
 node --check scripts/auth-wallet-checkout-readiness.js
+node --check scripts/auth-wallet-browser-session-smoke.js
+npm run readiness:auth-wallet-browser-session-smoke
 npm run check
 git diff --check
 rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cookie|oauth|jwt)[A-Z0-9_ -]*(=|:)[^[:space:]]+" scripts/auth-wallet-checkout-readiness.js implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md reports/validation/GOAL-10-auth-wallet-checkout-readiness.md

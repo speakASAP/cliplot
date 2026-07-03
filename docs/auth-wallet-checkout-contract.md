@@ -206,6 +206,36 @@ This policy does not approve runtime wallet fetches, selector UI, browser-sessio
 handoff, live smoke, checkout submission, payment creation, Warehouse
 reservation, or notification sending.
 
+## Guarded Synthetic Browser Session Smoke Harness
+
+`scripts/auth-wallet-browser-session-smoke.js` is approval-gated runtime evidence
+scaffolding for a future synthetic browser/session wallet read. Its default mode
+records that live execution is blocked and performs no network call. Runtime use
+requires all of the following, supplied only for the evidence window:
+
+- `ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true`;
+- a non-secret approval id in `CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID`;
+- an owner-approved synthetic bearer in `AUTH_WALLET_SYNTHETIC_BEARER`;
+- the Cliplot/Auth base URL passed as an argument or
+  `CLIPLOT_AUTH_WALLET_SMOKE_BASE_URL`.
+
+The harness is limited to GET reads of the three Auth wallet endpoints listed in
+this contract. It must not use Vault, cookies, checkout submit, Auth wallet
+mutation, payment creation, Warehouse reservation, notification sending, DB
+mutation, Kubernetes mutation, or customer data logging. Evidence is limited to
+status codes, status labels, endpoint labels, booleans, and `schemaVersion`; raw
+response bodies, Authorization headers, bearer tokens, cookies, decoded token
+claims, and customer PII remain forbidden.
+
+Future live command shape, without secret values:
+
+```bash
+ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true \
+CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID> \
+AUTH_WALLET_SYNTHETIC_BEARER=<approved synthetic bearer> \
+npm run smoke:auth-wallet-browser-session -- <base-url>
+```
+
 ## Forbidden In This Contract Lane
 
 - Runtime wallet fetch integration.
