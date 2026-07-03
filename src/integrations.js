@@ -154,6 +154,36 @@ function liveMutationApprovals() {
   };
 }
 
+function liveSmokeMetadataReadyFromPlan(plan) {
+  return plan?.approvals?.orderWarehouseSmoke === true
+    && plan?.approvals?.orderWarehouseSmokeCleanup === true
+    && plan?.approvals?.orderWarehouseSmokeWindow === true
+    && plan?.approvals?.orderWarehouseSmokeRollbackOwner === true
+    && plan?.approvals?.orderWarehouseSmokeValidationOwner === true;
+}
+
+function liveCheckoutWindowMetadataBlockers({ productFilter, liveSmokePlan, callbackPolicy }) {
+  const approvals = liveMutationApprovals();
+  return [
+    ...(approvals.order ? [] : ['[MISSING: CLIPLOT_LIVE_ORDER_APPROVAL_ID]']),
+    ...(approvals.payment ? [] : ['[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID]']),
+    ...(approvals.notification ? [] : ['[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID]']),
+    ...(isConcreteSmokeWindow(serviceConfig.liveCheckoutExecutionWindow) ? [] : ['[MISSING: concrete CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW]']),
+    ...(isConcreteSmokeWindow(serviceConfig.livePaymentCreateExecutionWindow) ? [] : ['[MISSING: concrete CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW]']),
+    ...(isConcreteSmokeWindow(serviceConfig.liveNotificationSendExecutionWindow) ? [] : ['[MISSING: concrete CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW]']),
+    ...(liveSmokeMetadataReadyFromPlan(liveSmokePlan) ? [] : ['[MISSING: live Orders/Warehouse smoke metadata approval]']),
+    ...(productFilter?.approvedCliplotSkuScope === true ? [] : ['[MISSING: approved Cliplot SKU scope]']),
+    ...(isApprovalPresent(serviceConfig.statusRuntimeApprovalId) ? [] : ['[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID]']),
+    ...(serviceConfig.customerStatusRuntimeRead ? [] : ['[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true]']),
+    ...(serviceConfig.paymentStatusSnapshotRead ? [] : ['[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true]']),
+    ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId) ? [] : ['[MISSING: CLIPLOT_PAYMENT_STORAGE_OWNERSHIP_APPROVAL_ID]']),
+    ...(isApprovalPresent(serviceConfig.statusMappingOwnershipApprovalId) ? [] : ['[MISSING: CLIPLOT_STATUS_MAPPING_OWNERSHIP_APPROVAL_ID]']),
+    ...(callbackPolicy?.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? [] : ['[MISSING: approved callback replay policy metadata]']),
+    ...(callbackPolicy?.callbackPersistence === false ? [] : ['[MISSING: callback persistence must remain disabled]']),
+    ...(isApprovalPresent(serviceConfig.liveStatusWriteApprovalId) ? [] : ['[MISSING: CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID]']),
+  ];
+}
+
 function timeoutSignal(timeoutMs = requestTimeoutMs) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -1564,11 +1594,7 @@ export async function liveCheckoutExecutionWindowPacket() {
   if (!serviceConfig.liveOrderWarehouseSmoke) executionBlockers.push('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for approved CREATE_REPLAY_CANCEL evidence window]');
   const paymentWindowMetadataReady = paymentWindow.approvalMetadata?.metadataReady === true;
   const notificationWindowMetadataReady = notificationWindow.approvalMetadata?.metadataReady === true;
-  const liveSmokeMetadataReady = liveSmokePlan.approvals?.orderWarehouseSmoke === true
-    && liveSmokePlan.approvals?.orderWarehouseSmokeCleanup === true
-    && liveSmokePlan.approvals?.orderWarehouseSmokeWindow === true
-    && liveSmokePlan.approvals?.orderWarehouseSmokeRollbackOwner === true
-    && liveSmokePlan.approvals?.orderWarehouseSmokeValidationOwner === true;
+  const liveSmokeMetadataReady = liveSmokeMetadataReadyFromPlan(liveSmokePlan);
   if (!paymentWindowMetadataReady) metadataBlockers.push('[MISSING: payment-create bounded execution-window metadata approval]');
   if (!notificationWindowMetadataReady) metadataBlockers.push('[MISSING: notification-send bounded execution-window metadata approval]');
   if (!liveSmokeMetadataReady) metadataBlockers.push('[MISSING: live Orders/Warehouse smoke metadata approval]');
@@ -7335,6 +7361,8 @@ export async function liveCheckoutApprovalPacket() {
   const preflight = readiness.liveCheckoutPreflight;
   const auth = authLinks();
 
+  const liveWindowOpen = preflight.status === 'ready_for_approved_live_mutation' && preflight.wouldMutate === true;
+  const liveWindowMetadataBlockers = liveCheckoutWindowMetadataBlockers({ productFilter, liveSmokePlan, callbackPolicy });
   const readinessEvidence = {
     catalogProductFilter: productFilter.status,
     orderWarehouse: orderWarehouse.status,
@@ -7347,20 +7375,24 @@ export async function liveCheckoutApprovalPacket() {
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
     livePreflight: preflight.status,
+    liveWindowOpen,
+    liveWindowMetadataReady: liveWindowMetadataBlockers.length === 0,
   };
 
   const blockers = [
-    ...new Set([
-      ...(preflight.missing || []),
-      ...(productFilter.blockers || []),
-      ...(liveSmokePlan.liveExecutionBlockers || []),
-      ...(paymentStatusPacket.blockers || []),
-      ...(callbackPersistence.blockers || []),
-      ...(customerStatusApproval.blockers || []),
-      ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
-      ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? [] : ['[MISSING: customer status activation gate is not ready]']),
-      ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
-    ].filter((item) => !String(item).startsWith('[DONE:'))),
+    ...new Set((liveWindowOpen
+      ? liveWindowMetadataBlockers
+      : [
+        ...(preflight.missing || []),
+        ...(productFilter.blockers || []),
+        ...(liveSmokePlan.liveExecutionBlockers || []),
+        ...(paymentStatusPacket.blockers || []),
+        ...(callbackPersistence.blockers || []),
+        ...(customerStatusApproval.blockers || []),
+        ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
+        ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? [] : ['[MISSING: customer status activation gate is not ready]']),
+        ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
+      ]).filter((item) => !String(item).startsWith('[DONE:'))),
   ];
 
   const satisfiedEvidence = [
@@ -7377,15 +7409,17 @@ export async function liveCheckoutApprovalPacket() {
     ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),
   ];
 
-  const readyForLiveMutation = preflight.status === 'ready_for_approved_live_mutation'
-    && preflight.wouldMutate === true
-    && productFilter.approvedCliplotSkuScope === true
-    && orderWarehouse.status === 'validated_no_mutation'
-    && paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read'
-    && callbackPersistence.callbackPersistence === false
-    && callbackPersistence.callbackReplayEnabled === false
-    && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
-    && blockers.length === 0;
+  const readyForLiveMutation = liveWindowOpen
+    ? blockers.length === 0
+    : preflight.status === 'ready_for_approved_live_mutation'
+      && preflight.wouldMutate === true
+      && productFilter.approvedCliplotSkuScope === true
+      && orderWarehouse.status === 'validated_no_mutation'
+      && paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read'
+      && callbackPersistence.callbackPersistence === false
+      && callbackPersistence.callbackReplayEnabled === false
+      && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
+      && blockers.length === 0;
 
   return {
     success: true,
@@ -7524,6 +7558,8 @@ export async function revenueClosurePacket() {
   const readiness = serviceReadiness();
   const preflight = readiness.liveCheckoutPreflight;
 
+  const liveWindowOpen = preflight.status === 'ready_for_approved_live_mutation' && preflight.wouldMutate === true;
+  const liveWindowMetadataBlockers = liveCheckoutWindowMetadataBlockers({ productFilter, liveSmokePlan, callbackPolicy });
   const readinessEvidence = {
     catalogProductFilter: productFilter.status,
     orderWarehouse: orderWarehouse.status,
@@ -7540,32 +7576,38 @@ export async function revenueClosurePacket() {
     customerStatusApproval: customerStatusApproval.status,
     liveCheckoutApproval: approvalPacket.status,
     livePreflight: preflight.status,
+    liveWindowOpen,
+    liveWindowMetadataReady: liveWindowMetadataBlockers.length === 0,
   };
 
   const blockers = [
-    ...new Set([
-      ...(approvalPacket.missing || []),
-      ...(productFilter.blockers || []),
-      ...(liveSmokePlan.liveExecutionBlockers || []),
-      ...(paymentStatusReadinessPacket.blockers || []),
-      ...(paymentStorage.blockers || []),
-      ...(paymentDecision.blockers || []),
-      ...(paymentMapping.blockers || []),
-      ...(callbackPolicy.blockers || []),
-      ...(customerStatusApproval.blockers || []),
-      ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
-      ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
-    ].filter((item) => !String(item).startsWith('[DONE:'))),
+    ...new Set((liveWindowOpen
+      ? liveWindowMetadataBlockers
+      : [
+        ...(approvalPacket.missing || []),
+        ...(productFilter.blockers || []),
+        ...(liveSmokePlan.liveExecutionBlockers || []),
+        ...(paymentStatusReadinessPacket.blockers || []),
+        ...(paymentStorage.blockers || []),
+        ...(paymentDecision.blockers || []),
+        ...(paymentMapping.blockers || []),
+        ...(callbackPolicy.blockers || []),
+        ...(customerStatusApproval.blockers || []),
+        ...(orderWarehouse.status === 'validated_no_mutation' ? [] : ['[MISSING: order/Warehouse no-mutation readiness is not validated]']),
+        ...(preflight.status === 'ready_for_approved_live_mutation' ? [] : ['[MISSING: approved live checkout mutation activation remains blocked]']),
+      ]).filter((item) => !String(item).startsWith('[DONE:'))),
   ];
 
-  const readyForLiveMutation = preflight.status === 'ready_for_approved_live_mutation'
-    && preflight.wouldMutate === true
-    && productFilter.approvedCliplotSkuScope === true
-    && orderWarehouse.status === 'validated_no_mutation'
-    && paymentStatusReadinessPacket.status === 'ready_for_approved_payment_status_runtime_read'
-    && callbackPolicy.callbackPersistence === false
-    && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
-    && blockers.length === 0;
+  const readyForLiveMutation = liveWindowOpen
+    ? blockers.length === 0
+    : preflight.status === 'ready_for_approved_live_mutation'
+      && preflight.wouldMutate === true
+      && productFilter.approvedCliplotSkuScope === true
+      && orderWarehouse.status === 'validated_no_mutation'
+      && paymentStatusReadinessPacket.status === 'ready_for_approved_payment_status_runtime_read'
+      && callbackPolicy.callbackPersistence === false
+      && customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime'
+      && blockers.length === 0;
 
   const blockerClassification = {
     mode: 'read_only_blocker_classification',
