@@ -258,6 +258,62 @@ const sourceOnlyWalletMappingEvidence = {
   forbiddenFixtureValueProtected: !serializedSnapshotFixtures.includes('MUST_NOT_COPY'),
 };
 
+const sourceOnlySelectorBehaviorEvidence = {
+  status: 'source_only_selector_behavior_policy_verified',
+  runtimeWalletCodePresent: false,
+  selectorUiPresent: false,
+  syntheticOnly: true,
+  behaviorCases: [
+    {
+      case: 'default_delivery_prefill_before_manual_edit',
+      walletDefaultMayPrefill: true,
+      manualEditWins: true,
+      checkoutSubmit: false,
+      walletMutation: false,
+    },
+    {
+      case: 'default_invoice_prefill_before_manual_edit',
+      walletDefaultMayPrefill: true,
+      manualEditWins: true,
+      checkoutSubmit: false,
+      walletMutation: false,
+    },
+    {
+      case: 'manual_delivery_override_after_wallet_selection',
+      walletDefaultMayPrefill: false,
+      manualEditWins: true,
+      checkoutSubmit: false,
+      walletMutation: false,
+    },
+    {
+      case: 'manual_invoice_override_after_wallet_selection',
+      walletDefaultMayPrefill: false,
+      manualEditWins: true,
+      checkoutSubmit: false,
+      walletMutation: false,
+    },
+    {
+      case: 'return_to_manual_guest_style_entry',
+      manualCheckoutAvailable: true,
+      clearsSelectedWalletReference: true,
+      checkoutSubmit: false,
+      walletMutation: false,
+    },
+  ],
+  selectorLabelPolicy: {
+    customerSafeSummaryOnly: true,
+    rawFullAddressDump: false,
+    tokenOrCookieOutput: false,
+    walletIdOutput: false,
+  },
+  orderSnapshotPolicy: {
+    sendsWalletIds: false,
+    sendsMutableWalletReferences: false,
+    sendsAuthSubject: false,
+    usesImmutableSnapshotsOnly: true,
+  },
+};
+
 const sourceOnlyGuestFallbackPolicy = {
   status: 'source_only_guest_fallback_policy_verified',
   runtimeWalletCodePresent: false,
@@ -287,7 +343,7 @@ const sourceOnlyGuestFallbackPolicy = {
 };
 
 const blockers = [
-  '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
+  '[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]',
   '[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]',
   '[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]',
   '[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
@@ -303,6 +359,7 @@ const sourceKnownFacts = [
   'Auth source-defines checkout-data schemaVersion as auth.customer-data-wallet.checkout-data.v1.',
   'Auth source-defines checkout-data top-level fields, defaults fields, and sanitized delivery/invoice wallet row field names.',
   'Cliplot source-defines the no-PII wallet exposure policy; runtime wallet code is still absent and implementation evidence remains gated.',
+  'Cliplot source-verifies selector behavior policy for wallet defaults, manual override, manual fallback, customer-safe labels, and immutable snapshots; runtime selector UI remains gated.',
   'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
   'Cliplot source-defines guest fallback behavior for missing, rejected, timed-out, malformed, or empty Auth wallet reads; runtime evidence remains gated.',
 ];
@@ -373,6 +430,13 @@ const hasWalletContract = includesAll(walletContract, [
   'Do not persist reusable Auth wallet rows in Cliplot local storage',
   'Evidence may contain booleans, status codes, schema version, blocker labels',
   'Selector labels must avoid raw full address dumps',
+  'Source-Only Selector Behavior Acceptance Criteria',
+  'default wallet entries may prefill only before manual edits',
+  'manual edits must win over wallet defaults and selections',
+  'customer can return to manual guest-style entry',
+  'selector labels must use customer-safe summaries',
+  'wallet ids, mutable wallet references, and Auth subjects must not be',
+  'submitted to checkout or Orders',
   'Source-Only No-PII Evidence Policy',
   'Forbidden evidence',
   'future runtime wallet code',
@@ -519,6 +583,49 @@ assert(
   { sourceOnlyWalletMappingEvidence },
 );
 assert(
+  sourceOnlySelectorBehaviorEvidence.status === 'source_only_selector_behavior_policy_verified'
+    && sourceOnlySelectorBehaviorEvidence.runtimeWalletCodePresent === false
+    && sourceOnlySelectorBehaviorEvidence.selectorUiPresent === false
+    && sourceOnlySelectorBehaviorEvidence.syntheticOnly === true,
+  'Cliplot Auth wallet source-only selector behavior policy is missing',
+  { sourceOnlySelectorBehaviorEvidence },
+);
+assert(
+  includesAll(sourceOnlySelectorBehaviorEvidence.behaviorCases.map(({ case: caseName }) => caseName).join('|'), [
+    'default_delivery_prefill_before_manual_edit',
+    'default_invoice_prefill_before_manual_edit',
+    'manual_delivery_override_after_wallet_selection',
+    'manual_invoice_override_after_wallet_selection',
+    'return_to_manual_guest_style_entry',
+  ]),
+  'Cliplot selector behavior cases are incomplete',
+  { sourceOnlySelectorBehaviorEvidence },
+);
+assert(
+  sourceOnlySelectorBehaviorEvidence.behaviorCases.every((behaviorCase) => behaviorCase.checkoutSubmit === false
+    && behaviorCase.walletMutation === false)
+    && sourceOnlySelectorBehaviorEvidence.behaviorCases.some((behaviorCase) => behaviorCase.manualEditWins === true)
+    && sourceOnlySelectorBehaviorEvidence.behaviorCases.some((behaviorCase) => behaviorCase.manualCheckoutAvailable === true),
+  'Cliplot selector behavior policy does not preserve manual override/fallback or forbid mutation consistently',
+  { sourceOnlySelectorBehaviorEvidence },
+);
+assert(
+  sourceOnlySelectorBehaviorEvidence.selectorLabelPolicy.customerSafeSummaryOnly === true
+    && sourceOnlySelectorBehaviorEvidence.selectorLabelPolicy.rawFullAddressDump === false
+    && sourceOnlySelectorBehaviorEvidence.selectorLabelPolicy.tokenOrCookieOutput === false
+    && sourceOnlySelectorBehaviorEvidence.selectorLabelPolicy.walletIdOutput === false,
+  'Cliplot selector label policy is not customer-safe',
+  { sourceOnlySelectorBehaviorEvidence },
+);
+assert(
+  sourceOnlySelectorBehaviorEvidence.orderSnapshotPolicy.sendsWalletIds === false
+    && sourceOnlySelectorBehaviorEvidence.orderSnapshotPolicy.sendsMutableWalletReferences === false
+    && sourceOnlySelectorBehaviorEvidence.orderSnapshotPolicy.sendsAuthSubject === false
+    && sourceOnlySelectorBehaviorEvidence.orderSnapshotPolicy.usesImmutableSnapshotsOnly === true,
+  'Cliplot selector behavior would leak wallet provenance into order snapshots',
+  { sourceOnlySelectorBehaviorEvidence },
+);
+assert(
   sourceOnlyGuestFallbackPolicy.status === 'source_only_guest_fallback_policy_verified'
     && sourceOnlyGuestFallbackPolicy.runtimeWalletCodePresent === false
     && sourceOnlyGuestFallbackPolicy.checkoutSubmitPath === '/api/checkout/submit'
@@ -572,9 +679,10 @@ console.log(JSON.stringify({
   authWalletResponseContract,
   authWalletPresenceGate,
   authWalletNoPiiExposurePolicy,
+  sourceOnlySelectorBehaviorEvidence,
   sourceOnlyWalletMappingEvidence,
   sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, runtime no-PII evidence, field mapping, and runtime guest fallback approvals are available.',
+  next: 'Keep Cliplot checkout wallet integration blocked until browser session, runtime selector/no-PII evidence, field mapping, and runtime guest fallback approvals are available.',
 }, null, 2));

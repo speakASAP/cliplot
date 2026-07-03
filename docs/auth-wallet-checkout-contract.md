@@ -76,6 +76,25 @@ reports, approval packets, and frontend selector labels do not expose forbidden
 evidence. Because runtime wallet code is not present yet, this contract resolves
 the policy only; implementation evidence remains dependency-gated.
 
+## Source-Only Selector Behavior Acceptance Criteria
+
+For the current source-only lane, selector behavior may be verified with
+synthetic state transitions only. The verifier must prove:
+
+- default wallet entries may prefill only before manual edits;
+- manual edits must win over wallet defaults and selections;
+- the customer can return to manual guest-style entry without saving or mutating
+  Auth wallet data;
+- selector labels must use customer-safe summaries, not raw full address dumps;
+- wallet ids, mutable wallet references, and Auth subjects must not be
+  submitted to checkout or Orders;
+- selector behavior evidence must not execute checkout submit, Auth wallet
+  mutation, payment creation, Warehouse reservation, or notification sending.
+
+This policy does not approve runtime wallet fetches, selector UI, browser-session
+handoff, live smoke, checkout submission, payment creation, Warehouse
+reservation, or notification sending.
+
 ## Source-Only Wallet Mapping Acceptance Criteria
 
 Pure mapping helpers may be validated with synthetic fixture rows before runtime

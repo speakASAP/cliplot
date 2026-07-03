@@ -58,7 +58,12 @@ missing.
     `electronicInvoiceEmail`;
   - sanitized wallet rows omit `user`, `userId`, and `deletedAt`.
 - Source-only contract recorded in `docs/auth-wallet-checkout-contract.md`.
-- `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
+- Source-only selector behavior policy is verified with synthetic state
+  transitions: default wallet entries may prefill only before manual edits,
+  manual edits win over wallet selections, manual guest-style entry remains
+  available, labels are customer-safe summaries, and wallet ids/Auth subjects/
+  mutable wallet references are not submitted.
+- `[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]`
 - `[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]`
 - Source-defined no-PII wallet exposure policy recorded in
   `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
@@ -100,6 +105,12 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
   authenticated session handoff, no-PII logging/frontend exposure constraints,
   field mapping from Auth wallet rows to immutable checkout/order snapshots, and
   guest fallback behavior.
+- `scripts/auth-wallet-checkout-readiness.js` verifies source-only selector
+  behavior policy with synthetic state transitions: default wallet entries may
+  prefill only before manual edits, manual edits win over wallet selections,
+  manual guest-style entry remains available, labels are customer-safe
+  summaries, and wallet ids/Auth subjects/mutable wallet references are not
+  submitted.
 - The contract now records a source-only no-PII evidence policy: allowed
   evidence is limited to status codes, booleans, `schemaVersion`, blocker
   labels, and short non-reversible ids; forbidden evidence includes raw wallet
@@ -131,7 +142,8 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
   guarded checkout renderer.
 - Feature: Dependency-gated Auth wallet checkout readiness.
 - Task: Add and refresh source-only plan and verifier after the upstream Auth
-  wallet 401 gate, including source-only guest fallback policy.
+  wallet 401 gate, including source-only selector behavior and guest fallback
+  policy.
 - Execution Plan: `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`.
 - Coding Prompt: Source-only verifier, no live calls, fail on premature runtime
   wallet endpoint usage.

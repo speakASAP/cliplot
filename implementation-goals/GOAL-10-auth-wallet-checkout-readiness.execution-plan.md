@@ -113,11 +113,14 @@ evidence.
   response field, and invoice recipient email is `email`, not `invoiceEmail`
   or `electronicInvoiceEmail`.
 - Source-only contract recorded, but runtime remains gated:
-  - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
+  - `[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]`
   - `[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]`
   - Cliplot source-defines the no-PII wallet exposure policy in
     `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
     still gated until wallet reads/selectors exist.
+  - Cliplot source-verifies selector behavior policy for wallet defaults,
+    manual override, manual guest-style fallback, customer-safe labels, and
+    immutable checkout snapshots without runtime selector UI or live calls.
   - Cliplot source-verifies pure Auth wallet row to immutable checkout snapshot
     mapping with synthetic fixtures and sanitized verifier output; runtime
     implementation evidence is still gated until wallet reads/selectors exist.
@@ -136,8 +139,8 @@ evidence.
 | Auth wallet endpoint presence | complete | Auth owner | Auth service/API docs | Auth `/health` 200 and wallet endpoint HTTP 401 evidence without secrets |
 | Cliplot source readiness verifier | ready now | Cliplot worker | `scripts/auth-wallet-checkout-readiness.js`, `package.json` | `npm run readiness:auth-wallet-checkout` |
 | Checkout wallet contract | source-prepared | Cliplot coordinator | `docs/auth-wallet-checkout-contract.md`, readiness verifier | source validation only |
-| Checkout wallet UX plan | dependency-gated | product/checkout owner | future checkout UI files | owner-approved selector behavior and guest fallback implementation |
-| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after selector, session, runtime no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
+| Checkout wallet UX plan | source-selector-policy-prepared; runtime-gated | product/checkout owner | future checkout UI files | browser-session implementation, runtime selector evidence, and guest fallback implementation |
+| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after session, runtime selector/no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
 | Final integration | blocked | Cliplot orchestrator | checkout/frontend/backend files | guarded checkout smoke plus wallet-specific no-mutation tests |
 
 ## Execution Plan
