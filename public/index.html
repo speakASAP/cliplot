@@ -3,195 +3,233 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cliplot - praktický obchod pro Česko</title>
+    <title>Cliplot - praktické vybavení pro dílnu a domácnost</title>
     <meta
       name="description"
-      content="Cliplot je český e-shop s rychlým výběrem produktů, přehlednou dopravou a jednoduchým nákupem bez zbytečných překážek."
+      content="Cliplot je český e-shop s praktickým vybavením do dílny a domácnosti, přehlednou dopravou a jednoduchým nákupem."
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="site-header" data-header>
-      <a class="brand" href="/" aria-label="Cliplot domu">
-        <span class="brand-mark">C</span>
-        <span>Cliplot</span>
-      </a>
-      <nav class="desktop-nav" aria-label="Hlavní navigace">
-        <a href="#kategorie">Kategorie</a>
-        <a href="#novinky">Novinky</a>
-        <a href="#akce">Akce</a>
-        <a href="#doprava">Doprava a platba</a>
-        <a href="#" data-auth-login>Přihlášení</a>
-      </nav>
-      <label class="search-box">
-        <span class="sr-only">Hledat produkt</span>
-        <input id="searchInput" type="search" placeholder="Hledat produkt" autocomplete="off" />
-      </label>
-      <button class="cart-button" type="button" data-open-cart aria-label="Otevřít košík">
-        Košík <span data-cart-count>0</span>
-      </button>
-    </header>
+    <div class="page-shell">
+      <span class="sr-only">Do košíku</span>
+      <header class="site-header" data-header>
+        <div class="utility-bar" aria-label="Rychlé informace">
+          <span><span class="status-dot"></span>Skladem</span>
+          <span><span aria-hidden="true">↗</span>Doručení 1-2 dny</span>
+          <span><span aria-hidden="true">▣</span>Bezpečná platba</span>
+          <span><span aria-hidden="true">↶</span>Vrácení zboží</span>
+          <span><span aria-hidden="true">♬</span>Česká podpora</span>
+        </div>
+        <div class="header-main">
+          <button class="menu-button" type="button" aria-label="Otevřít menu">☰</button>
+          <a class="brand" href="/" aria-label="Cliplot domu">Cliplot</a>
+          <nav class="desktop-nav" aria-label="Hlavní navigace">
+            <a href="#kategorie">Kategorie</a>
+            <a href="#novinky">Novinky</a>
+            <a href="#akce">Akce</a>
+            <a href="#doprava">Doprava a platba</a>
+            <a href="#" data-auth-login>Přihlášení</a>
+          </nav>
+          <label class="search-box">
+            <span class="sr-only">Hledat produkt</span>
+            <input id="searchInput" type="search" placeholder="Hledat produkt..." autocomplete="off" />
+          </label>
+          <button class="cart-button" type="button" data-open-cart aria-label="Otevřít košík">
+            <span aria-hidden="true">▾</span>
+            Košík <strong data-cart-count>0</strong>
+          </button>
+        </div>
+      </header>
 
-    <main>
-      <section class="hero">
-        <div class="hero-media" aria-hidden="true">
-          <img src="/assets/product-clips.svg" alt="" />
-          <div class="hero-note">
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <h1>Praktické vybavení do dílny a domácnosti</h1>
+            <p>Kvalitní produkty, které usnadní každodenní práci i údržbu.</p>
+            <a class="primary-link" href="#produkty">Koupit</a>
+          </div>
+          <div class="hero-media" aria-hidden="true">
+            <img src="/assets/mockup/hero-workshop.png" alt="" />
+          </div>
+        </section>
+
+        <section class="trust-strip" id="doprava" aria-label="Důvody důvěry">
+          <div>
+            <span aria-hidden="true">▱</span>
             <strong>Skladem</strong>
-            <span>Doručení 1-2 dny</span>
+            <small>Většina zboží máme skladem</small>
           </div>
-        </div>
-        <div class="hero-copy">
-          <h1>Praktické věci pro domácnost, dílnu i cesty.</h1>
-          <p>
-            Cliplot ukazuje cenu, dostupnost a dopravu hned. Vyberete produkt,
-            vložíte do košíku a objednávku připravíte bez povinné registrace.
-          </p>
-          <div class="hero-actions">
-            <a class="primary-link" href="#produkty">Do košíku</a>
-            <a class="secondary-link" href="#doprava">Doprava a platba</a>
+          <div>
+            <span aria-hidden="true">↗</span>
+            <strong>Doručení 1-2 dny</strong>
+            <small>Rychlé doručení po celé ČR</small>
           </div>
-          <dl class="quick-proof" aria-label="Rychlé informace">
-            <div>
-              <dt>od</dt>
-              <dd>249 Kč</dd>
+          <div>
+            <span aria-hidden="true">▣</span>
+            <strong>Bezpečná platba</strong>
+            <small>Platba kartou i dobírkou</small>
+          </div>
+          <div>
+            <span aria-hidden="true">↶</span>
+            <strong>Vrácení zboží</strong>
+            <small>Do 14 dnů bez udání důvodu</small>
+          </div>
+          <div>
+            <span aria-hidden="true">♬</span>
+            <strong>Česká podpora</strong>
+            <small>Jsme tu pro vás každý den</small>
+          </div>
+        </section>
+
+        <section class="categories" id="kategorie">
+          <div class="section-heading row-heading">
+            <h2>Oblíbené kategorie</h2>
+            <a href="#produkty">Zobrazit všechny kategorie ›</a>
+          </div>
+          <div class="category-card-list" aria-label="Oblíbené kategorie">
+            <a href="#produkty" data-category="all">
+              <img src="/assets/mockup/holders.png" alt="" />
+              <span>Držáky a úchyty</span>
+            </a>
+            <a href="#produkty" data-category="Cliplot">
+              <img src="/assets/mockup/organizer.png" alt="" />
+              <span>Kufry a organizéry</span>
+            </a>
+            <a href="#produkty" data-category="Cliplot">
+              <img src="/assets/mockup/chemicals.png" alt="" />
+              <span>Chemie a lepidla</span>
+            </a>
+            <a href="#produkty" data-category="Cliplot">
+              <img src="/assets/mockup/tape.png" alt="" />
+              <span>Pásky a lepicí pásky</span>
+            </a>
+            <a href="#produkty" data-category="Cliplot">
+              <img src="/assets/mockup/ties.png" alt="" />
+              <span>Stahovací pásky</span>
+            </a>
+            <a href="#produkty" data-category="Cliplot">
+              <img src="/assets/mockup/hooks.png" alt="" />
+              <span>Háčky a závěsy</span>
+            </a>
+          </div>
+        </section>
+
+        <section class="products-section" id="produkty">
+          <div class="section-heading row-heading">
+            <h2>Nejprodávanější produkty</h2>
+            <a href="#produkty">Zobrazit všechny produkty ›</a>
+          </div>
+          <div class="product-grid" data-products></div>
+        </section>
+
+        <section class="cart-checkout" id="checkout">
+          <div class="cart-panel">
+            <div class="section-heading">
+              <h2>Košík</h2>
+              <p>Přehled položek před objednávkou.</p>
             </div>
-            <div>
-              <dt>doprava</dt>
-              <dd>od 69 Kč</dd>
+            <div data-cart-items class="cart-items"></div>
+            <div class="cart-total">
+              <span>Mezisoučet</span>
+              <strong data-cart-total>0 Kč</strong>
             </div>
-            <div>
-              <dt>vrácení</dt>
-              <dd>14 dní</dd>
+          </div>
+
+          <form class="checkout-form" id="checkoutForm">
+            <div class="section-heading">
+              <h2>Objednávka bez registrace</h2>
+              <p>Vyplňte doručení a kontakt. Před platbou ještě uvidíte stav objednávky.</p>
             </div>
-          </dl>
-        </div>
-      </section>
-
-      <section class="trust-strip" id="doprava" aria-label="Důvody důvěry">
-        <div>
-          <strong>Bezpečná platba</strong>
-          <span>Připraveno pro kartu, převod a další běžné metody.</span>
-        </div>
-        <div>
-          <strong>Vrácení zboží</strong>
-          <span>Jednoduché vrácení do 14 dnů podle českých pravidel.</span>
-        </div>
-        <div>
-          <strong>Česká podpora</strong>
-          <span>Jednoduchá pomoc s objednávkou v češtině.</span>
-        </div>
-      </section>
-
-      <section class="categories" id="kategorie">
-        <div class="section-heading">
-          <h2>Kategorie</h2>
-          <p>Jednoduché rozdělení bez složitého menu.</p>
-        </div>
-        <div class="category-list">
-          <a href="#produkty" data-category="all">Vše</a>
-          <a href="#produkty" data-category="Domácnost">Domácnost</a>
-          <a href="#produkty" data-category="Dílna">Dílna</a>
-          <a href="#produkty" data-category="Cestování">Cestování</a>
-          <a href="#produkty" data-category="Akce">Akce</a>
-        </div>
-      </section>
-
-      <section class="products-section" id="produkty">
-        <div class="section-heading">
-          <h2>Doporučené produkty</h2>
-          <p>Ceny, dostupnost a doručení jsou vidět přímo v katalogu.</p>
-        </div>
-        <div class="product-grid" data-products></div>
-      </section>
-
-      <section class="cart-checkout" id="checkout">
-        <div class="cart-panel">
-          <div class="section-heading">
-            <h2>Košík</h2>
-            <p>Přehled položek před objednávkou.</p>
-          </div>
-          <div data-cart-items class="cart-items"></div>
-          <div class="cart-total">
-            <span>Mezisoučet</span>
-            <strong data-cart-total>0 Kč</strong>
-          </div>
-        </div>
-
-        <form class="checkout-form" id="checkoutForm">
-          <div class="section-heading">
-            <h2>Objednávka bez registrace</h2>
-            <p>Vyplňte doručení a kontakt. Před platbou ještě uvidíte stav objednávky.</p>
-          </div>
-          <label>
-            Jméno a příjmení
-            <input name="name" autocomplete="name" required />
-          </label>
-          <label>
-            E-mail
-            <input name="email" type="email" autocomplete="email" required />
-          </label>
-          <label>
-            Telefon
-            <input name="phone" autocomplete="tel" />
-          </label>
-          <label>
-            Adresa doručení
-            <input name="address" autocomplete="street-address" required />
-          </label>
-          <div class="checkout-options">
             <label>
-              Doprava
-              <select name="shipping">
-                <option value="balikovna">Balíkovna - 69 Kč</option>
-                <option value="zasilkovna">Zásilkovna - 79 Kč</option>
-                <option value="ppl">PPL kurýr - 119 Kč</option>
-              </select>
+              Jméno a příjmení
+              <input name="name" autocomplete="name" required />
             </label>
             <label>
-              Platba
-              <select name="payment">
-                <option value="invoice">Kartou online po potvrzení - 0 Kč</option>
-                <option value="bank_transfer">Bankovní převod - 0 Kč</option>
-              </select>
+              E-mail
+              <input name="email" type="email" autocomplete="email" required />
             </label>
-          </div>
-          <div class="checkout-review" aria-live="polite">
-            <h3>Kontrola objednávky</h3>
-            <div class="review-items" data-review-items></div>
-            <dl class="price-breakdown">
-              <div>
-                <dt>Mezisoučet</dt>
-                <dd data-order-subtotal>0 Kč</dd>
-              </div>
-              <div>
-                <dt>Doprava</dt>
-                <dd data-order-shipping>0 Kč</dd>
-              </div>
-              <div>
-                <dt>Platba</dt>
-                <dd data-order-payment>0 Kč</dd>
-              </div>
-              <div class="price-breakdown-total">
-                <dt>Celkem k úhradě</dt>
-                <dd data-order-total>0 Kč</dd>
-              </div>
-            </dl>
-            <p data-review-choice>Vyberte dopravu a platbu.</p>
-          </div>
-          <button class="primary-button" type="submit">Připravit objednávku</button>
-          <p class="checkout-note">
-            V této fázi objednávku bezpečně připravíme ke kontrole. Platba ani
-            rezervace zboží se nespustí, dokud není celý nákupní proces finálně
-            potvrzený.
-          </p>
-          <div class="checkout-result" data-checkout-result hidden></div>
-        </form>
-      </section>
-    </main>
+            <label>
+              Telefon
+              <input name="phone" autocomplete="tel" />
+            </label>
+            <label>
+              Adresa doručení
+              <input name="address" autocomplete="street-address" required />
+            </label>
+            <div class="checkout-options">
+              <label>
+                Doprava
+                <select name="shipping">
+                  <option value="balikovna">Balíkovna - 69 Kč</option>
+                  <option value="zasilkovna">Zásilkovna - 79 Kč</option>
+                  <option value="ppl">PPL kurýr - 119 Kč</option>
+                </select>
+              </label>
+              <label>
+                Platba
+                <select name="payment">
+                  <option value="invoice">Kartou online po potvrzení - 0 Kč</option>
+                  <option value="bank_transfer">Bankovní převod - 0 Kč</option>
+                </select>
+              </label>
+            </div>
+            <div class="checkout-review" aria-live="polite">
+              <h3>Kontrola objednávky</h3>
+              <div class="review-items" data-review-items></div>
+              <dl class="price-breakdown">
+                <div>
+                  <dt>Mezisoučet</dt>
+                  <dd data-order-subtotal>0 Kč</dd>
+                </div>
+                <div>
+                  <dt>Doprava</dt>
+                  <dd data-order-shipping>0 Kč</dd>
+                </div>
+                <div>
+                  <dt>Platba</dt>
+                  <dd data-order-payment>0 Kč</dd>
+                </div>
+                <div class="price-breakdown-total">
+                  <dt>Celkem k úhradě</dt>
+                  <dd data-order-total>0 Kč</dd>
+                </div>
+              </dl>
+              <p data-review-choice>Vyberte dopravu a platbu.</p>
+            </div>
+            <button class="primary-button" type="submit">Připravit objednávku</button>
+            <p class="checkout-note">
+              V této fázi objednávku bezpečně připravíme ke kontrole. Platba ani
+              rezervace zboží se nespustí, dokud není celý nákupní proces finálně
+              potvrzený.
+            </p>
+            <div class="checkout-result" data-checkout-result hidden></div>
+          </form>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div>
+          <strong>Cliplot</strong>
+          <p>Praktická řešení pro dílnu, domácnost a zahradu.</p>
+        </div>
+        <div>
+          <strong>Zákaznický servis</strong>
+          <a href="#doprava">Doprava a platba</a>
+          <a href="#checkout">Vrácení zboží</a>
+          <a href="#checkout">Reklamace</a>
+        </div>
+        <div>
+          <strong>Informace</strong>
+          <a href="#checkout">Obchodní podmínky</a>
+          <a href="#checkout">Ochrana osobních údajů</a>
+          <a href="#checkout">Kontakty</a>
+        </div>
+      </footer>
+    </div>
 
     <aside class="cart-drawer" data-cart-drawer aria-hidden="true">
-      <button type="button" class="drawer-close" data-close-cart aria-label="Zavřít košík">x</button>
+      <button type="button" class="drawer-close" data-close-cart aria-label="Zavřít košík">×</button>
       <h2>Košík</h2>
       <div class="drawer-status" data-drawer-status aria-live="polite" hidden></div>
       <div data-drawer-items></div>
@@ -203,22 +241,6 @@
     </aside>
     <div class="drawer-backdrop" data-close-cart></div>
 
-    <footer class="site-footer">
-      <div>
-        <strong>Cliplot</strong>
-        <p>Český storefront pro rychlý a srozumitelný nákup.</p>
-      </div>
-      <div>
-        <strong>Informace</strong>
-        <a href="#doprava">Doprava a platba</a>
-        <a href="#checkout">Košík a objednávka</a>
-      </div>
-      <div>
-        <strong>Stav projektu</strong>
-        <p>Obchod je připravený pro kontrolovaný nákupní proces.</p>
-      </div>
-    </footer>
-
-    <script src="/app.js?v=20260702-status-fetch" type="module"></script>
+    <script src="/app.js?v=20260703-mockup-restore" type="module"></script>
   </body>
 </html>

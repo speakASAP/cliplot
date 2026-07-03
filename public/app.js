@@ -1,49 +1,69 @@
 const fallbackProducts = [
   {
-    id: 'clip-home-organizer',
-    name: 'Sada chytrých úchytů Cliplot',
-    category: 'Domácnost',
-    price: 349,
-    originalPrice: 429,
-    currency: 'Kč',
-    stockStatus: 'Skladem',
-    delivery: 'Doručení 1-2 dny',
-    image: '/assets/product-clips.svg',
-    description: 'Praktická sada pro kabely, dekorace a drobné věci doma i v dílně.',
-  },
-  {
-    id: 'clip-workshop-box',
-    name: 'Organizér do dílny',
-    category: 'Dílna',
-    price: 589,
-    currency: 'Kč',
-    stockStatus: 'Skladem',
-    delivery: 'Doručení 1-2 dny',
-    image: '/assets/product-workshop.svg',
-    description: 'Pevný organizér s přehlednými přihrádkami pro nářadí a příslušenství.',
-  },
-  {
-    id: 'clip-travel-pack',
-    name: 'Cestovní balení klipů',
-    category: 'Cestování',
+    id: 'drzak-naradi-stena',
+    name: 'Držák nářadí na stěnu - sada 5 ks',
+    category: 'Cliplot',
     price: 249,
     currency: 'Kč',
     stockStatus: 'Skladem',
     delivery: 'Doručení 1-2 dny',
-    image: '/assets/product-travel.svg',
-    description: 'Lehké balení pro kabely, tašky a drobnosti na cestách.',
+    image: '/assets/mockup/wall-holder-product.png',
+    description: 'Pevná sada držáků pro přehledné uložení nářadí na stěně.',
   },
   {
-    id: 'clip-family-set',
-    name: 'Rodinný set Cliplot',
-    category: 'Akce',
-    price: 899,
-    originalPrice: 1099,
+    id: 'organizator-prihradky',
+    name: 'Organizér s přihrádkami 30 × 22 × 6 cm',
+    category: 'Cliplot',
+    price: 189,
     currency: 'Kč',
     stockStatus: 'Skladem',
     delivery: 'Doručení 1-2 dny',
-    image: '/assets/product-family.svg',
-    description: 'Výhodný set pro domácnost, garáž i školní tašku.',
+    image: '/assets/mockup/toolbox-product.png',
+    description: 'Praktický kufr s přihrádkami na spojovací materiál a dílenské drobnosti.',
+  },
+  {
+    id: 'wd-40-sprej',
+    name: 'WD-40 - univerzální sprej 450 ml',
+    category: 'Cliplot',
+    price: 169,
+    currency: 'Kč',
+    stockStatus: 'Skladem',
+    delivery: 'Doručení 1-2 dny',
+    image: '/assets/mockup/spray-product.png',
+    description: 'Univerzální sprej pro údržbu, mazání a ochranu v dílně i domácnosti.',
+  },
+  {
+    id: 'lepici-paska-univerzalni',
+    name: 'Lepicí páska univerzální 48 mm × 50 m',
+    category: 'Cliplot',
+    price: 89,
+    currency: 'Kč',
+    stockStatus: 'Skladem',
+    delivery: 'Doručení 1-2 dny',
+    image: '/assets/mockup/tape-product.png',
+    description: 'Silná univerzální páska pro rychlé opravy, balení a montáž.',
+  },
+  {
+    id: 'stahovaci-pasky-cerne',
+    name: 'Stahovací pásky černé 2,5 × 200 mm - 100 ks',
+    category: 'Cliplot',
+    price: 79,
+    currency: 'Kč',
+    stockStatus: 'Skladem',
+    delivery: 'Doručení 1-2 dny',
+    image: '/assets/mockup/ties-product.png',
+    description: 'Černé stahovací pásky pro kabely, montáž a rychlé upevnění.',
+  },
+  {
+    id: 'samolepici-hacky',
+    name: 'Samolepicí háčky nerez - 4 ks',
+    category: 'Cliplot',
+    price: 69,
+    currency: 'Kč',
+    stockStatus: 'Skladem',
+    delivery: 'Doručení 1-2 dny',
+    image: '/assets/mockup/hooks-product.png',
+    description: 'Nenápadné samolepicí háčky pro koupelnu, kuchyň i chodbu.',
   },
 ];
 
@@ -253,6 +273,7 @@ function renderProducts() {
   });
 
   selectors.products.innerHTML = filtered
+    .slice(0, 6)
     .map((product) => {
       const canReserve = hasWarehouseOrigin(product);
       const stockLabel = canReserve ? product.stockStatus : "Nedostupné";
@@ -262,14 +283,10 @@ function renderProducts() {
         <article class="product-card">
           <img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" />
           <div class="product-meta">
-            <span>${escapeHtml(product.category)}</span>
-            <span>${escapeHtml(stockLabel)}</span>
+            <span class="stock-state"><span class="stock-dot"></span>${escapeHtml(stockLabel)}</span>
           </div>
           <h3><a href="${productPath(product.id)}">${escapeHtml(product.name)}</a></h3>
           <p class="product-description">${escapeHtml(plainText(product.description, 160))}</p>
-          <div class="product-meta">
-            <span>${escapeHtml(product.delivery)}</span>
-          </div>
           <div class="product-price">
             <strong>${formatPrice(product.price)}</strong>
             ${product.originalPrice ? `<del>${formatPrice(product.originalPrice)}</del>` : ""}
