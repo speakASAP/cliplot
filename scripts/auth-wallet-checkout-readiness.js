@@ -91,9 +91,9 @@ const authWalletResponseContract = {
 
 const authWalletPresenceGate = {
   status: 'complete',
-  authLiveRefreshCommit: 'Goal 10.42 Auth current Source Preflight live refresh',
-  sourcePreflightHead: '548df583bff50057c79c4c6705e6a379f4d1b63b',
-  deployedImageTag: '548df58-20260703051411',
+  authLiveRefreshCommit: 'Goal 10.57 Auth live refresh from Source Preflight HEAD',
+  sourcePreflightHead: 'e484688fae0cc6fcdff593e11265fd49bcab6dbd',
+  deployedImageTag: 'e484688-20260703071733',
   healthStatusCode: 200,
   unauthenticatedWalletStatusCode: 401,
   sendsAuthorizationHeader: false,
@@ -101,7 +101,7 @@ const authWalletPresenceGate = {
   sendsRequestBody: false,
   printsResponseBody: false,
   readsDatabase: false,
-  evidence: 'Auth coordinator Goal 10.42 runtime verifier passed after current Source Preflight live refresh; FlipFlop non-mutating post-deploy smoke also passed.',
+  evidence: 'Auth coordinator Goal 10.57 runtime verifier passed after current Source Preflight live refresh; FlipFlop non-mutating post-deploy smoke also passed.',
 };
 
 const authWalletNoPiiExposurePolicy = {
@@ -342,9 +342,55 @@ const sourceOnlyGuestFallbackPolicy = {
   ],
 };
 
+const sourceOnlySessionHandoffEvidence = {
+  status: 'source_only_browser_session_contract_verified',
+  runtimeWalletCodePresent: false,
+  browserSessionImplementationPresent: false,
+  defaultModeCallsAuth: false,
+  defaultModeReadsTokenContents: false,
+  requiredRuntimeInputs: [
+    'owner-approved synthetic Auth account or browser session',
+    'owner-approved synthetic Auth bearer token only for the live runtime evidence window',
+    'non-secret Cliplot wallet smoke approval id',
+    'explicit confirmation that no checkout submit, payment, Warehouse reservation, notification send, or wallet mutation is in scope',
+  ],
+  walletReadScope: [
+    '/auth/profile/checkout-data',
+    '/auth/profile/delivery-addresses',
+    '/auth/profile/invoice-profiles',
+  ],
+  allowedRuntimeEvidence: [
+    'HTTP status codes',
+    'booleans',
+    'schemaVersion',
+    'sanitized blocker labels',
+    'short non-reversible ids',
+  ],
+  forbiddenRuntimeEvidence: [
+    'Authorization header',
+    'bearer token',
+    'JWT',
+    'refresh token',
+    'cookie',
+    'raw wallet response body',
+    'decoded token claims',
+    'customer PII',
+    'service credentials',
+  ],
+  forbiddenOperations: [
+    'checkout submit',
+    'Auth wallet mutation',
+    'payment creation',
+    'Warehouse reservation',
+    'notification send',
+    'DB read/write',
+    'Kubernetes/Vault mutation',
+  ],
+};
+
 const blockers = [
   '[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]',
-  '[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]',
+  '[MISSING: approved runtime Cliplot browser-session implementation and synthetic wallet-read evidence]',
   '[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]',
   '[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
   '[MISSING: approved runtime Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]',
@@ -362,6 +408,7 @@ const sourceKnownFacts = [
   'Cliplot source-verifies selector behavior policy for wallet defaults, manual override, manual fallback, customer-safe labels, and immutable snapshots; runtime selector UI remains gated.',
   'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
   'Cliplot source-defines guest fallback behavior for missing, rejected, timed-out, malformed, or empty Auth wallet reads; runtime evidence remains gated.',
+  'Cliplot source-verifies the browser-session handoff approval contract; runtime browser-session implementation and synthetic wallet-read evidence remain gated.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -426,6 +473,12 @@ const hasWalletContract = includesAll(walletContract, [
   'Manual edits must override wallet defaults for the current checkout snapshot',
   'Wallet reads must use a synthetic or real authenticated Auth bearer only in',
   'memory for the request window',
+  'Source-Only Browser Session Handoff Acceptance Criteria',
+  'default source-only verifier must not call Auth wallet endpoints',
+  'must not read token, cookie, JWT, or refresh-token contents',
+  'wallet read scope is limited to Auth checkout-data, delivery-address, and invoice-profile endpoints',
+  'runtime evidence must not print Authorization headers, bearer tokens, JWTs',
+  'Checkout submit, Auth wallet mutation, payment creation, Warehouse reservation',
   'Do not log raw Auth wallet response bodies',
   'Do not persist reusable Auth wallet rows in Cliplot local storage',
   'Evidence may contain booleans, status codes, schema version, blocker labels',
@@ -653,6 +706,46 @@ assert(
   'Cliplot guest fallback policy does not preserve manual checkout/cart or forbids mutation consistently',
   { sourceOnlyGuestFallbackPolicy },
 );
+assert(
+  sourceOnlySessionHandoffEvidence.status === 'source_only_browser_session_contract_verified'
+    && sourceOnlySessionHandoffEvidence.runtimeWalletCodePresent === false
+    && sourceOnlySessionHandoffEvidence.browserSessionImplementationPresent === false
+    && sourceOnlySessionHandoffEvidence.defaultModeCallsAuth === false
+    && sourceOnlySessionHandoffEvidence.defaultModeReadsTokenContents === false,
+  'Cliplot Auth wallet source-only browser-session contract is missing or unsafe',
+  { sourceOnlySessionHandoffEvidence },
+);
+assert(
+  walletEndpoints.every((endpoint) => sourceOnlySessionHandoffEvidence.walletReadScope.includes(endpoint)),
+  'Cliplot browser-session contract does not limit wallet reads to the approved Auth wallet endpoints',
+  { sourceOnlySessionHandoffEvidence },
+);
+assert(
+  includesAll(sourceOnlySessionHandoffEvidence.forbiddenRuntimeEvidence.join('|'), [
+    'Authorization header',
+    'bearer token',
+    'JWT',
+    'refresh token',
+    'cookie',
+    'raw wallet response body',
+    'customer PII',
+  ]),
+  'Cliplot browser-session contract does not forbid sensitive runtime evidence',
+  { sourceOnlySessionHandoffEvidence },
+);
+assert(
+  includesAll(sourceOnlySessionHandoffEvidence.forbiddenOperations.join('|'), [
+    'checkout submit',
+    'Auth wallet mutation',
+    'payment creation',
+    'Warehouse reservation',
+    'notification send',
+    'DB read/write',
+    'Kubernetes/Vault mutation',
+  ]),
+  'Cliplot browser-session contract does not forbid unsafe runtime operations',
+  { sourceOnlySessionHandoffEvidence },
+);
 assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integration exists before dependency gates are cleared', {
   runtimeWalletReferences,
   blockers,
@@ -679,6 +772,7 @@ console.log(JSON.stringify({
   authWalletResponseContract,
   authWalletPresenceGate,
   authWalletNoPiiExposurePolicy,
+  sourceOnlySessionHandoffEvidence,
   sourceOnlySelectorBehaviorEvidence,
   sourceOnlyWalletMappingEvidence,
   sourceOnlyGuestFallbackPolicy,

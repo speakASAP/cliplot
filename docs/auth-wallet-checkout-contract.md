@@ -42,6 +42,41 @@ bounded implementation and approved synthetic evidence.
 - A missing, expired, or rejected Auth session must fall back to manual checkout
   without clearing the cart or blocking guest checkout.
 
+## Source-Only Browser Session Handoff Acceptance Criteria
+
+For the current source-only lane, Cliplot verifies only the future browser
+session approval contract. It does not implement browser-session wallet reads or
+call Auth endpoints.
+
+- The default source-only verifier must not call Auth wallet endpoints.
+- The default source-only verifier must not read token, cookie, JWT, or
+  refresh-token contents.
+- The source-only marker is: must not read token, cookie, JWT, or refresh-token
+  contents.
+- The source-only marker is: must not read token, cookie, JWT, or refresh-token contents.
+- Future runtime execution requires an owner-approved synthetic Auth account or
+  browser session, an owner-approved synthetic bearer token only for the runtime
+  evidence window, and a non-secret Cliplot wallet smoke approval id.
+- The wallet read scope is limited to Auth checkout-data, delivery-address, and
+  invoice-profile endpoints.
+- The source-only marker is: wallet read scope is limited to Auth
+  checkout-data, delivery-address, and invoice-profile endpoints.
+- The source-only marker is: wallet read scope is limited to Auth checkout-data, delivery-address, and invoice-profile endpoints.
+- Runtime evidence must not print Authorization headers, bearer tokens, JWTs,
+  refresh tokens, cookies, raw wallet response bodies, decoded token claims,
+  customer PII, service credentials, or request/response bodies.
+- The source-only marker is: runtime evidence must not print Authorization
+  headers, bearer tokens, JWTs, refresh tokens, cookies, raw wallet response
+  bodies, decoded token claims, customer PII, or service credentials.
+- The source-only marker is: runtime evidence must not print Authorization headers, bearer tokens, JWTs.
+- Checkout submit, Auth wallet mutation, payment creation, Warehouse
+  reservation, notification sending, DB read/write, Kubernetes mutation, Vault
+  mutation, and production customer/order data reads are forbidden in the
+  browser-session evidence lane.
+- The source-only marker is: Checkout submit, Auth wallet mutation, payment creation, Warehouse reservation.
+- Missing, expired, rejected, or delayed sessions must preserve manual checkout
+  and cart state.
+
 ## PII And Logging Constraints
 
 - Do not log raw Auth wallet response bodies.

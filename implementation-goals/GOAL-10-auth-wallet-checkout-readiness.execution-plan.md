@@ -10,8 +10,8 @@ Dependency-gated Cliplot readiness for the Auth customer data wallet rollout.
 Cliplot has checkout/cart/customer contact surfaces, but Auth live wallet
 endpoints are now deployed and protected. The Auth coordinator recorded the
 current Source Preflight live refresh from HEAD
-`548df583bff50057c79c4c6705e6a379f4d1b63b`, deployed image tag
-`548df58-20260703051411`, and non-mutating FlipFlop post-deploy smoke evidence
+`e484688fae0cc6fcdff593e11265fd49bcab6dbd`, deployed image tag
+`e484688-20260703071733`, and non-mutating FlipFlop post-deploy smoke evidence
 with `/health` returning HTTP 200 and the wallet endpoints returning HTTP 401
 unauthenticated for:
 
@@ -80,8 +80,8 @@ evidence.
 - Auth live wallet endpoint presence gate is complete: the endpoints above
   return HTTP 401 unauthenticated, proving the wallet routes are deployed and
   protected without exposing wallet data. Latest Auth coordinator evidence:
-  Source Preflight HEAD `548df583bff50057c79c4c6705e6a379f4d1b63b`,
-  deployed image tag `548df58-20260703051411`, and FlipFlop non-mutating
+  Source Preflight HEAD `e484688fae0cc6fcdff593e11265fd49bcab6dbd`,
+  deployed image tag `e484688-20260703071733`, and FlipFlop non-mutating
   post-deploy smoke passed against gateway-proxied wallet endpoints returning
   HTTP 401.
 - Cliplot source-known facts are recorded without clearing gates:
@@ -121,6 +121,12 @@ evidence.
   - Cliplot source-verifies selector behavior policy for wallet defaults,
     manual override, manual guest-style fallback, customer-safe labels, and
     immutable checkout snapshots without runtime selector UI or live calls.
+  - Cliplot source-verifies the browser-session handoff approval contract:
+    default source-only validation must not call Auth or read token/cookie/JWT
+    contents; future runtime evidence is limited to approved synthetic
+    session/token input, the three Auth wallet endpoints, sanitized evidence,
+    and no checkout/payment/Warehouse/notification/DB/Kubernetes/Vault
+    mutation.
   - Cliplot source-verifies pure Auth wallet row to immutable checkout snapshot
     mapping with synthetic fixtures and sanitized verifier output; runtime
     implementation evidence is still gated until wallet reads/selectors exist.
@@ -139,7 +145,7 @@ evidence.
 | Auth wallet endpoint presence | complete | Auth owner | Auth service/API docs | Auth `/health` 200 and wallet endpoint HTTP 401 evidence without secrets |
 | Cliplot source readiness verifier | ready now | Cliplot worker | `scripts/auth-wallet-checkout-readiness.js`, `package.json` | `npm run readiness:auth-wallet-checkout` |
 | Checkout wallet contract | source-prepared | Cliplot coordinator | `docs/auth-wallet-checkout-contract.md`, readiness verifier | source validation only |
-| Checkout wallet UX plan | source-selector-policy-prepared; runtime-gated | product/checkout owner | future checkout UI files | browser-session implementation, runtime selector evidence, and guest fallback implementation |
+| Checkout wallet UX plan | source-session-policy-prepared; runtime-gated | product/checkout owner | future checkout UI files | browser-session implementation, runtime selector evidence, and guest fallback implementation |
 | Runtime integration | blocked | integration owner | future Cliplot runtime files | only after session, runtime selector/no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
 | Final integration | blocked | Cliplot orchestrator | checkout/frontend/backend files | guarded checkout smoke plus wallet-specific no-mutation tests |
 
@@ -152,8 +158,8 @@ evidence.
    has not been added prematurely.
 3. Wire the verifier into `package.json` without changing runtime behavior.
 4. Add the source-only Cliplot wallet checkout contract and verifier markers
-   for selector behavior, session handoff, no-PII exposure, pure fixture field
-   mapping, and guest fallback policy.
+   for selector behavior, browser-session handoff, no-PII exposure, pure fixture
+   field mapping, and guest fallback policy.
 5. Record validation evidence in `reports/validation`.
 6. Commit the repo-local readiness work only; do not deploy.
 

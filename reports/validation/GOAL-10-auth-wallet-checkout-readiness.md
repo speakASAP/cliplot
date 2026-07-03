@@ -25,8 +25,8 @@ Cliplot has checkout/cart/customer surfaces where Auth wallet delivery and
 invoice selectors may eventually apply, but runtime integration is intentionally
 not implemented in this lane. The upstream Auth wallet presence gate is now
 complete: Auth current Source Preflight live refresh from HEAD
-`548df583bff50057c79c4c6705e6a379f4d1b63b` is deployed with image tag
-`548df58-20260703051411`, `/health` returned HTTP 200, and
+`e484688fae0cc6fcdff593e11265fd49bcab6dbd` is deployed with image tag
+`e484688-20260703071733`, `/health` returned HTTP 200, and
 `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
 `/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated. FlipFlop
 non-mutating post-deploy smoke also passed against gateway-proxied wallet
@@ -64,7 +64,14 @@ missing.
   available, labels are customer-safe summaries, and wallet ids/Auth subjects/
   mutable wallet references are not submitted.
 - `[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]`
-- `[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]`
+- Source-only browser-session handoff policy is verified. Default validation
+  must not call Auth wallet endpoints or read token/cookie/JWT contents. Future
+  runtime evidence requires owner-approved synthetic session/token input and a
+  non-secret Cliplot approval id, is limited to the three Auth wallet endpoints,
+  and must not print Authorization headers, bearer tokens, JWTs, refresh tokens,
+  cookies, raw wallet response bodies, decoded token claims, customer PII, or
+  service credentials.
+- `[MISSING: approved runtime Cliplot browser-session implementation and synthetic wallet-read evidence]`
 - Source-defined no-PII wallet exposure policy recorded in
   `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
   still gated because runtime wallet reads/selectors are absent.
@@ -89,7 +96,7 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
 
 ## Validation Results
 
-- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletPresenceGate.sourcePreflightHead=548df583bff50057c79c4c6705e6a379f4d1b63b`, `authWalletPresenceGate.deployedImageTag=548df58-20260703051411`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletPresenceGate.sourcePreflightHead=e484688fae0cc6fcdff593e11265fd49bcab6dbd`, `authWalletPresenceGate.deployedImageTag=e484688-20260703071733`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_browser_session_contract_verified`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
 - 2026-07-03 schema-version refresh validation passed:
   `npm run readiness:auth-wallet-checkout`, `node --check
   scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff
@@ -111,6 +118,11 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
   manual guest-style entry remains available, labels are customer-safe
   summaries, and wallet ids/Auth subjects/mutable wallet references are not
   submitted.
+- `scripts/auth-wallet-checkout-readiness.js` verifies source-only
+  browser-session handoff rules: no Auth call or token-content read in default
+  mode; future runtime evidence requires approved synthetic session/token input,
+  is limited to the three Auth wallet endpoints, and forbids sensitive evidence
+  plus checkout/payment/Warehouse/notification/DB/Kubernetes/Vault mutation.
 - The contract now records a source-only no-PII evidence policy: allowed
   evidence is limited to status codes, booleans, `schemaVersion`, blocker
   labels, and short non-reversible ids; forbidden evidence includes raw wallet
