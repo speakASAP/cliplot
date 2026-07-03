@@ -1716,6 +1716,149 @@ export async function liveCheckoutExecutionEvidencePacket() {
   };
 }
 
+export async function liveCheckoutExecutionRequestPacket() {
+  const revenue = await revenueClosurePacket();
+  const operatorPreflight = await liveFlagsOperatorPreflightChecklistPacket();
+  const executionEvidence = await liveCheckoutExecutionEvidencePacket();
+  const preflight = liveCheckoutPreflight();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const expectedRevenueBlockers = [
+    '[MISSING: ENABLE_LIVE_ORDER_SUBMIT=true only during the approved bounded live checkout window]',
+    '[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true only during a separate approved bounded payment execution window]',
+    '[MISSING: ENABLE_LIVE_NOTIFICATIONS=true only during a separate approved bounded notification execution window]',
+    '[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]',
+    '[MISSING: approved live checkout mutation activation remains blocked]',
+  ];
+  const unexpectedRevenueBlockers = (revenue.blockers || []).filter((item) => !expectedRevenueBlockers.includes(item));
+  const requiredRevenueBlockersPresent = expectedRevenueBlockers.every((item) => (revenue.blockers || []).includes(item));
+  const guardrailBlockers = [
+    ...(liveFlagsClosed ? [] : ['[MISSING: all live checkout flags are closed before request packet review]']),
+    ...(revenue.status === 'approval_required_live_revenue_closure' ? [] : ['[MISSING: revenue closure must remain approval-required before owner execution request]']),
+    ...(revenue.wouldMutateNow === false ? [] : ['[MISSING: revenue closure would mutate now]']),
+    ...(operatorPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled' ? [] : ['[MISSING: live flags operator preflight checklist is not approved/disabled]']),
+    ...(executionEvidence.status === 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled' ? [] : ['[MISSING: live checkout execution evidence packet is not recorded/disabled]']),
+    ...(preflight.status === 'blocked' && preflight.wouldMutate === false ? [] : ['[MISSING: current live preflight must remain blocked and non-mutating]']),
+    ...(requiredRevenueBlockersPresent ? [] : ['[MISSING: revenue closure blockers no longer match expected execution-window blocker set]']),
+    ...(unexpectedRevenueBlockers.length === 0 ? [] : ['[MISSING: revenue closure has unexpected non-execution blockers]']),
+  ];
+  const readyForOwnerExecutionRequest = guardrailBlockers.length === 0;
+
+  return {
+    success: true,
+    status: readyForOwnerExecutionRequest
+      ? 'approved_live_checkout_execution_request_contract_execution_disabled'
+      : 'approval_required_live_checkout_execution_request_contract',
+    mode: 'read_only_live_checkout_execution_request_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    orderCreated: false,
+    warehouseReserved: false,
+    paymentCreated: false,
+    notificationSent: false,
+    liveFlagsClosed,
+    currentLiveFlags: {
+      ENABLE_LIVE_ORDER_SUBMIT: serviceConfig.liveOrderSubmit,
+      ENABLE_LIVE_PAYMENT_CREATE: serviceConfig.livePaymentCreate,
+      ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    remainingRevenueClosure: {
+      status: revenue.status,
+      blockerCount: revenue.blockers?.length || 0,
+      blockers: revenue.blockers || [],
+      expectedExecutionWindowBlockers: expectedRevenueBlockers,
+      unexpectedRevenueBlockers,
+      wouldMutateNow: revenue.wouldMutateNow,
+    },
+    readinessEvidence: {
+      revenueClosure: revenue.status,
+      liveFlagsOperatorPreflight: operatorPreflight.status,
+      executionEvidence: executionEvidence.status,
+      livePreflight: preflight.status,
+      livePreflightWouldMutate: preflight.wouldMutate,
+      liveCheckoutExecutionWindow: operatorPreflight.evidence?.executionWindow || null,
+      createReplayCancelStatus: executionEvidence.readinessEvidence?.createReplayCancelStatus || null,
+    },
+    ownerExecutionRequest: {
+      currentExecution: 'disabled_request_contract_only',
+      requiredBeforeOpeningFlags: [
+        'fresh owner approval to open exactly one bounded production execution window',
+        'one unused orderIdempotencyKey/paymentIdempotencyKey/notificationIdempotencyKey tuple',
+        'operator confirms duplicateCheck=IDEMPOTENCY_KEYS_NOT_USED',
+        'operator confirms rollbackPlan=ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED',
+        'operator confirms validationPlan=EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS',
+        'operator records approvedBy and reasonCode for CREATE_REPLAY_CANCEL',
+      ],
+      temporaryFlagSetOnlyDuringWindow: {
+        ENABLE_LIVE_ORDER_SUBMIT: 'true',
+        ENABLE_LIVE_PAYMENT_CREATE: 'true',
+        ENABLE_LIVE_NOTIFICATIONS: 'true',
+        ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'true',
+      },
+      requiredRestoreImmediatelyAfterWindow: {
+        ENABLE_LIVE_ORDER_SUBMIT: 'false',
+        ENABLE_LIVE_PAYMENT_CREATE: 'false',
+        ENABLE_LIVE_NOTIFICATIONS: 'false',
+        ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'false',
+      },
+      executorRequest: {
+        confirm: 'LIVE_CHECKOUT_EXECUTION_WINDOW',
+        executionWindow: serviceConfig.liveCheckoutExecutionWindow,
+        orderIdempotencyKey: 'required_unused_key',
+        paymentIdempotencyKey: 'required_unused_key',
+        notificationIdempotencyKey: 'required_unused_key',
+        duplicateCheck: 'IDEMPOTENCY_KEYS_NOT_USED',
+        rollbackPlan: 'ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED',
+        validationPlan: 'EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS',
+      },
+      createReplayCancelRequest: {
+        confirm: 'CREATE_REPLAY_CANCEL',
+        approvalId: 'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
+        approvedBy: 'required_operator_id',
+        reasonCode: 'CLIPLOT_OWNER_CREATE_REPLAY_CANCEL_SMOKE',
+      },
+    },
+    guardrails: {
+      getOnlyRoute: true,
+      currentMethodAllowsMutation: false,
+      executorCalled: false,
+      liveFlagsClosed,
+      callbackPersistenceAllowed: false,
+      callbackReplayAllowed: false,
+      liveStatusWritesAllowed: false,
+      dbWriteAllowed: false,
+      providerCallAllowed: false,
+      secretPrintingAllowed: false,
+    },
+    forbiddenOperationsNow: [
+      'do not patch ENABLE_LIVE_* flags from this packet',
+      'do not call POST /api/checkout/live-bounded-executor',
+      'do not call POST /api/checkout/live-order-warehouse-smoke-executor',
+      'do not call POST /api/checkout/submit',
+      'do not call POST /api/orders',
+      'do not reserve Warehouse stock',
+      'do not call POST /payments/create',
+      'do not call POST /notifications/send',
+      'do not persist callbacks or live status writes',
+      'do not print secrets, provider payloads, customer PII, recipients, or message bodies',
+    ],
+    blockers: [...new Set(guardrailBlockers)],
+    next: readyForOwnerExecutionRequest
+      ? 'All remaining revenue blockers are execution-window blockers; keep live flags closed until an owner opens a bounded window and supplies the required request tuple.'
+      : 'Resolve request-contract guardrail blockers before preparing an owner execution request.',
+  };
+}
+
+
 export async function runBoundedLiveCheckoutExecutor(request = {}) {
   const packet = await liveCheckoutExecutionWindowPacket();
   const blockers = [...packet.executionBlockers];
