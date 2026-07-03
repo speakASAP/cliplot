@@ -17,6 +17,7 @@ import {
   liveCheckoutExecutionEvidencePacket,
   liveCheckoutExecutionRequestPacket,
   checkoutLiveReadinessHandoffEvidencePacket,
+  authWalletRuntimeCheckoutEvidencePacket,
   liveOwnerExecutionRunbookPacket,
   liveFlagsOperatorPreflightChecklistPacket,
   runBoundedLiveCheckoutExecutor,
@@ -338,6 +339,22 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/live-execution-request-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+
+    if (url.pathname === '/api/checkout/auth-wallet-runtime-evidence' && req.method === 'GET') {
+      sendJson(res, 200, await authWalletRuntimeCheckoutEvidencePacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/auth-wallet-runtime-evidence') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

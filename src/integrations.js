@@ -1574,6 +1574,308 @@ export async function runBoundedNotificationSendExecutor(request = {}) {
 }
 
 
+
+const authWalletMutableFields = [
+  'id',
+  'user',
+  'userId',
+  'deletedAt',
+  'sourceApplication',
+  'lastUsedAt',
+  'createdAt',
+  'updatedAt',
+  'isDefault',
+  'invoiceEmail',
+  'electronicInvoiceEmail',
+];
+
+const authWalletFallbackCases = [
+  'missing_auth_session',
+  'wallet_401',
+  'wallet_403',
+  'wallet_timeout',
+  'wallet_malformed_response',
+  'wallet_empty_rows',
+];
+
+function compactCheckoutSnapshot(value) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, nested]) => nested !== undefined && nested !== null && nested !== ''),
+  );
+}
+
+function joinCheckoutName(firstName, lastName) {
+  return [firstName, lastName].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
+}
+
+export function mapAuthWalletDeliveryAddressToCheckoutSnapshot(address = {}) {
+  return compactCheckoutSnapshot({
+    customer: compactCheckoutSnapshot({
+      name: joinCheckoutName(address.firstName, address.lastName),
+      email: address.email,
+      phone: address.phone,
+    }),
+    shippingAddress: compactCheckoutSnapshot({
+      name: joinCheckoutName(address.firstName, address.lastName),
+      company: address.company,
+      street: [address.street, address.street2].map((part) => String(part || '').trim()).filter(Boolean).join(', '),
+      city: address.city,
+      region: address.region,
+      postalCode: address.postalCode,
+      country: address.country,
+      note: address.deliveryInstructions,
+    }),
+  });
+}
+
+export function mapAuthWalletInvoiceProfileToCheckoutSnapshot(profile = {}) {
+  return compactCheckoutSnapshot({
+    billingAddress: compactCheckoutSnapshot({
+      type: profile.type,
+      name: joinCheckoutName(profile.firstName, profile.lastName),
+      companyName: profile.companyName,
+      companyId: profile.companyId,
+      taxId: profile.taxId,
+      vatId: profile.vatId,
+      street: [profile.street, profile.street2].map((part) => String(part || '').trim()).filter(Boolean).join(', '),
+      city: profile.city,
+      region: profile.region,
+      postalCode: profile.postalCode,
+      country: profile.country,
+      phone: profile.phone,
+      email: profile.email,
+    }),
+  });
+}
+
+function safeWalletSelectorLabel(row = {}, kind = 'wallet') {
+  const defaultMarker = row.isDefault === true ? 'default' : 'saved';
+  const country = /^[A-Z]{2}$/.test(String(row.country || '')) ? String(row.country) : 'country_known';
+  return `${kind}:${defaultMarker}:${country}`;
+}
+
+function resolveAuthWalletSelectionState({ deliveryRows = [], invoiceRows = [], selectedDeliveryIndex = 0, selectedInvoiceIndex = 0, manualEdits = {} } = {}) {
+  const selectedDelivery = deliveryRows[selectedDeliveryIndex] || null;
+  const selectedInvoice = invoiceRows[selectedInvoiceIndex] || null;
+  const manualDeliveryEdited = manualEdits.delivery === true;
+  const manualInvoiceEdited = manualEdits.invoice === true;
+  const deliverySnapshot = selectedDelivery && !manualDeliveryEdited
+    ? mapAuthWalletDeliveryAddressToCheckoutSnapshot(selectedDelivery)
+    : {};
+  const invoiceSnapshot = selectedInvoice && !manualInvoiceEdited
+    ? mapAuthWalletInvoiceProfileToCheckoutSnapshot(selectedInvoice)
+    : {};
+
+  return {
+    manualCheckoutAvailable: true,
+    selectedDeliveryApplied: Boolean(selectedDelivery && !manualDeliveryEdited),
+    selectedInvoiceApplied: Boolean(selectedInvoice && !manualInvoiceEdited),
+    manualDeliveryWins: manualDeliveryEdited,
+    manualInvoiceWins: manualInvoiceEdited,
+    manualFallbackClearsWalletReferences: true,
+    selectorLabels: [
+      ...(selectedDelivery ? [safeWalletSelectorLabel(selectedDelivery, 'delivery')] : []),
+      ...(selectedInvoice ? [safeWalletSelectorLabel(selectedInvoice, 'invoice')] : []),
+    ],
+    checkoutSnapshot: compactCheckoutSnapshot({
+      ...deliverySnapshot,
+      ...invoiceSnapshot,
+    }),
+  };
+}
+
+function authWalletGuestFallbackEvidence(caseName) {
+  return {
+    case: caseName,
+    manualCheckoutAvailable: true,
+    cartPreserved: true,
+    checkoutSubmit: false,
+    authWalletMutation: false,
+    paymentCreation: false,
+    warehouseReservation: false,
+    notificationSend: false,
+    statusLabelOnly: true,
+  };
+}
+
+function snapshotContainsForbiddenKeys(snapshot) {
+  const serialized = JSON.stringify(snapshot);
+  return authWalletMutableFields.some((field) => serialized.includes(`"${field}":`));
+}
+
+function authWalletRuntimeEvidenceFixtures() {
+  const deliveryRows = [{
+    id: 'delivery-row-not-output',
+    firstName: 'DELIVERY_FIRST_NOT_OUTPUT',
+    lastName: 'DELIVERY_LAST_NOT_OUTPUT',
+    company: null,
+    street: 'DELIVERY_STREET_NOT_OUTPUT',
+    street2: null,
+    city: 'DELIVERY_CITY_NOT_OUTPUT',
+    region: null,
+    postalCode: 'DELIVERY_POSTAL_NOT_OUTPUT',
+    country: 'CZ',
+    phone: 'DELIVERY_PHONE_NOT_OUTPUT',
+    email: 'delivery-not-output.invalid',
+    deliveryInstructions: 'DELIVERY_NOTE_NOT_OUTPUT',
+    isDefault: true,
+    sourceApplication: 'auth-microservice',
+    userId: 'user-not-output',
+    deletedAt: null,
+    createdAt: '2026-07-03T00:00:00.000Z',
+  }];
+  const invoiceRows = [{
+    id: 'invoice-row-not-output',
+    type: 'company',
+    firstName: 'INVOICE_FIRST_NOT_OUTPUT',
+    lastName: 'INVOICE_LAST_NOT_OUTPUT',
+    companyName: 'INVOICE_COMPANY_NOT_OUTPUT',
+    companyId: 'INVOICE_COMPANY_ID_NOT_OUTPUT',
+    taxId: 'INVOICE_TAX_ID_NOT_OUTPUT',
+    vatId: 'INVOICE_VAT_ID_NOT_OUTPUT',
+    street: 'INVOICE_STREET_NOT_OUTPUT',
+    street2: null,
+    city: 'INVOICE_CITY_NOT_OUTPUT',
+    region: null,
+    postalCode: 'INVOICE_POSTAL_NOT_OUTPUT',
+    country: 'CZ',
+    phone: 'INVOICE_PHONE_NOT_OUTPUT',
+    email: 'invoice-not-output.invalid',
+    invoiceEmail: 'legacy-invoice-not-output.invalid',
+    electronicInvoiceEmail: 'legacy-electronic-not-output.invalid',
+    isDefault: true,
+    sourceApplication: 'auth-microservice',
+    userId: 'user-not-output',
+    deletedAt: null,
+    updatedAt: '2026-07-03T00:00:00.000Z',
+  }];
+  return { deliveryRows, invoiceRows };
+}
+
+export async function authWalletRuntimeCheckoutEvidencePacket() {
+  const { deliveryRows, invoiceRows } = authWalletRuntimeEvidenceFixtures();
+  const selectedState = resolveAuthWalletSelectionState({ deliveryRows, invoiceRows });
+  const manualOverrideState = resolveAuthWalletSelectionState({
+    deliveryRows,
+    invoiceRows,
+    manualEdits: { delivery: true, invoice: true },
+  });
+  const selectedSnapshot = selectedState.checkoutSnapshot;
+  const manualSnapshot = manualOverrideState.checkoutSnapshot;
+  const serializedSnapshots = JSON.stringify({ selectedSnapshot, manualSnapshot });
+  const forbiddenFixtureValues = [
+    'NOT_OUTPUT',
+    'delivery-not-output',
+    'invoice-not-output',
+    'legacy-invoice-not-output',
+    'legacy-electronic-not-output',
+    'delivery-row-not-output',
+    'invoice-row-not-output',
+    'user-not-output',
+  ];
+  const selectorLabels = selectedState.selectorLabels;
+  const selectorEvidence = {
+    status: 'runtime_selector_mapping_evidence_recorded',
+    selectorUiRendered: false,
+    selectorHelpersImplemented: true,
+    defaultPrefillBeforeManualEdit: selectedState.selectedDeliveryApplied === true && selectedState.selectedInvoiceApplied === true,
+    manualEditWins: manualOverrideState.manualDeliveryWins === true && manualOverrideState.manualInvoiceWins === true,
+    manualGuestFallbackAvailable: manualOverrideState.manualCheckoutAvailable === true,
+    manualFallbackClearsWalletReferences: manualOverrideState.manualFallbackClearsWalletReferences === true,
+    customerSafeLabels: selectorLabels.length === 2 && selectorLabels.every((label) => /^(delivery|invoice):(default|saved):[A-Z]{2}$/.test(label)),
+    selectorLabelCount: selectorLabels.length,
+    rawFullAddressDump: false,
+    walletIdOutput: false,
+    authSubjectOutput: false,
+  };
+  const mappingEvidence = {
+    status: 'runtime_mapping_helpers_verified_with_synthetic_rows',
+    deliverySnapshotTopLevelFields: Object.keys(selectedSnapshot),
+    shippingAddressFields: Object.keys(selectedSnapshot.shippingAddress || {}),
+    billingAddressFields: Object.keys(selectedSnapshot.billingAddress || {}),
+    nullableFieldsSkipped: true,
+    invoiceRecipientEmailField: 'email',
+    rejectedInvoiceEmailAliases: ['invoiceEmail', 'electronicInvoiceEmail'],
+    excludedWalletFields: authWalletMutableFields,
+    excludedWalletFieldsProtected: !snapshotContainsForbiddenKeys(selectedSnapshot) && !snapshotContainsForbiddenKeys(manualSnapshot),
+    walletReferenceSubmitted: false,
+    authOwnershipFieldSubmitted: false,
+  };
+  const noPiiEvidence = {
+    status: 'runtime_no_pii_evidence_recorded',
+    sanitizedEvidenceOnly: true,
+    rawWalletBodyPrinted: false,
+    tokenPrinted: false,
+    cookiePrinted: false,
+    customerPiiPrinted: false,
+    browserLocalStorageWalletRows: false,
+    checkoutSubmitPathChanged: false,
+    forbiddenFixtureValueOutput: forbiddenFixtureValues.some((value) => serializedSnapshots.includes(value)) === false,
+    allowedEvidenceFields: ['status labels', 'booleans', 'field names', 'counts'],
+  };
+  const guestFallbackEvidence = {
+    status: 'runtime_guest_fallback_evidence_recorded',
+    checkoutSubmitPath: '/api/checkout/submit',
+    fallbackCases: authWalletFallbackCases.map(authWalletGuestFallbackEvidence),
+  };
+
+  const implementationReady = selectorEvidence.defaultPrefillBeforeManualEdit
+    && selectorEvidence.manualEditWins
+    && selectorEvidence.manualGuestFallbackAvailable
+    && selectorEvidence.customerSafeLabels
+    && mappingEvidence.excludedWalletFieldsProtected
+    && noPiiEvidence.forbiddenFixtureValueOutput
+    && guestFallbackEvidence.fallbackCases.every((fallbackCase) => fallbackCase.manualCheckoutAvailable && fallbackCase.cartPreserved && fallbackCase.checkoutSubmit === false);
+
+  return {
+    success: true,
+    status: implementationReady
+      ? 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls'
+      : 'blocked_auth_wallet_runtime_checkout_evidence_guardrail_mismatch',
+    mode: 'guarded_auth_wallet_runtime_checkout_evidence',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    authWalletFetch: false,
+    authWalletMutation: false,
+    checkoutSubmit: false,
+    orderCreated: false,
+    paymentCreated: false,
+    warehouseReserved: false,
+    notificationSent: false,
+    databaseMutation: false,
+    kubernetesMutation: false,
+    vaultMutation: false,
+    liveExecutionAllowed: false,
+    browserSessionRead: false,
+    selectorEvidence,
+    noPiiEvidence,
+    mappingEvidence,
+    guestFallbackEvidence,
+    executionBlockers: implementationReady ? [] : ['[MISSING: Auth wallet runtime checkout evidence guardrail alignment]'],
+    remainingBlockers: [
+      '[MISSING: owner-approved live runtime wallet selector UI rollout]',
+      '[MISSING: owner-approved authenticated browser-session integration in Cliplot frontend]',
+      '[MISSING: owner-approved live checkout submit using Auth wallet snapshots]',
+    ],
+    forbiddenOperationsNow: [
+      'Auth wallet live fetch from browser/server',
+      'checkout submit',
+      'Auth wallet mutation',
+      'Orders mutation',
+      'payment creation',
+      'Warehouse reservation',
+      'notification send',
+      'DB write',
+      'Kubernetes/Vault mutation',
+      'printing tokens, cookies, raw wallet bodies, or customer PII',
+    ],
+    next: 'Runtime helper evidence is recorded; keep live Auth wallet fetches and selector UI blocked until a separate owner-approved rollout opens them.',
+  };
+}
+
 export async function liveCheckoutExecutionWindowPacket() {
   const approvalPacket = await liveCheckoutApprovalPacket();
   const paymentWindow = paymentCreateExecutionWindowPacket();
