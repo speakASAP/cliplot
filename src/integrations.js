@@ -2192,6 +2192,7 @@ export async function liveCheckoutExecutionRequestPacket() {
   const revenue = await revenueClosurePacket();
   const operatorPreflight = await liveFlagsOperatorPreflightChecklistPacket();
   const executionEvidence = await liveCheckoutExecutionEvidencePacket();
+  const authWalletRuntime = await authWalletRuntimeCheckoutEvidencePacket();
   const preflight = liveCheckoutPreflight();
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
@@ -2212,6 +2213,8 @@ export async function liveCheckoutExecutionRequestPacket() {
     ...(revenue.wouldMutateNow === false ? [] : ['[MISSING: revenue closure would mutate now]']),
     ...(operatorPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled' ? [] : ['[MISSING: live flags operator preflight checklist is not approved/disabled]']),
     ...(executionEvidence.status === 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled' ? [] : ['[MISSING: live checkout execution evidence packet is not recorded/disabled]']),
+    ...(authWalletRuntime.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls' ? [] : ['[MISSING: Auth wallet runtime checkout evidence is not recorded/no-live-calls]']),
+    ...(authWalletRuntime.authWalletFetch === false && authWalletRuntime.checkoutSubmit === false ? [] : ['[MISSING: Auth wallet runtime evidence must not fetch wallet data or submit checkout]']),
     ...(preflight.status === 'blocked' && preflight.wouldMutate === false ? [] : ['[MISSING: current live preflight must remain blocked and non-mutating]']),
     ...(requiredRevenueBlockersPresent ? [] : ['[MISSING: revenue closure blockers no longer match expected execution-window blocker set]']),
     ...(unexpectedRevenueBlockers.length === 0 ? [] : ['[MISSING: revenue closure has unexpected non-execution blockers]']),
@@ -2255,6 +2258,11 @@ export async function liveCheckoutExecutionRequestPacket() {
       revenueClosure: revenue.status,
       liveFlagsOperatorPreflight: operatorPreflight.status,
       executionEvidence: executionEvidence.status,
+      authWalletRuntimeCheckout: authWalletRuntime.status,
+      authWalletFetch: authWalletRuntime.authWalletFetch,
+      authWalletCheckoutSubmit: authWalletRuntime.checkoutSubmit,
+      authWalletNoPiiEvidence: authWalletRuntime.noPiiEvidence?.status || null,
+      authWalletGuestFallbackCases: authWalletRuntime.guestFallbackEvidence?.fallbackCases?.length || 0,
       livePreflight: preflight.status,
       livePreflightWouldMutate: preflight.wouldMutate,
       liveCheckoutExecutionWindow: operatorPreflight.evidence?.executionWindow || null,
@@ -2316,6 +2324,7 @@ export async function liveCheckoutExecutionRequestPacket() {
       'do not call POST /api/checkout/live-bounded-executor',
       'do not call POST /api/checkout/live-order-warehouse-smoke-executor',
       'do not call POST /api/checkout/submit',
+      'do not fetch Auth wallet rows or browser session tokens from this packet',
       'do not call POST /api/orders',
       'do not reserve Warehouse stock',
       'do not call POST /payments/create',
@@ -2337,6 +2346,7 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
   const createReplayCancel = await liveOrderWarehouseSmokeExecutionChecklistPacket();
   const paymentCreate = await paymentCreateApprovalEvidencePacket();
   const notificationSend = await notificationSendApprovalEvidencePacket();
+  const authWalletRuntime = await authWalletRuntimeCheckoutEvidencePacket();
   const paymentStatusPacket = await paymentStatusReadiness();
   const paymentReadScope = await paymentReadScopeReadiness();
   const checkoutStatusSurface = await customerStatusSurfaceReadiness();
@@ -2371,6 +2381,10 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
     { name: 'notification_send_metadata_disabled', passed: notificationSend.status === 'approved_notification_send_metadata_execution_disabled' },
     { name: 'notification_send_validation_no_send', passed: notificationSend.validation?.status === 'validated_no_send' || notificationSend.validation === 'validated_no_send' },
     { name: 'notification_send_live_flag_closed', passed: notificationSend.liveNotifications === false },
+    { name: 'auth_wallet_runtime_evidence_no_live_calls', passed: authWalletRuntime.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls' },
+    { name: 'auth_wallet_runtime_no_fetch_or_submit', passed: authWalletRuntime.authWalletFetch === false && authWalletRuntime.checkoutSubmit === false },
+    { name: 'auth_wallet_runtime_no_pii_evidence', passed: authWalletRuntime.noPiiEvidence?.sanitizedEvidenceOnly === true && authWalletRuntime.noPiiEvidence?.forbiddenFixtureValueOutput === true },
+    { name: 'auth_wallet_runtime_guest_fallback_ready', passed: Array.isArray(authWalletRuntime.guestFallbackEvidence?.fallbackCases) && authWalletRuntime.guestFallbackEvidence.fallbackCases.length === 6 },
     { name: 'payment_status_runtime_read_ready', passed: paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' },
     { name: 'payment_read_scope_no_mutation_accepted', passed: paymentReadScopeAccepted },
     { name: 'checkout_status_surface_read_only', passed: checkoutStatusSurface.status === 'approved_read_only_customer_status_surface_contract' },
@@ -2420,6 +2434,13 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
       paymentCreateValidation: paymentCreate.validation?.status || paymentCreate.validation || null,
       notificationSend: notificationSend.status,
       notificationSendValidation: notificationSend.validation?.status || notificationSend.validation || null,
+      authWalletRuntimeCheckout: authWalletRuntime.status,
+      authWalletSelectorHelpersImplemented: authWalletRuntime.selectorEvidence?.selectorHelpersImplemented === true,
+      authWalletCustomerSafeLabels: authWalletRuntime.selectorEvidence?.customerSafeLabels === true,
+      authWalletNoPiiEvidence: authWalletRuntime.noPiiEvidence?.status || null,
+      authWalletGuestFallbackCases: authWalletRuntime.guestFallbackEvidence?.fallbackCases?.length || 0,
+      authWalletFetch: authWalletRuntime.authWalletFetch,
+      authWalletCheckoutSubmit: authWalletRuntime.checkoutSubmit,
       paymentStatus: paymentStatusPacket.status,
       paymentReadScopeStatus,
       paymentReadScopeFreshness,
@@ -2437,6 +2458,7 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
       paymentCreate: paymentCreate.status === 'approved_payment_create_metadata_execution_disabled_cached_validation' ? 'metadata_approved_cached_no_mutation_execution_disabled' : 'metadata_approved_validation_no_mutation_execution_disabled',
       notificationSend: 'metadata_approved_validation_no_send_execution_disabled',
       customerStatus: 'read_only_surface_and_runtime_snapshot_read_approved',
+      authWalletCheckout: 'runtime_mapping_and_guest_fallback_evidence_recorded_no_live_calls',
       revenueClosure: 'only_execution_window_blockers_remain',
       liveExecution: 'disabled_until_owner_opens_bounded_window',
     },
@@ -2457,6 +2479,7 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
       createReplayCancel: '/api/checkout/live-order-warehouse-smoke-execution-checklist-packet',
       paymentCreate: '/api/payments/create-approval-evidence-packet',
       notificationSend: '/api/notifications/send-approval-evidence-packet',
+      authWalletRuntimeCheckout: '/api/checkout/auth-wallet-runtime-evidence',
       checkoutStatusSurface: '/api/checkout/status-surface-contract',
       revenueClosure: '/api/checkout/revenue-closure-packet',
       liveFlagsPreflight: '/api/checkout/live-flags-operator-preflight-checklist-packet',
@@ -2481,6 +2504,7 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
       'do not call POST /api/checkout/live-bounded-executor',
       'do not call POST /api/checkout/live-order-warehouse-smoke-executor',
       'do not call POST /api/checkout/submit',
+      'do not fetch Auth wallet rows or browser session tokens from this packet',
       'do not call POST /api/orders',
       'do not reserve Warehouse stock',
       'do not call POST /payments/create',

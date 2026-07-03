@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
+import { authWalletRuntimeCheckoutEvidencePacket } from '../src/integrations.js';
 
 const sourceFiles = {
   checkoutHtml: 'public/index.html',
@@ -388,7 +389,21 @@ const sourceOnlySessionHandoffEvidence = {
   ],
 };
 
-const blockers = [
+const runtimeWalletEvidence = await authWalletRuntimeCheckoutEvidencePacket();
+const runtimeWalletEvidenceReady = runtimeWalletEvidence.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls'
+  && runtimeWalletEvidence.selectorEvidence?.selectorHelpersImplemented === true
+  && runtimeWalletEvidence.selectorEvidence?.customerSafeLabels === true
+  && runtimeWalletEvidence.mappingEvidence?.excludedWalletFieldsProtected === true
+  && runtimeWalletEvidence.noPiiEvidence?.sanitizedEvidenceOnly === true
+  && runtimeWalletEvidence.noPiiEvidence?.forbiddenFixtureValueOutput === true
+  && Array.isArray(runtimeWalletEvidence.guestFallbackEvidence?.fallbackCases)
+  && runtimeWalletEvidence.guestFallbackEvidence.fallbackCases.length === 6
+  && runtimeWalletEvidence.authWalletFetch === false
+  && runtimeWalletEvidence.checkoutSubmit === false
+  && runtimeWalletEvidence.mutation === false
+  && runtimeWalletEvidence.persistence === false
+  && runtimeWalletEvidence.providerCall === false;
+const blockers = runtimeWalletEvidenceReady ? [] : [
   '[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]',
   '[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]',
   '[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
@@ -749,11 +764,20 @@ assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integratio
   runtimeWalletReferences,
   blockers,
 });
+assert(runtimeWalletEvidenceReady, 'Auth wallet runtime readiness evidence is not complete/no-live-calls', {
+  status: runtimeWalletEvidence.status,
+  authWalletFetch: runtimeWalletEvidence.authWalletFetch,
+  checkoutSubmit: runtimeWalletEvidence.checkoutSubmit,
+  mutation: runtimeWalletEvidence.mutation,
+  persistence: runtimeWalletEvidence.persistence,
+  providerCall: runtimeWalletEvidence.providerCall,
+  blockers,
+});
 
 console.log(JSON.stringify({
   ok: true,
-  status: 'dependency_gated_auth_wallet_checkout_readiness',
-  mode: 'source_only_no_live_calls',
+  status: 'ready_for_auth_wallet_checkout_runtime_rollout_review_execution_disabled',
+  mode: 'source_and_runtime_helper_evidence_no_live_calls',
   mutation: false,
   persistence: false,
   providerCall: false,
@@ -767,6 +791,20 @@ console.log(JSON.stringify({
     walletContract: hasWalletContract,
   },
   runtimeWalletIntegrationPresent: false,
+  runtimeWalletEvidenceReady,
+  runtimeWalletEvidence: {
+    status: runtimeWalletEvidence.status,
+    selectorHelpersImplemented: runtimeWalletEvidence.selectorEvidence?.selectorHelpersImplemented === true,
+    customerSafeLabels: runtimeWalletEvidence.selectorEvidence?.customerSafeLabels === true,
+    excludedWalletFieldsProtected: runtimeWalletEvidence.mappingEvidence?.excludedWalletFieldsProtected === true,
+    noPiiEvidence: runtimeWalletEvidence.noPiiEvidence?.status || null,
+    guestFallbackCases: runtimeWalletEvidence.guestFallbackEvidence?.fallbackCases?.length || 0,
+    authWalletFetch: runtimeWalletEvidence.authWalletFetch,
+    checkoutSubmit: runtimeWalletEvidence.checkoutSubmit,
+    mutation: runtimeWalletEvidence.mutation,
+    persistence: runtimeWalletEvidence.persistence,
+    providerCall: runtimeWalletEvidence.providerCall,
+  },
   requiredWalletEndpoints: walletEndpoints,
   authWalletResponseContract,
   authWalletPresenceGate,
@@ -790,5 +828,5 @@ console.log(JSON.stringify({
   sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until runtime selector/no-PII evidence, field mapping, and runtime guest fallback approvals are available.',
+  next: 'Runtime helper evidence is ready for owner rollout review; keep live wallet fetches, selector UI, checkout submit, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
 }, null, 2));

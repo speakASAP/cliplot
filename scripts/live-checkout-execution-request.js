@@ -43,6 +43,11 @@ assert(Array.isArray(packet.remainingRevenueClosure?.unexpectedRevenueBlockers),
 assert(packet.remainingRevenueClosure.unexpectedRevenueBlockers.length === 0, 'unexpected non-execution revenue blockers present', packet);
 assert(packet.readinessEvidence?.liveFlagsOperatorPreflight === 'approved_live_flags_operator_preflight_checklist_execution_disabled', 'operator preflight evidence mismatch', packet);
 assert(packet.readinessEvidence?.executionEvidence === 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled', 'execution evidence mismatch', packet);
+assert(packet.readinessEvidence?.authWalletRuntimeCheckout === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls', 'Auth wallet runtime evidence mismatch', packet);
+assert(packet.readinessEvidence?.authWalletFetch === false, 'Auth wallet runtime evidence fetched wallet rows', packet);
+assert(packet.readinessEvidence?.authWalletCheckoutSubmit === false, 'Auth wallet runtime evidence submitted checkout', packet);
+assert(packet.readinessEvidence?.authWalletNoPiiEvidence === 'runtime_no_pii_evidence_recorded', 'Auth wallet no-PII evidence mismatch', packet);
+assert(packet.readinessEvidence?.authWalletGuestFallbackCases === 6, 'Auth wallet guest fallback evidence incomplete', packet);
 assert(packet.readinessEvidence?.livePreflight === 'blocked', 'live preflight should remain blocked', packet);
 assert(packet.readinessEvidence?.livePreflightWouldMutate === false, 'live preflight would mutate now', packet);
 assert(packet.ownerExecutionRequest?.executorRequest?.confirm === 'LIVE_CHECKOUT_EXECUTION_WINDOW', 'bounded executor confirmation missing', packet);
@@ -55,6 +60,7 @@ assert(packet.guardrails?.dbWriteAllowed === false, 'packet allows DB writes', p
 assert(packet.guardrails?.providerCallAllowed === false, 'packet allows provider calls', packet);
 assert(packet.guardrails?.secretPrintingAllowed === false, 'packet allows secret printing', packet);
 assert(packet.forbiddenOperationsNow?.includes('do not call POST /api/checkout/live-bounded-executor'), 'bounded executor forbidden operation missing', packet);
+assert(packet.forbiddenOperationsNow?.includes('do not fetch Auth wallet rows or browser session tokens from this packet'), 'Auth wallet fetch forbidden operation missing', packet);
 
 const serialized = JSON.stringify(packet);
 for (const forbidden of ['sk_live', 'sk_test', 'whsec_', 'Bearer ', '@example.com', 'recipientEmail', 'messageBody']) {
@@ -73,5 +79,7 @@ console.log(JSON.stringify({
   revenueClosure: packet.remainingRevenueClosure.status,
   revenueBlockerCount: packet.remainingRevenueClosure.blockerCount,
   unexpectedRevenueBlockerCount: packet.remainingRevenueClosure.unexpectedRevenueBlockers.length,
+  authWalletRuntimeCheckout: packet.readinessEvidence.authWalletRuntimeCheckout,
+  authWalletGuestFallbackCases: packet.readinessEvidence.authWalletGuestFallbackCases,
   livePreflight: packet.readinessEvidence.livePreflight,
 }, null, 2));

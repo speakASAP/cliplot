@@ -48,6 +48,13 @@ assert(['approved_payment_create_metadata_execution_disabled', 'approved_payment
 assert(['validated_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.readinessEvidence?.paymentCreateValidation), 'payment create validation mismatch', packet);
 assert(packet.readinessEvidence?.notificationSend === 'approved_notification_send_metadata_execution_disabled', 'notification send evidence mismatch', packet);
 assert(packet.readinessEvidence?.notificationSendValidation === 'validated_no_send', 'notification validation mismatch', packet);
+assert(packet.readinessEvidence?.authWalletRuntimeCheckout === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls', 'Auth wallet runtime evidence mismatch', packet);
+assert(packet.readinessEvidence?.authWalletSelectorHelpersImplemented === true, 'Auth wallet selector helper evidence missing', packet);
+assert(packet.readinessEvidence?.authWalletCustomerSafeLabels === true, 'Auth wallet customer-safe selector labels missing', packet);
+assert(packet.readinessEvidence?.authWalletNoPiiEvidence === 'runtime_no_pii_evidence_recorded', 'Auth wallet no-PII evidence mismatch', packet);
+assert(packet.readinessEvidence?.authWalletGuestFallbackCases === 6, 'Auth wallet guest fallback evidence incomplete', packet);
+assert(packet.readinessEvidence?.authWalletFetch === false, 'Auth wallet runtime evidence fetched wallet rows', packet);
+assert(packet.readinessEvidence?.authWalletCheckoutSubmit === false, 'Auth wallet runtime evidence submitted checkout', packet);
 assert(packet.readinessEvidence?.paymentStatus === 'ready_for_approved_payment_status_runtime_read', 'payment status evidence mismatch', packet);
 assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.readinessEvidence?.paymentReadScopeStatus), 'payment read scope status not accepted', packet);
 const paymentReadScopeFreshness = packet.readinessEvidence?.paymentReadScopeFreshness;
@@ -69,6 +76,7 @@ assert(packet.guardrails?.dbWriteAllowed === false, 'handoff packet allows DB wr
 assert(packet.guardrails?.providerCallAllowed === false, 'handoff packet allows provider calls', packet);
 assert(packet.guardrails?.secretPrintingAllowed === false, 'handoff packet allows secret printing', packet);
 assert(packet.forbiddenOperationsNow?.includes('do not call POST /api/checkout/live-bounded-executor'), 'bounded executor forbidden operation missing', packet);
+assert(packet.forbiddenOperationsNow?.includes('do not fetch Auth wallet rows or browser session tokens from this packet'), 'Auth wallet fetch forbidden operation missing', packet);
 
 const serialized = JSON.stringify(packet);
 for (const forbidden of ['sk_live', 'sk_test', 'whsec_', 'Bearer ', '@example.com', 'recipientEmail', 'messageBody']) {
@@ -86,5 +94,7 @@ console.log(JSON.stringify({
   providerCall: packet.providerCall,
   paymentReadScopeStatus: packet.readinessEvidence.paymentReadScopeStatus,
   paymentReadScopeFreshness: packet.readinessEvidence.paymentReadScopeFreshness,
+  authWalletRuntimeCheckout: packet.readinessEvidence.authWalletRuntimeCheckout,
+  authWalletGuestFallbackCases: packet.readinessEvidence.authWalletGuestFallbackCases,
   failedAssertionCount: packet.failedAssertions.length,
 }, null, 2));

@@ -729,6 +729,13 @@ npm run readiness:post-live-revenue-closure -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/checkout/post-live-revenue-closure-evidence-packet
 ```
 
+The auth-wallet runtime checkout evidence is part of the guarded handoff and
+full readiness bundle. It is available at `GET /api/checkout/auth-wallet-runtime-evidence`
+and through `npm run readiness:auth-wallet-runtime-checkout-evidence`. It must
+record selector mapping, manual guest fallback, and no-PII evidence while keeping
+`authWalletFetch=false`, `checkoutSubmit=false`, `mutation=false`,
+`persistence=false`, and `providerCall=false`.
+
 The packet must return `validated_completed_full_checkout_live_window_closed`,
 keep `liveExecutionAllowed=false`, `mutation=false`, `persistence=false`, and
 `providerCall=false`, and prove that revenue closure remains

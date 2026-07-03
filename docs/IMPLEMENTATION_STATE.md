@@ -834,3 +834,23 @@ writes, callback persistence, callback replay execution, payment creation,
 notification sends, provider-backed `/payments/{paymentId}` reads, mutation,
 persistence, provider calls, and side effects disabled. Runtime write execution
 remains a separate future approval lane.
+
+### 2026-07-03 - Auth wallet handoff evidence in readiness bundle
+
+Wired `GET /api/checkout/auth-wallet-runtime-evidence` into the live checkout
+execution request, live readiness handoff packet, and `npm run readiness:bundle`.
+The evidence remains no-live-calls only: `authWalletFetch=false`,
+`checkoutSubmit=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`, while asserting selector helpers, customer-safe labels,
+manual guest fallback, and no-PII output.
+
+### 2026-07-03 - Auth wallet checkout readiness blockers resolved by no-live runtime helper evidence
+
+`npm run readiness:auth-wallet-checkout` now consumes the pure
+`authWalletRuntimeCheckoutEvidencePacket()` evidence and reports
+`ready_for_auth_wallet_checkout_runtime_rollout_review_execution_disabled`
+when selector behavior, customer-safe labels, no-PII output, field mapping,
+and guest fallback evidence are complete. It still keeps `authWalletFetch=false`,
+`checkoutSubmit=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`; live wallet reads and selector UI remain a separate
+owner-approved rollout lane.

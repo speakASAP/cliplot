@@ -207,3 +207,13 @@ This closes the approved synthetic browser/session wallet-read evidence gate.
 Runtime checkout selector implementation, no-PII frontend exposure evidence,
 Auth wallet row-to-checkout/order field mapping implementation, and guest
 fallback implementation remain blocked until separately scoped.
+
+## Runtime Helper Evidence Readiness
+
+`npm run readiness:auth-wallet-checkout` consumes the no-live-calls runtime
+helper evidence packet and expects
+`ready_for_auth_wallet_checkout_runtime_rollout_review_execution_disabled`.
+The verifier must keep `authWalletFetch=false`, `checkoutSubmit=false`,
+`mutation=false`, `persistence=false`, and `providerCall=false` while proving
+selector behavior, customer-safe labels, excluded wallet fields, no-PII output,
+and six guest fallback cases.
