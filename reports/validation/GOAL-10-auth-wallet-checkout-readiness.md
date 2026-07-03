@@ -24,8 +24,10 @@ Status: dependency-gated.
 Cliplot has checkout/cart/customer surfaces where Auth wallet delivery and
 invoice selectors may eventually apply, but runtime integration is intentionally
 not implemented in this lane. The upstream Auth wallet presence gate is now
-complete: Source Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d`
-is deployed, `/health` returned HTTP 200, and
+complete: Auth live refresh commit `c2deeae docs: record auth wallet live
+refresh`, Source Preflight HEAD
+`350700b0ad3482cf375ada8f9088392778ae8b05`, and deployed image tag
+`350700b-20260703044437` are deployed, `/health` returned HTTP 200, and
 `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
 `/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated. Cliplot
 checkout wallet work remains blocked because selector behavior, authenticated
@@ -70,7 +72,7 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
 
 ## Validation Results
 
-- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletPresenceGate.sourcePreflightHead=350700b0ad3482cf375ada8f9088392778ae8b05`, `authWalletPresenceGate.deployedImageTag=350700b-20260703044437`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
 - 2026-07-03 schema-version refresh validation passed:
   `npm run readiness:auth-wallet-checkout`, `node --check
   scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff

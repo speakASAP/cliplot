@@ -8,10 +8,11 @@ Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding P
 
 Dependency-gated Cliplot readiness for the Auth customer data wallet rollout.
 Cliplot has checkout/cart/customer contact surfaces, but Auth live wallet
-endpoints are now deployed and protected. The Auth coordinator recorded
-Source Preflight HEAD `2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d` with
-`/health` returning HTTP 200 and the wallet endpoints returning HTTP 401
-unauthenticated for:
+endpoints are now deployed and protected. The Auth coordinator recorded Auth
+live refresh commit `c2deeae docs: record auth wallet live refresh`, Source
+Preflight HEAD `350700b0ad3482cf375ada8f9088392778ae8b05`, and deployed image
+tag `350700b-20260703044437` with `/health` returning HTTP 200 and the wallet
+endpoints returning HTTP 401 unauthenticated for:
 
 - `/auth/profile/checkout-data`
 - `/auth/profile/delivery-addresses`
@@ -70,7 +71,10 @@ approved Auth wallet contract covering:
 
 - Auth live wallet endpoint presence gate is complete: the endpoints above
   return HTTP 401 unauthenticated, proving the wallet routes are deployed and
-  protected without exposing wallet data.
+  protected without exposing wallet data. Latest Auth coordinator evidence:
+  `c2deeae` / Source Preflight HEAD
+  `350700b0ad3482cf375ada8f9088392778ae8b05` / deployed image tag
+  `350700b-20260703044437`.
 - Cliplot source-known facts are recorded without clearing gates:
   - checkout remains guest-first and collects manual contact/address/payment
     fields;

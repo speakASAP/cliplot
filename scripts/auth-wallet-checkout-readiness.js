@@ -90,7 +90,9 @@ const authWalletResponseContract = {
 
 const authWalletPresenceGate = {
   status: 'complete',
-  sourcePreflightHead: '2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d',
+  authLiveRefreshCommit: 'c2deeae docs: record auth wallet live refresh',
+  sourcePreflightHead: '350700b0ad3482cf375ada8f9088392778ae8b05',
+  deployedImageTag: '350700b-20260703044437',
   healthStatusCode: 200,
   unauthenticatedWalletStatusCode: 401,
   sendsAuthorizationHeader: false,
@@ -98,7 +100,7 @@ const authWalletPresenceGate = {
   sendsRequestBody: false,
   printsResponseBody: false,
   readsDatabase: false,
-  evidence: 'Auth coordinator Goal 10.25 runtime verifier passed after live SQL/deploy.',
+  evidence: 'Auth coordinator Goal 10.38 runtime verifier passed after current-head live refresh.',
 };
 
 const blockers = [
