@@ -18,7 +18,7 @@ spec:
       template:
         metadata:
           labels:
-            app: cliplot
+            app: cliplot-readiness-monitor
             component: readiness-monitor
             managed-by: codex
         spec:
