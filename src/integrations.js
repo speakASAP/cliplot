@@ -1859,6 +1859,172 @@ export async function liveCheckoutExecutionRequestPacket() {
 }
 
 
+export async function checkoutLiveReadinessHandoffEvidencePacket() {
+  const liveCheckoutExecution = await liveCheckoutExecutionEvidencePacket();
+  const executionRequest = await liveCheckoutExecutionRequestPacket();
+  const createReplayCancel = await liveOrderWarehouseSmokeExecutionChecklistPacket();
+  const paymentCreate = await paymentCreateApprovalEvidencePacket();
+  const notificationSend = await notificationSendApprovalEvidencePacket();
+  const paymentStatusPacket = await paymentStatusReadiness();
+  const paymentReadScope = await paymentReadScopeReadiness();
+  const checkoutStatusSurface = customerStatusSurfaceReadiness();
+  const revenueClosure = await revenueClosurePacket();
+  const liveFlagsPreflight = await liveFlagsOperatorPreflightChecklistPacket();
+  const preflight = liveCheckoutPreflight();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const paymentReadScopeStatus = paymentReadScope.status || paymentStatusPacket.readScopeReadiness || null;
+  const paymentReadScopeAccepted = [
+    'validated_payments_read_scope_no_mutation',
+    'validated_payments_read_scope_no_mutation_cached',
+  ].includes(paymentReadScopeStatus);
+  const paymentReadScopeFreshness = paymentReadScope.freshness || (
+    paymentReadScopeStatus === 'validated_payments_read_scope_no_mutation_cached'
+      ? 'stale_rate_limited'
+      : 'fresh'
+  );
+  const assertions = [
+    { name: 'live_checkout_execution_recorded_disabled', passed: liveCheckoutExecution.status === 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled' },
+    { name: 'live_checkout_execution_flags_closed', passed: liveCheckoutExecution.liveFlagsClosed === true },
+    { name: 'execution_request_contract_disabled', passed: executionRequest.status === 'approved_live_checkout_execution_request_contract_execution_disabled' },
+    { name: 'create_replay_cancel_ready_for_bounded_window', passed: createReplayCancel.readyForBoundedWindow === true },
+    { name: 'create_replay_cancel_execution_disabled', passed: createReplayCancel.liveExecutionAllowed === false && createReplayCancel.liveOrderWarehouseSmokeFlag === false },
+    { name: 'create_replay_cancel_payment_boundary_closed', passed: createReplayCancel.expectedExecutionScopeAfterApproval?.paymentCreateAllowed === false },
+    { name: 'create_replay_cancel_notification_boundary_closed', passed: createReplayCancel.expectedExecutionScopeAfterApproval?.notificationSendAllowed === false },
+    { name: 'payment_create_metadata_disabled', passed: paymentCreate.status === 'approved_payment_create_metadata_execution_disabled' },
+    { name: 'payment_create_validation_no_mutation', passed: paymentCreate.validation?.status === 'validated_no_mutation' || paymentCreate.validation === 'validated_no_mutation' },
+    { name: 'payment_create_live_flag_closed', passed: paymentCreate.livePaymentCreate === false },
+    { name: 'notification_send_metadata_disabled', passed: notificationSend.status === 'approved_notification_send_metadata_execution_disabled' },
+    { name: 'notification_send_validation_no_send', passed: notificationSend.validation?.status === 'validated_no_send' || notificationSend.validation === 'validated_no_send' },
+    { name: 'notification_send_live_flag_closed', passed: notificationSend.liveNotifications === false },
+    { name: 'payment_status_runtime_read_ready', passed: paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' },
+    { name: 'payment_read_scope_no_mutation_accepted', passed: paymentReadScopeAccepted },
+    { name: 'checkout_status_surface_read_only', passed: checkoutStatusSurface.status === 'approved_read_only_customer_status_surface_contract' },
+    { name: 'revenue_closure_approval_required_non_mutating', passed: revenueClosure.status === 'approval_required_live_revenue_closure' && revenueClosure.wouldMutateNow === false },
+    { name: 'live_flags_preflight_disabled', passed: liveFlagsPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled' },
+    { name: 'current_live_preflight_blocked_non_mutating', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
+    { name: 'all_live_flags_closed', passed: liveFlagsClosed },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+  const status = failedAssertions.length === 0
+    ? 'read_only_checkout_payment_notification_handoff_ready_execution_disabled'
+    : 'blocked_checkout_payment_notification_handoff_guardrail_mismatch';
+
+  return {
+    success: true,
+    status,
+    mode: 'read_only_checkout_payment_notification_handoff_evidence_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    orderCreated: false,
+    warehouseReserved: false,
+    paymentCreated: false,
+    notificationSent: false,
+    callbackPersistence: false,
+    callbackReplay: false,
+    statusWrite: false,
+    providerRead: false,
+    liveFlagsClosed,
+    currentLiveFlags: {
+      order: serviceConfig.liveOrderSubmit,
+      payment: serviceConfig.livePaymentCreate,
+      notification: serviceConfig.liveNotifications,
+      orderWarehouseSmoke: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    readinessEvidence: {
+      liveCheckoutExecution: liveCheckoutExecution.status,
+      executionRequest: executionRequest.status,
+      createReplayCancel: createReplayCancel.status,
+      createReplayCancelReadyForBoundedWindow: createReplayCancel.readyForBoundedWindow === true,
+      paymentCreate: paymentCreate.status,
+      paymentCreateValidation: paymentCreate.validation?.status || paymentCreate.validation || null,
+      notificationSend: notificationSend.status,
+      notificationSendValidation: notificationSend.validation?.status || notificationSend.validation || null,
+      paymentStatus: paymentStatusPacket.status,
+      paymentReadScopeStatus,
+      paymentReadScopeFreshness,
+      paymentReadScopeHttpStatus: paymentReadScope.httpStatus || null,
+      paymentReadScopeObservedErrorCode: paymentReadScope.observedErrorCode || null,
+      checkoutStatusSurface: checkoutStatusSurface.status,
+      revenueClosure: revenueClosure.status,
+      liveFlagsPreflight: liveFlagsPreflight.status,
+      livePreflight: preflight.status,
+      livePreflightWouldMutate: preflight.wouldMutate,
+    },
+    handoffSummary: {
+      catalogAndOrderWarehouse: 'validated_no_mutation_in_readiness_bundle',
+      orderWarehouseCreateReplayCancel: 'ready_for_owner_bounded_window_but_execution_disabled',
+      paymentCreate: 'metadata_approved_validation_no_mutation_execution_disabled',
+      notificationSend: 'metadata_approved_validation_no_send_execution_disabled',
+      customerStatus: 'read_only_surface_and_runtime_snapshot_read_approved',
+      revenueClosure: 'only_execution_window_blockers_remain',
+      liveExecution: 'disabled_until_owner_opens_bounded_window',
+    },
+    paymentReadScopePolicy: {
+      acceptedStatuses: [
+        'validated_payments_read_scope_no_mutation',
+        'validated_payments_read_scope_no_mutation_cached',
+      ],
+      currentStatus: paymentReadScopeStatus,
+      freshness: paymentReadScopeFreshness,
+      note: 'Cached/rate-limited read-scope evidence is accepted only when explicitly labeled stale_rate_limited and paired with ready_for_approved_payment_status_runtime_read plus mutation=false/providerCall=false.',
+    },
+    assertions,
+    failedAssertions,
+    relatedPackets: {
+      liveCheckoutExecution: '/api/checkout/live-execution-evidence-packet',
+      liveCheckoutExecutionRequest: '/api/checkout/live-execution-request-packet',
+      createReplayCancel: '/api/checkout/live-order-warehouse-smoke-execution-checklist-packet',
+      paymentCreate: '/api/payments/create-approval-evidence-packet',
+      notificationSend: '/api/notifications/send-approval-evidence-packet',
+      checkoutStatusSurface: '/api/checkout/status-surface-contract',
+      revenueClosure: '/api/checkout/revenue-closure-packet',
+      liveFlagsPreflight: '/api/checkout/live-flags-operator-preflight-checklist-packet',
+    },
+    guardrails: {
+      getOnlyRoute: true,
+      currentMethodAllowsMutation: false,
+      executorCalled: false,
+      liveFlagsClosed,
+      callbackPersistenceAllowed: false,
+      callbackReplayAllowed: false,
+      liveStatusWritesAllowed: false,
+      dbWriteAllowed: false,
+      providerCallAllowed: false,
+      secretPrintingAllowed: false,
+      rawProviderPayloadAllowed: false,
+      rawRecipientAllowed: false,
+      rawMessageBodyAllowed: false,
+    },
+    forbiddenOperationsNow: [
+      'do not patch ENABLE_LIVE_* flags from this packet',
+      'do not call POST /api/checkout/live-bounded-executor',
+      'do not call POST /api/checkout/live-order-warehouse-smoke-executor',
+      'do not call POST /api/checkout/submit',
+      'do not call POST /api/orders',
+      'do not reserve Warehouse stock',
+      'do not call POST /payments/create',
+      'do not call POST /notifications/send',
+      'do not persist callbacks or live status writes',
+      'do not call provider-backed /payments/{paymentId}',
+      'do not print secrets, provider payloads, customer PII, recipients, or message bodies',
+    ],
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    next: failedAssertions.length === 0
+      ? 'Handoff evidence is ready for owner review; keep live flags closed until the bounded execution window is explicitly opened.'
+      : 'Resolve failed handoff guardrail assertions before owner review.',
+  };
+}
+
+
 export async function runBoundedLiveCheckoutExecutor(request = {}) {
   const packet = await liveCheckoutExecutionWindowPacket();
   const blockers = [...packet.executionBlockers];
