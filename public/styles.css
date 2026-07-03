@@ -190,6 +190,30 @@ img { max-width: 100%; display: block; }
 .primary-link:hover { background: var(--accent-hover); }
 .primary-button:disabled { cursor: not-allowed; opacity: 0.58; }
 
+.wallet-selector {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+}
+
+.wallet-selector[hidden] { display: none; }
+
+.wallet-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wallet-selector p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .hero {
   display: grid;
   grid-template-columns: 430px minmax(0, 1fr);

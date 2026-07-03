@@ -29,6 +29,8 @@ assert(packet.vaultMutation === false, 'runtime checkout evidence mutated Vault'
 assert(packet.liveExecutionAllowed === false, 'runtime checkout evidence allows live execution', packet);
 assert(packet.browserSessionRead === false, 'runtime checkout evidence read browser session/token contents', packet);
 assert(packet.selectorEvidence?.selectorHelpersImplemented === true, 'selector helpers missing', packet);
+assert(packet.selectorEvidence?.selectorUiRendered === true, 'checkout selector UI integration missing', packet);
+assert(packet.selectorEvidence?.checkoutSelectorUiIntegrated === true, 'checkout selector source integration missing', packet);
 assert(packet.selectorEvidence?.defaultPrefillBeforeManualEdit === true, 'default prefill behavior missing', packet);
 assert(packet.selectorEvidence?.manualEditWins === true, 'manual override behavior missing', packet);
 assert(packet.selectorEvidence?.manualGuestFallbackAvailable === true, 'manual guest fallback missing', packet);
@@ -48,6 +50,8 @@ assert(packet.noPiiEvidence?.tokenPrinted === false, 'token printed', packet);
 assert(packet.noPiiEvidence?.cookiePrinted === false, 'cookie printed', packet);
 assert(packet.noPiiEvidence?.customerPiiPrinted === false, 'customer PII printed', packet);
 assert(packet.noPiiEvidence?.browserLocalStorageWalletRows === false, 'wallet rows persisted in browser local storage', packet);
+assert(packet.noPiiEvidence?.authWalletEndpointFetchInBrowser === false, 'browser fetched Auth wallet endpoints', packet);
+assert(packet.noPiiEvidence?.walletRowsSubmittedToCheckout === false, 'wallet rows are submitted as checkout truth', packet);
 assert(packet.noPiiEvidence?.checkoutSubmitPathChanged === false, 'checkout submit path changed', packet);
 assert(packet.noPiiEvidence?.forbiddenFixtureValueOutput === true, 'forbidden fixture value reached evidence output', packet);
 assert(packet.guestFallbackEvidence?.checkoutSubmitPath === '/api/checkout/submit', 'checkout submit path mismatch', packet);
@@ -79,6 +83,8 @@ console.log(JSON.stringify({
   status: packet.status,
   mode: packet.mode,
   selectorHelpersImplemented: packet.selectorEvidence.selectorHelpersImplemented,
+  selectorUiRendered: packet.selectorEvidence.selectorUiRendered,
+  checkoutSelectorUiIntegrated: packet.selectorEvidence.checkoutSelectorUiIntegrated,
   customerSafeLabels: packet.selectorEvidence.customerSafeLabels,
   excludedWalletFieldsProtected: packet.mappingEvidence.excludedWalletFieldsProtected,
   noPiiEvidence: packet.noPiiEvidence.status,

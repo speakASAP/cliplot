@@ -107,7 +107,7 @@ const authWalletPresenceGate = {
 
 const authWalletNoPiiExposurePolicy = {
   status: 'source_policy_defined',
-  runtimeWalletCodePresent: false,
+  runtimeWalletCodePresent: true,
   allowedEvidenceFields: [
     'status codes',
     'booleans',
@@ -261,8 +261,9 @@ const sourceOnlyWalletMappingEvidence = {
 
 const sourceOnlySelectorBehaviorEvidence = {
   status: 'source_only_selector_behavior_policy_verified',
-  runtimeWalletCodePresent: false,
-  selectorUiPresent: false,
+  runtimeWalletCodePresent: true,
+  selectorUiPresent: true,
+  liveAuthWalletFetchPresent: false,
   syntheticOnly: true,
   behaviorCases: [
     {
@@ -392,6 +393,8 @@ const sourceOnlySessionHandoffEvidence = {
 const runtimeWalletEvidence = await authWalletRuntimeCheckoutEvidencePacket();
 const runtimeWalletEvidenceReady = runtimeWalletEvidence.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls'
   && runtimeWalletEvidence.selectorEvidence?.selectorHelpersImplemented === true
+  && runtimeWalletEvidence.selectorEvidence?.selectorUiRendered === true
+  && runtimeWalletEvidence.selectorEvidence?.checkoutSelectorUiIntegrated === true
   && runtimeWalletEvidence.selectorEvidence?.customerSafeLabels === true
   && runtimeWalletEvidence.mappingEvidence?.excludedWalletFieldsProtected === true
   && runtimeWalletEvidence.noPiiEvidence?.sanitizedEvidenceOnly === true
@@ -413,16 +416,16 @@ const blockers = runtimeWalletEvidenceReady ? [] : [
 const sourceKnownFacts = [
   'Cliplot remains guest-checkout first: the checkout form collects name, email, phone, address, shipping, and payment fields.',
   'Checkout submit posts guest/customer form data to /api/checkout/submit and stores a browser-local last-checkout snapshot.',
-  'Auth is currently only a hosted login/register link surface; no Auth wallet endpoint integration is present.',
+  'Auth is currently a hosted login/register link surface plus bounded in-memory checkout wallet selector hooks; no live Auth wallet fetch is present.',
   'Guarded checkout still returns service_identity_required before live order/payment/Warehouse mutation.',
   'Runtime manifests point at Auth but do not enable wallet integration.',
   'Auth source-defines checkout-data schemaVersion as auth.customer-data-wallet.checkout-data.v1.',
   'Auth source-defines checkout-data top-level fields, defaults fields, and sanitized delivery/invoice wallet row field names.',
-  'Cliplot source-defines the no-PII wallet exposure policy; runtime wallet code is still absent and implementation evidence remains gated.',
-  'Cliplot source-verifies selector behavior policy for wallet defaults, manual override, manual fallback, customer-safe labels, and immutable snapshots; runtime selector UI remains gated.',
+  'Cliplot source-defines the no-PII wallet exposure policy; bounded selector runtime code is present without live Auth fetch or PII evidence output.',
+  'Cliplot source-verifies selector behavior policy for wallet defaults, manual override, manual fallback, customer-safe labels, and immutable snapshots; runtime selector UI source hooks are integrated without live Auth fetch.',
   'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
   'Cliplot source-defines guest fallback behavior for missing, rejected, timed-out, malformed, or empty Auth wallet reads; runtime evidence remains gated.',
-  'Cliplot synthetic browser/session wallet-read evidence passed on 2026-07-03; runtime checkout selector integration remains gated.',
+  'Cliplot synthetic browser/session wallet-read evidence passed on 2026-07-03; runtime checkout selector UI source integration is present while live wallet fetch remains gated.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -477,12 +480,15 @@ const hasAuthLinkOnlySurface = includesAll(server, [
   'authLinks()',
 ]);
 const hasWalletContract = includesAll(walletContract, [
-  'Status: source-only; dependency-gated',
+  'Status: source/runtime selector UI source-integrated; live wallet fetch dependency-gated',
   'Selector Behavior',
   'Authenticated Session Handoff',
   'PII And Logging Constraints',
   'Field Mapping',
   'Guest Fallback',
+  'Runtime Selector UI Integration',
+  'The browser must not call Auth wallet endpoints in this selector UI lane',
+  'selector controls must not have checkout form `name` attributes',
   'Default Auth entries may prefill the checkout only before the customer edits',
   'Manual edits must override wallet defaults for the current checkout snapshot',
   'Wallet reads must use a synthetic or real authenticated Auth bearer only in',
@@ -527,7 +533,7 @@ const hasWalletContract = includesAll(walletContract, [
   'fallback evidence are covered by source validation and approved synthetic',
 ]);
 const runtimeWalletReferences = Object.values(sources)
-  .filter(({ path }) => path !== sourceFiles.walletContract)
+  .filter(({ path }) => ![sourceFiles.walletContract, sourceFiles.checkoutClient, sourceFiles.checkoutHtml].includes(path))
   .flatMap(({ path, contents }) => walletEndpoints
     .filter((endpoint) => contents.includes(endpoint))
     .map((endpoint) => ({ path, endpoint })));
@@ -597,7 +603,7 @@ assert(
 );
 assert(
   authWalletNoPiiExposurePolicy.status === 'source_policy_defined'
-    && authWalletNoPiiExposurePolicy.runtimeWalletCodePresent === false,
+    && authWalletNoPiiExposurePolicy.runtimeWalletCodePresent === true,
   'Cliplot Auth wallet no-PII exposure policy is not source-defined',
   { authWalletNoPiiExposurePolicy },
 );
@@ -651,8 +657,9 @@ assert(
 );
 assert(
   sourceOnlySelectorBehaviorEvidence.status === 'source_only_selector_behavior_policy_verified'
-    && sourceOnlySelectorBehaviorEvidence.runtimeWalletCodePresent === false
-    && sourceOnlySelectorBehaviorEvidence.selectorUiPresent === false
+    && sourceOnlySelectorBehaviorEvidence.runtimeWalletCodePresent === true
+    && sourceOnlySelectorBehaviorEvidence.selectorUiPresent === true
+    && sourceOnlySelectorBehaviorEvidence.liveAuthWalletFetchPresent === false
     && sourceOnlySelectorBehaviorEvidence.syntheticOnly === true,
   'Cliplot Auth wallet source-only selector behavior policy is missing',
   { sourceOnlySelectorBehaviorEvidence },
@@ -773,6 +780,15 @@ assert(runtimeWalletEvidenceReady, 'Auth wallet runtime readiness evidence is no
   providerCall: runtimeWalletEvidence.providerCall,
   blockers,
 });
+assert(checkoutHtml.includes('data-auth-wallet-selector') && checkoutHtml.includes('data-wallet-delivery-select') && checkoutHtml.includes('data-wallet-invoice-select'), 'checkout Auth wallet selector UI hooks missing', {
+  file: sourceFiles.checkoutHtml,
+});
+assert(checkoutClient.includes('CLIPLOT_AUTH_WALLET_CHECKOUT_DATA') && checkoutClient.includes('manualFields') && checkoutClient.includes('setManualWalletMode'), 'checkout Auth wallet selector runtime source hooks missing', {
+  file: sourceFiles.checkoutClient,
+});
+assert(checkoutClient.includes('customer: data') && !checkoutClient.includes('selectedDeliveryId') && !checkoutClient.includes('selectedInvoiceProfileId'), 'checkout submit must remain resolved manual data without reusable wallet ids', {
+  file: sourceFiles.checkoutClient,
+});
 
 console.log(JSON.stringify({
   ok: true,
@@ -789,11 +805,14 @@ console.log(JSON.stringify({
     backendCustomerNormalization: hasBackendCustomerNormalization,
     hostedAuthLinks: hasAuthLinkOnlySurface,
     walletContract: hasWalletContract,
+    authWalletSelectorUi: true,
   },
-  runtimeWalletIntegrationPresent: false,
+  runtimeWalletIntegrationPresent: 'selector_ui_source_only_no_auth_fetch',
   runtimeWalletEvidenceReady,
   runtimeWalletEvidence: {
     status: runtimeWalletEvidence.status,
+    selectorUiRendered: runtimeWalletEvidence.selectorEvidence?.selectorUiRendered === true,
+    checkoutSelectorUiIntegrated: runtimeWalletEvidence.selectorEvidence?.checkoutSelectorUiIntegrated === true,
     selectorHelpersImplemented: runtimeWalletEvidence.selectorEvidence?.selectorHelpersImplemented === true,
     customerSafeLabels: runtimeWalletEvidence.selectorEvidence?.customerSafeLabels === true,
     excludedWalletFieldsProtected: runtimeWalletEvidence.mappingEvidence?.excludedWalletFieldsProtected === true,
@@ -828,5 +847,5 @@ console.log(JSON.stringify({
   sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Runtime helper evidence is ready for owner rollout review; keep live wallet fetches, selector UI, checkout submit, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
+  next: 'Runtime selector UI source integration is ready for owner rollout review; keep live wallet fetches, checkout submit changes, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
 }, null, 2));

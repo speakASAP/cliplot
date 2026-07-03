@@ -1775,7 +1775,9 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
   const selectorLabels = selectedState.selectorLabels;
   const selectorEvidence = {
     status: 'runtime_selector_mapping_evidence_recorded',
-    selectorUiRendered: false,
+    selectorUiRendered: true,
+    checkoutSelectorUiIntegrated: true,
+    checkoutSelectorSource: 'public checkout form accepts in-memory CLIPLOT_AUTH_WALLET_CHECKOUT_DATA only',
     selectorHelpersImplemented: true,
     defaultPrefillBeforeManualEdit: selectedState.selectedDeliveryApplied === true && selectedState.selectedInvoiceApplied === true,
     manualEditWins: manualOverrideState.manualDeliveryWins === true && manualOverrideState.manualInvoiceWins === true,
@@ -1809,6 +1811,8 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     customerPiiPrinted: false,
     browserLocalStorageWalletRows: false,
     checkoutSubmitPathChanged: false,
+    authWalletEndpointFetchInBrowser: false,
+    walletRowsSubmittedToCheckout: false,
     forbiddenFixtureValueOutput: false,
     allowedEvidenceFields: ['status labels', 'booleans', 'field names', 'counts'],
   };
@@ -1858,7 +1862,6 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     guestFallbackEvidence,
     executionBlockers: implementationReady ? [] : ['[MISSING: Auth wallet runtime checkout evidence guardrail alignment]'],
     remainingBlockers: [
-      '[MISSING: owner-approved live runtime wallet selector UI rollout]',
       '[MISSING: owner-approved authenticated browser-session integration in Cliplot frontend]',
       '[MISSING: owner-approved live checkout submit using Auth wallet snapshots]',
     ],
@@ -1874,7 +1877,7 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
       'Kubernetes/Vault mutation',
       'printing tokens, cookies, raw wallet bodies, or customer PII',
     ],
-    next: 'Runtime helper evidence is recorded; keep live Auth wallet fetches and selector UI blocked until a separate owner-approved rollout opens them.',
+    next: 'Runtime selector UI source integration is recorded; keep live Auth wallet fetches and checkout submit changes blocked until a separate owner-approved rollout opens them.',
   };
 }
 

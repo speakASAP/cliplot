@@ -217,3 +217,24 @@ The verifier must keep `authWalletFetch=false`, `checkoutSubmit=false`,
 `mutation=false`, `persistence=false`, and `providerCall=false` while proving
 selector behavior, customer-safe labels, excluded wallet fields, no-PII output,
 and six guest fallback cases.
+
+## 2026-07-03 Source/Runtime Checkout Selector UI Integration
+
+Bounded implementation now renders an Auth wallet delivery/invoice selector
+scaffold in the checkout form when in-memory
+`CLIPLOT_AUTH_WALLET_CHECKOUT_DATA` rows are available. The selector defaults
+may prefill the current checkout contact and delivery fields before manual
+edits. Manual field edits win for the current checkout, and the manual fallback
+keeps guest checkout available.
+
+Guardrails preserved:
+
+- no browser or server fetch to Auth wallet endpoints in this lane;
+- no checkout submit execution in validation;
+- no checkout submit payload change for Auth wallet ids, Auth subjects, or
+  reusable wallet ownership fields;
+- no Auth wallet mutation, order creation, payment creation, Warehouse
+  reservation, notification send, DB write, Kubernetes mutation, Vault mutation,
+  token printing, raw wallet body printing, or customer PII evidence;
+- selector labels are derived from row kind, ordinal, default flag, and country
+  only.

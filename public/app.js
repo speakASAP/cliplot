@@ -76,6 +76,13 @@ const state = {
   category: 'all',
   search: '',
   cart: JSON.parse(localStorage.getItem(cartStorageKey) || '{}'),
+  authWallet: {
+    deliveryRows: [],
+    invoiceRows: [],
+    selectedDelivery: 'manual',
+    selectedInvoice: 'manual',
+    manualFields: new Set(),
+  },
 };
 
 const currency = new Intl.NumberFormat('cs-CZ', {
@@ -112,6 +119,11 @@ const selectors = {
   drawer: document.querySelector('[data-cart-drawer]'),
   backdrop: document.querySelector('.drawer-backdrop'),
   result: document.querySelector('[data-checkout-result]'),
+  checkoutForm: document.querySelector('#checkoutForm'),
+  walletSelector: document.querySelector('[data-auth-wallet-selector]'),
+  walletStatus: document.querySelector('[data-wallet-status]'),
+  walletDeliverySelect: document.querySelector('[data-wallet-delivery-select]'),
+  walletInvoiceSelect: document.querySelector('[data-wallet-invoice-select]'),
 };
 
 function formatPrice(value) {
@@ -230,6 +242,100 @@ function checkoutIntentFor(entries) {
   const externalOrderId = createCheckoutIntentId();
   localStorage.setItem(checkoutIntentStorageKey, JSON.stringify({ signature, externalOrderId }));
   return externalOrderId;
+}
+
+function walletRowsFromSessionPayload(payload = {}) {
+  const checkoutData = payload.checkoutData && typeof payload.checkoutData === 'object' ? payload.checkoutData : payload;
+  return {
+    deliveryRows: Array.isArray(checkoutData.deliveryAddresses) ? checkoutData.deliveryAddresses : [],
+    invoiceRows: Array.isArray(checkoutData.invoiceProfiles) ? checkoutData.invoiceProfiles : [],
+    defaults: checkoutData.defaults && typeof checkoutData.defaults === 'object' ? checkoutData.defaults : {},
+  };
+}
+
+function safeWalletCountry(row = {}) {
+  return /^[A-Z]{2}$/.test(String(row.country || '')) ? String(row.country) : 'CZ';
+}
+
+function safeWalletLabel(row = {}, kind, index) {
+  const prefix = kind === 'delivery' ? 'Doručovací údaje' : 'Fakturační údaje';
+  const defaultText = row.isDefault === true ? ' - výchozí' : '';
+  return `${prefix} ${index + 1}${defaultText} (${safeWalletCountry(row)})`;
+}
+
+function walletFullName(row = {}) {
+  return [row.firstName, row.lastName].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
+}
+
+function walletStreet(row = {}) {
+  return [row.street, row.street2, row.city, row.postalCode, row.country]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
+function setFieldFromWallet(form, fieldName, value) {
+  if (!value || state.authWallet.manualFields.has(fieldName)) return;
+  const field = form.elements[fieldName];
+  if (field instanceof HTMLInputElement) field.value = value;
+}
+
+function applyWalletSelection() {
+  const form = selectors.checkoutForm;
+  if (!form) return;
+  const deliveryIndex = Number(state.authWallet.selectedDelivery);
+  const delivery = Number.isInteger(deliveryIndex) ? state.authWallet.deliveryRows[deliveryIndex] : null;
+  if (delivery) {
+    setFieldFromWallet(form, 'name', walletFullName(delivery));
+    setFieldFromWallet(form, 'email', delivery.email);
+    setFieldFromWallet(form, 'phone', delivery.phone);
+    setFieldFromWallet(form, 'address', walletStreet(delivery));
+  }
+  renderCheckoutReview();
+}
+
+function renderWalletSelect(select, rows, selectedValue, kind) {
+  if (!select) return;
+  const options = [
+    '<option value="manual">Vyplnit ručně</option>',
+    ...rows.map((row, index) => `<option value="${index}">${escapeHtml(safeWalletLabel(row, kind, index))}</option>`),
+  ];
+  select.innerHTML = options.join('');
+  select.value = selectedValue;
+}
+
+function renderWalletSelector() {
+  const { deliveryRows, invoiceRows, selectedDelivery, selectedInvoice } = state.authWallet;
+  const hasWalletOptions = deliveryRows.length > 0 || invoiceRows.length > 0;
+  if (!selectors.walletSelector) return;
+  selectors.walletSelector.hidden = !hasWalletOptions;
+  if (!hasWalletOptions) return;
+  renderWalletSelect(selectors.walletDeliverySelect, deliveryRows, selectedDelivery, 'delivery');
+  renderWalletSelect(selectors.walletInvoiceSelect, invoiceRows, selectedInvoice, 'invoice');
+  if (selectors.walletStatus) {
+    selectors.walletStatus.textContent = 'Uložené údaje můžete použít pro tento nákup nebo objednávku vyplnit ručně.';
+  }
+}
+
+function setManualWalletMode() {
+  state.authWallet.selectedDelivery = 'manual';
+  state.authWallet.selectedInvoice = 'manual';
+  renderWalletSelector();
+  renderCheckoutReview();
+}
+
+function initializeAuthWalletSelector() {
+  const walletPayload = globalThis.CLIPLOT_AUTH_WALLET_CHECKOUT_DATA;
+  const { deliveryRows, invoiceRows, defaults } = walletRowsFromSessionPayload(walletPayload || {});
+  state.authWallet.deliveryRows = deliveryRows;
+  state.authWallet.invoiceRows = invoiceRows;
+
+  const defaultDeliveryIndex = deliveryRows.findIndex((row) => row.id && row.id === defaults.deliveryAddressId);
+  const defaultInvoiceIndex = invoiceRows.findIndex((row) => row.id && row.id === defaults.invoiceProfileId);
+  state.authWallet.selectedDelivery = defaultDeliveryIndex >= 0 ? String(defaultDeliveryIndex) : (deliveryRows.length ? '0' : 'manual');
+  state.authWallet.selectedInvoice = defaultInvoiceIndex >= 0 ? String(defaultInvoiceIndex) : (invoiceRows.length ? '0' : 'manual');
+  renderWalletSelector();
+  applyWalletSelection();
 }
 
 function findProduct(productId) {
@@ -526,11 +632,29 @@ document.querySelector('#searchInput').addEventListener('input', (event) => {
   renderProducts();
 });
 
-document.querySelector('#checkoutForm').addEventListener('change', () => {
+selectors.checkoutForm.addEventListener('input', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLInputElement && ['name', 'email', 'phone', 'address'].includes(target.name)) {
+    state.authWallet.manualFields.add(target.name);
+  }
+});
+
+selectors.checkoutForm.addEventListener('change', (event) => {
+  const target = event.target;
+  if (target === selectors.walletDeliverySelect) {
+    state.authWallet.selectedDelivery = target.value;
+    applyWalletSelection();
+  }
+  if (target === selectors.walletInvoiceSelect) {
+    state.authWallet.selectedInvoice = target.value;
+    renderWalletSelector();
+  }
   renderCheckoutReview();
 });
 
-document.querySelector('#checkoutForm').addEventListener('submit', async (event) => {
+document.querySelector('[data-wallet-manual]')?.addEventListener('click', setManualWalletMode);
+
+selectors.checkoutForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const entries = cartEntries();
   if (!entries.length) {
@@ -752,4 +876,5 @@ if (!renderCheckoutStatusPage()) {
   document.querySelector('[data-category="all"]').classList.add('is-active');
   loadAuthLinks();
   loadProducts();
+  initializeAuthWalletSelector();
 }

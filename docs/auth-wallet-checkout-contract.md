@@ -1,6 +1,6 @@
 # Auth Wallet Checkout Contract
 
-Status: source-only; dependency-gated
+Status: source/runtime selector UI source-integrated; live wallet fetch dependency-gated
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
 
@@ -10,11 +10,10 @@ Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding P
 
 ## Purpose
 
-This contract defines the Cliplot-specific gate for future Auth customer data
-wallet checkout integration. It does not add runtime wallet fetches, render
-wallet selectors, submit checkout, call Auth wallet endpoints, or approve a live
-smoke. Runtime code must stay blocked until these rules are converted into
-bounded implementation and approved synthetic evidence.
+This contract defines the Cliplot-specific gate for Auth customer data wallet
+checkout integration. It now allows a bounded checkout selector UI that consumes
+already-provided in-memory wallet rows, but it does not add live Auth wallet
+fetches, checkout submit changes, Auth wallet mutation, or live smoke approval.
 
 ## Selector Behavior
 
@@ -126,9 +125,27 @@ synthetic state transitions only. The verifier must prove:
 - selector behavior evidence must not execute checkout submit, Auth wallet
   mutation, payment creation, Warehouse reservation, or notification sending.
 
-This policy does not approve runtime wallet fetches, selector UI, browser-session
-handoff, live smoke, checkout submission, payment creation, Warehouse
-reservation, or notification sending.
+This policy approves only the source/runtime checkout selector UI scaffold. It
+does not approve runtime wallet fetches, browser-session token handoff, live
+smoke, checkout submission, payment creation, Warehouse reservation, or
+notification sending.
+
+## Runtime Selector UI Integration
+
+- The checkout form may render delivery and invoice selectors from in-memory
+  `CLIPLOT_AUTH_WALLET_CHECKOUT_DATA` rows that were obtained by an approved
+  future browser-session lane.
+- The browser must not call Auth wallet endpoints in this selector UI lane.
+- The selector controls must not have checkout form `name` attributes, so Auth
+  wallet row ids and ownership fields cannot be submitted as order truth.
+- Default delivery rows may prefill name, email, phone, and delivery address
+  fields before manual edits. Manual edits to those fields win for the current
+  checkout.
+- Invoice rows may be represented as selector options before the checkout has
+  explicit billing fields; selecting an invoice profile must not submit wallet
+  ids or hidden wallet metadata.
+- The manual fallback action must leave guest/manual checkout available and must
+  not clear the cart.
 
 ## Source-Only Wallet Mapping Acceptance Criteria
 

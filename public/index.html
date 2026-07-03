@@ -141,6 +141,23 @@
               <h2>Objednávka bez registrace</h2>
               <p>Vyplňte doručení a kontakt. Před platbou ještě uvidíte stav objednávky.</p>
             </div>
+            <div class="wallet-selector" data-auth-wallet-selector hidden>
+              <div class="wallet-selector-header">
+                <strong>Uložené údaje z účtu</strong>
+                <button class="secondary-link" type="button" data-wallet-manual>Vyplnit ručně</button>
+              </div>
+              <p data-wallet-status>Ruční vyplnění je dostupné.</p>
+              <div class="checkout-options">
+                <label>
+                  Doručovací údaje
+                  <select data-wallet-delivery-select aria-label="Vybrat uložené doručovací údaje"></select>
+                </label>
+                <label>
+                  Fakturační údaje
+                  <select data-wallet-invoice-select aria-label="Vybrat uložené fakturační údaje"></select>
+                </label>
+              </div>
+            </div>
             <label>
               Jméno a příjmení
               <input name="name" autocomplete="name" required />

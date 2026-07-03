@@ -19,9 +19,10 @@ unauthenticated for:
 - `/auth/profile/delivery-addresses`
 - `/auth/profile/invoice-profiles`
 
-This lane is source-only planning and verification. It must not fetch Auth
-wallet data, render wallet selectors, create orders, reserve Warehouse stock,
-create payments, send notifications, query databases, or deploy runtime changes.
+This lane has advanced from source-only planning into bounded source/runtime
+checkout selector UI integration. It must not fetch Auth wallet data from
+browser or server, create orders, reserve Warehouse stock, create payments, send
+notifications, query databases, or deploy runtime changes.
 
 ## Repo Surface Inspection
 
@@ -37,8 +38,9 @@ are ready:
 - `src/server.js` exposes `/api/auth/links`, `/api/checkout/submit`, and
   read-only checkout readiness/status endpoints.
 
-Current checkout remains guest-first and guarded. Auth is present only as a
-hosted login link surface, not as wallet data ownership inside Cliplot.
+Current checkout remains guest-first and guarded. Auth is present as a hosted
+login link surface plus in-memory wallet selector hooks, not as wallet data
+ownership inside Cliplot.
 
 ## Required Future Contract
 
@@ -51,14 +53,17 @@ approved Auth wallet contract covering:
 - no-secret logging and frontend bundle constraints;
 - checkout fallback behavior when wallet reads fail or the customer is a guest.
 
-The source-only contract is now recorded in
-`docs/auth-wallet-checkout-contract.md`. It is not runtime approval by itself:
-runtime wallet fetches, selectors, checkout submit changes, and live smokes
-remain blocked until the contract is implemented with approved synthetic
-evidence.
+The contract is recorded in `docs/auth-wallet-checkout-contract.md`. It now
+allows source/runtime selector UI hooks only. Runtime wallet fetches,
+browser-session token handoff, checkout submit changes, and live smokes remain
+blocked until separately approved.
 
 ## Allowed Changes In This Lane
 
+- `public/index.html`
+- `public/app.js`
+- `public/styles.css`
+- `src/integrations.js`
 - `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`
 - `docs/auth-wallet-checkout-contract.md`
 - `reports/validation/GOAL-10-auth-wallet-checkout-readiness.md`
@@ -69,8 +74,9 @@ evidence.
 ## Forbidden Changes In This Lane
 
 - Runtime wallet fetch integration.
-- Auth wallet selector UI.
-- Checkout/order/payment/Warehouse/notification behavior changes.
+- Checkout submit changes that add Auth wallet ids or reusable wallet ownership
+  fields as order truth.
+- Checkout/order/payment/Warehouse/notification mutation behavior changes.
 - Live calls to Auth, Orders, Payments, Warehouse, Notifications, or Catalog.
 - Kubernetes, deploy, DB, Vault, token, cookie, or secret mutation.
 - Logging or committing customer data, secrets, JWTs, OAuth tokens, magic-link
@@ -113,15 +119,17 @@ evidence.
   serialization is not narrowed here, `pickupPointId` is not a current Auth v1
   response field, and invoice recipient email is `email`, not `invoiceEmail`
   or `electronicInvoiceEmail`.
-- Source-only contract recorded, but runtime remains gated:
-  - `[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]`
+- Source/runtime selector UI contract recorded, but live wallet fetch remains gated:
+  - `Resolved: bounded source/runtime checkout wallet selector UI integration
+    implemented with no live Auth fetch and no checkout submit change.`
   - `Resolved: approved synthetic browser/session wallet-read evidence passed on 2026-07-03; authenticated checkout integration remains blocked.`
   - Cliplot source-defines the no-PII wallet exposure policy in
     `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
-    still gated until wallet reads/selectors exist.
+    recorded for selector UI only, while live wallet reads remain gated.
   - Cliplot source-verifies selector behavior policy for wallet defaults,
     manual override, manual guest-style fallback, customer-safe labels, and
-    immutable checkout snapshots without runtime selector UI or live calls.
+    immutable checkout snapshots with runtime selector UI hooks and no live
+    calls.
   - Cliplot source-verifies the browser-session handoff approval contract:
     default source-only validation must not call Auth or read token/cookie/JWT
     contents; future runtime evidence is limited to approved synthetic
@@ -130,14 +138,18 @@ evidence.
     mutation.
   - Cliplot source-verifies pure Auth wallet row to immutable checkout snapshot
     mapping with synthetic fixtures and sanitized verifier output; runtime
-    implementation evidence is still gated until wallet reads/selectors exist.
+    selector UI evidence is present, while live browser-session reads remain
+    gated.
   - Cliplot source-defines guest fallback behavior for missing Auth session,
     wallet 401, wallet 403, timeout, malformed response, and empty wallet rows.
     The source-only verifier preserves manual checkout/cart, forbids fallback
     mutation and checkout submit, and emits sanitized labels/booleans only.
-  - `[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]`
-  - `[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]`
-  - `[MISSING: approved runtime Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]`
+  - `Resolved: no-PII frontend selector label and no-storage/no-submit
+    implementation evidence for the bounded selector scaffold.`
+  - `Resolved: runtime Cliplot field mapping implementation from in-memory Auth
+    wallet rows to current checkout fields without wallet ids as order truth.`
+  - `Resolved: runtime manual guest fallback implementation for unavailable
+    wallet rows or manual customer choice.`
 
 ## Parallel Execution Section
 
@@ -147,8 +159,8 @@ evidence.
 | Cliplot source readiness verifier | ready now | Cliplot worker | `scripts/auth-wallet-checkout-readiness.js`, `package.json` | `npm run readiness:auth-wallet-checkout` |
 | Guarded synthetic browser-session wallet smoke harness | ready now; live execution approval-gated | Gate 5 Cliplot worker | `scripts/auth-wallet-browser-session-smoke.js`, `package.json`, wallet contract docs | `npm run readiness:auth-wallet-browser-session-smoke` default blocked evidence plus future owner-approved runtime command shape |
 | Checkout wallet contract | source-prepared | Cliplot coordinator | `docs/auth-wallet-checkout-contract.md`, readiness verifier | source validation only |
-| Checkout wallet UX plan | source-session-policy-prepared; runtime-gated | product/checkout owner | future checkout UI files | browser-session implementation, runtime selector evidence, and guest fallback implementation |
-| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after session, runtime selector/no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
+| Checkout wallet UX plan | source/runtime selector UI integrated; live fetch gated | product/checkout owner | checkout UI files | readiness verifier plus runtime evidence packet |
+| Runtime integration | blocked for live Auth wallet fetch | integration owner | future Cliplot runtime files | only after session, no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
 | Final integration | blocked | Cliplot orchestrator | checkout/frontend/backend files | guarded checkout smoke plus wallet-specific no-mutation tests |
 
 ## Execution Plan
