@@ -6,6 +6,7 @@ const sourceFiles = {
   checkoutClient: 'public/app.js',
   integrations: 'src/integrations.js',
   server: 'src/server.js',
+  walletContract: 'docs/auth-wallet-checkout-contract.md',
 };
 
 const walletEndpoints = [
@@ -105,10 +106,10 @@ const authWalletPresenceGate = {
 
 const blockers = [
   '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
-  '[MISSING: authenticated browser session contract for wallet reads]',
-  '[MISSING: no-PII logging and frontend exposure review for wallet data]',
-  '[MISSING: approved Cliplot field mapping from Auth wallet rows to checkout/order snapshots]',
-  '[MISSING: approved Cliplot guest fallback behavior when Auth wallet reads are unavailable]',
+  '[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]',
+  '[MISSING: no-PII logging/frontend exposure implementation evidence for wallet data]',
+  '[MISSING: approved Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
+  '[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]',
 ];
 
 const sourceKnownFacts = [
@@ -144,6 +145,7 @@ const checkoutHtml = sources.checkoutHtml.contents;
 const checkoutClient = sources.checkoutClient.contents;
 const integrations = sources.integrations.contents;
 const server = sources.server.contents;
+const walletContract = sources.walletContract.contents;
 
 const hasCheckoutForm = includesAll(checkoutHtml, [
   'id="checkoutForm"',
@@ -171,7 +173,28 @@ const hasAuthLinkOnlySurface = includesAll(server, [
   "url.pathname === '/api/auth/links'",
   'authLinks()',
 ]);
+const hasWalletContract = includesAll(walletContract, [
+  'Status: source-only; dependency-gated',
+  'Selector Behavior',
+  'Authenticated Session Handoff',
+  'PII And Logging Constraints',
+  'Field Mapping',
+  'Guest Fallback',
+  'Default Auth entries may prefill the checkout only before the customer edits',
+  'Manual edits must override wallet defaults for the current checkout snapshot',
+  'Wallet reads must use a synthetic or real authenticated Auth bearer only in',
+  'memory for the request window',
+  'Do not log raw Auth wallet response bodies',
+  'Do not persist reusable Auth wallet rows in Cliplot local storage',
+  'Delivery address mapping to the checkout snapshot',
+  'Invoice profile mapping to the checkout snapshot',
+  'The checkout submit path remains `/api/checkout/submit` and must receive',
+  'resolved immutable snapshots, not Auth wallet ids',
+  'Runtime integration remains blocked until selector behavior, browser-session',
+  'handling, no-PII exposure, field mapping, and guest fallback',
+]);
 const runtimeWalletReferences = Object.values(sources)
+  .filter(({ path }) => path !== sourceFiles.walletContract)
   .flatMap(({ path, contents }) => walletEndpoints
     .filter((endpoint) => contents.includes(endpoint))
     .map((endpoint) => ({ path, endpoint })));
@@ -180,6 +203,7 @@ assert(hasCheckoutForm, 'checkout form customer fields missing', { file: sourceF
 assert(hasCartReview, 'cart review/submit surface missing', { file: sourceFiles.checkoutClient });
 assert(hasBackendCustomerNormalization, 'backend customer normalization missing', { file: sourceFiles.integrations });
 assert(hasAuthLinkOnlySurface, 'hosted Auth link surface missing', { file: sourceFiles.server });
+assert(hasWalletContract, 'source-only Auth wallet checkout contract markers missing', { file: sourceFiles.walletContract });
 assert(
   authWalletResponseContract.checkoutDataSchemaVersion === 'auth.customer-data-wallet.checkout-data.v1',
   'Auth wallet checkout-data schema version is not source-defined',
@@ -257,6 +281,7 @@ console.log(JSON.stringify({
     cartReviewAndSubmit: hasCartReview,
     backendCustomerNormalization: hasBackendCustomerNormalization,
     hostedAuthLinks: hasAuthLinkOnlySurface,
+    walletContract: hasWalletContract,
   },
   runtimeWalletIntegrationPresent: false,
   requiredWalletEndpoints: walletEndpoints,

@@ -33,6 +33,9 @@ non-mutating post-deploy smoke also passed against gateway-proxied wallet
 endpoints returning HTTP 401. Cliplot checkout wallet work remains blocked
 because selector behavior, authenticated browser/session handling, PII exposure
 rules, Cliplot field mapping, and guest fallback behavior are not approved.
+`docs/auth-wallet-checkout-contract.md` now records the source-only contract for
+those five gates, but runtime implementation and synthetic evidence are still
+missing.
 
 ## Remaining Blockers
 
@@ -54,11 +57,12 @@ rules, Cliplot field mapping, and guest fallback behavior are not approved.
   - invoice recipient email is `email`, not `invoiceEmail` or
     `electronicInvoiceEmail`;
   - sanitized wallet rows omit `user`, `userId`, and `deletedAt`.
+- Source-only contract recorded in `docs/auth-wallet-checkout-contract.md`.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
-- `[MISSING: authenticated browser session contract for wallet reads]`
-- `[MISSING: no-PII logging and frontend exposure review for wallet data]`
-- `[MISSING: approved Cliplot field mapping from Auth wallet rows to checkout/order snapshots]`
-- `[MISSING: approved Cliplot guest fallback behavior when Auth wallet reads are unavailable]`
+- `[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]`
+- `[MISSING: no-PII logging/frontend exposure implementation evidence for wallet data]`
+- `[MISSING: approved Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]`
+- `[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]`
 
 ## Validation Commands
 
@@ -81,6 +85,16 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
 - `npm run check`: PASS; repository syntax-check chain includes the new verifier.
 - `git diff --check`: PASS.
 - Targeted dangerous literal secret scan: PASS; no matches.
+
+2026-07-03 source-only contract validation:
+
+- `docs/auth-wallet-checkout-contract.md` records selector behavior,
+  authenticated session handoff, no-PII logging/frontend exposure constraints,
+  field mapping from Auth wallet rows to immutable checkout/order snapshots, and
+  guest fallback behavior.
+- `scripts/auth-wallet-checkout-readiness.js` now verifies the contract markers
+  and still fails if runtime wallet endpoint integration appears before gates
+  are cleared.
 
 ## Intent Compliance Report
 
