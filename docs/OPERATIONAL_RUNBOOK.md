@@ -638,6 +638,22 @@ order/payment/notification idempotency keys,
 Warehouse, payment and notification, and validation owners for exactly one
 result per idempotency key.
 
+The live flag-window checklist is read-only and exists to review a future
+operator action before any live flags are opened:
+
+```bash
+npm run readiness:live-flags-operator-preflight -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/live-flags-operator-preflight-checklist-packet
+```
+
+It must report `approved_live_flags_operator_preflight_checklist_execution_disabled`
+only while full checkout metadata is ready, all four live flags remain false,
+live preflight is still blocked, revenue closure is still approval-required, and
+no mutation/provider/persistence side effect has occurred. The checklist names
+the temporary flag set, restore flag set, required operator request fields,
+pre-open validation, and post-close validation. It is not permission to call
+checkout, Orders, Warehouse, Payments, or Notifications mutation endpoints.
+
 ## Controlled Orders/Warehouse Smoke Evidence
 
 The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with

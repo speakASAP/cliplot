@@ -746,3 +746,12 @@ checkout packet into metadata, execution, and guardrail blocker classes. The
 payment, notification, order approval, Orders/Warehouse smoke, and full checkout
 window metadata can now be reported as ready while all live flags remain false
 and full checkout execution remains blocked.
+
+### 2026-07-03 - Live checkout flag-window checklist
+
+Added a read-only operator checklist packet for a future temporary live checkout
+flag window. The checklist proves full checkout metadata is ready while all live
+flags remain false, revenue closure remains approval-required, and no order,
+Warehouse, payment, or notification mutation occurs. It records required
+operator request fields, pre-open validation, restore flags, and post-close
+validation before any separate live execution action is considered.

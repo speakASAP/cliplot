@@ -1598,6 +1598,180 @@ export async function runBoundedLiveCheckoutExecutor(request = {}) {
 }
 
 
+export async function liveFlagsOperatorPreflightChecklistPacket() {
+  const executionWindow = await liveCheckoutExecutionWindowPacket();
+  const preflight = liveCheckoutPreflight();
+  const revenue = await revenueClosurePacket();
+  const metadataReady = executionWindow.approvalMetadata?.metadataReady === true;
+  const liveFlagsClosed = executionWindow.liveFlags?.order === false
+    && executionWindow.liveFlags?.payment === false
+    && executionWindow.liveFlags?.notification === false
+    && executionWindow.liveFlags?.orderWarehouseSmoke === false;
+  const blockers = [
+    ...(metadataReady ? [] : ['[MISSING: full checkout execution-window metadata readiness]']),
+    ...(liveFlagsClosed ? [] : ['[MISSING: production live flags must remain closed before operator flag-window review]']),
+    ...(preflight.status === 'blocked' && preflight.wouldMutate === false ? [] : ['[MISSING: current production preflight must be blocked and non-mutating before flag-window review]']),
+    ...(revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false ? [] : ['[MISSING: revenue closure must remain approval-required before flag-window review]']),
+  ];
+
+  return {
+    success: true,
+    status: blockers.length === 0
+      ? 'approved_live_flags_operator_preflight_checklist_execution_disabled'
+      : 'approval_required_live_flags_operator_preflight_checklist',
+    mode: 'read_only_live_flags_operator_preflight_checklist_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    liveExecutionAllowed: false,
+    orderCreated: false,
+    warehouseReserved: false,
+    paymentCreated: false,
+    notificationSent: false,
+    metadataReady,
+    liveFlagsClosed,
+    currentPacketEnablesRuntime: false,
+    currentLiveFlags: executionWindow.liveFlags,
+    proposedTemporaryFlagOpen: {
+      ENABLE_LIVE_ORDER_SUBMIT: true,
+      ENABLE_LIVE_PAYMENT_CREATE: true,
+      ENABLE_LIVE_NOTIFICATIONS: true,
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: true,
+    },
+    requiredApprovals: {
+      CLIPLOT_LIVE_ORDER_APPROVAL_ID: executionWindow.approvals?.order === true,
+      CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: executionWindow.approvals?.payment === true,
+      CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: executionWindow.approvals?.notification === true,
+      CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID: executionWindow.readinessEvidence?.liveSmokePlan === 'approved_live_order_warehouse_smoke_metadata_execution_disabled',
+      CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW: executionWindow.approvalMetadata?.checkoutWindowConcrete === true,
+    },
+    requiredTemporaryFlagSet: {
+      ENABLE_LIVE_ORDER_SUBMIT: 'true',
+      ENABLE_LIVE_PAYMENT_CREATE: 'true',
+      ENABLE_LIVE_NOTIFICATIONS: 'true',
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'true',
+    },
+    requiredRestoreFlagSet: {
+      ENABLE_LIVE_ORDER_SUBMIT: 'false',
+      ENABLE_LIVE_PAYMENT_CREATE: 'false',
+      ENABLE_LIVE_NOTIFICATIONS: 'false',
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'false',
+    },
+    requiredOperatorRequest: {
+      flagWindow: {
+        confirm: 'OPEN_LIVE_CHECKOUT_FLAGS',
+        executionWindow: serviceConfig.liveCheckoutExecutionWindow,
+        approvedBy: 'named operator id',
+        reasonCode: 'CLIPLOT_OWNER_FULL_CHECKOUT_LIVE_WINDOW',
+      },
+      fullCheckout: {
+        confirm: 'LIVE_CHECKOUT_EXECUTION_WINDOW',
+        executionWindow: serviceConfig.liveCheckoutExecutionWindow,
+        orderIdempotencyKey: 'required_before_executor_call',
+        paymentIdempotencyKey: 'required_before_executor_call',
+        notificationIdempotencyKey: 'required_before_executor_call',
+        duplicateCheck: 'IDEMPOTENCY_KEYS_NOT_USED',
+        rollbackPlan: 'ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED',
+        validationPlan: 'EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS',
+      },
+      paymentCreate: {
+        confirm: 'LIVE_PAYMENT_CREATE_WINDOW',
+        approvalId: 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
+        executionWindow: 'CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW',
+        idempotencyKey: 'required_before_executor_call',
+        duplicateCheck: 'IDEMPOTENCY_KEY_NOT_USED',
+        rollbackPlan: 'PAYMENT_VOID_OR_CANCEL_OWNER_ASSIGNED',
+        validationPlan: 'EXACTLY_ONE_PAYMENT_RESULT_BY_IDEMPOTENCY_KEY',
+      },
+      notificationSend: {
+        confirm: 'LIVE_NOTIFICATION_SEND_WINDOW',
+        approvalId: 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+        executionWindow: 'CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW',
+        idempotencyKey: 'required_before_executor_call',
+        duplicateCheck: 'IDEMPOTENCY_KEY_NOT_USED',
+        rollbackPlan: 'NOTIFICATION_DUPLICATE_RESPONSE_OWNER_ASSIGNED',
+        validationPlan: 'EXACTLY_ONE_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEY',
+      },
+      orderWarehouseSmoke: {
+        confirm: 'CREATE_REPLAY_CANCEL',
+        approvalId: 'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
+        approvedBy: 'named operator id',
+        reasonCode: 'CLIPLOT_OWNER_CREATE_REPLAY_CANCEL_SMOKE',
+        externalOrderId: 'optional operator-provided external order id',
+      },
+    },
+    idempotencyRequirements: {
+      orderIdempotencyKey: 'required_before_executor_call',
+      paymentIdempotencyKey: 'required_before_executor_call',
+      notificationIdempotencyKey: 'required_before_executor_call',
+      duplicateCheck: 'IDEMPOTENCY_KEYS_NOT_USED',
+    },
+    ownerRequirements: {
+      rollbackPlan: 'ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED',
+      validationPlan: 'EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS',
+      rollbackOwner: serviceConfig.liveCheckoutRollbackOwner,
+      validationOwner: serviceConfig.liveCheckoutValidationOwner,
+    },
+    requiredPreOpenValidation: [
+      'npm run readiness:bundle',
+      'npm run readiness:live-checkout-execution-window -- https://cliplot.alfares.cz',
+      'npm run readiness:revenue-closure -- https://cliplot.alfares.cz',
+      'npm run readiness:activation -- https://cliplot.alfares.cz',
+      'operator records one unused idempotency tuple for the approved window',
+      'operator confirms rollback and validation owners are online',
+    ],
+    requiredPostCloseValidation: [
+      'all four live flags restored to false',
+      'npm run readiness:bundle',
+      'executor evidence proves exactly one order, payment, and notification result by idempotency key',
+      'no callback persistence, callback replay execution, live status writes, provider-backed /payments/{paymentId} reads, or secret disclosure',
+    ],
+    forbiddenOperationsNow: [
+      'do not patch ENABLE_LIVE_* flags from this packet',
+      'do not call POST /api/checkout/submit',
+      'do not call POST /api/orders',
+      'do not call POST /payments/create',
+      'do not call POST /notifications/send',
+      'do not reserve Warehouse stock',
+      'do not persist callbacks or live status writes',
+      'do not print secrets, provider payloads, customer PII, recipients, or message bodies',
+    ],
+    readinessEvidence: {
+      liveCheckoutExecutionWindowPacket: executionWindow.status,
+      liveCheckoutPreflightNow: preflight.status,
+      simulatedAllFlagsPreflight: metadataReady ? 'ready_for_approved_live_mutation' : 'blocked_full_checkout_metadata_missing',
+      paymentExecutionWindow: executionWindow.readinessEvidence?.paymentExecutionWindow || null,
+      notificationExecutionWindow: executionWindow.readinessEvidence?.notificationExecutionWindow || null,
+      liveSmokePlan: executionWindow.readinessEvidence?.liveSmokePlan || null,
+      revenueClosure: revenue.status,
+    },
+    invariantResults: [
+      { name: 'current_live_flags_closed', passed: liveFlagsClosed },
+      { name: 'current_preflight_blocked_non_mutating', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
+      { name: 'full_checkout_metadata_ready', passed: metadataReady },
+      { name: 'revenue_closure_still_approval_required', passed: revenue.status === 'approval_required_live_revenue_closure' },
+      { name: 'packet_does_not_enable_runtime', passed: true },
+      { name: 'no_current_side_effects', passed: true },
+    ],
+    evidence: {
+      executionWindow: executionWindow.status,
+      executionWindowMetadataReady: metadataReady,
+      livePreflight: preflight.status,
+      revenueClosure: revenue.status,
+      wouldMutateNow: preflight.wouldMutate === true || revenue.wouldMutateNow === true,
+      executionBlockerCount: executionWindow.blockerClassification?.executionBlockers?.length || 0,
+      guardrailBlockerCount: executionWindow.blockerClassification?.guardrailBlockers?.length || 0,
+    },
+    blockers: [...new Set(blockers)],
+    next: blockers.length === 0
+      ? 'This checklist is ready for owner review; opening live flags still requires a separate operator action and immediate post-window rollback.'
+      : 'Resolve checklist blockers before any owner review for a temporary live flag window.',
+  };
+}
+
+
 export async function notificationSendApprovalEvidencePacket() {
   const products = await fetchCatalogProducts();
   const catalogSource = productCatalogSource(products);

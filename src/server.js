@@ -14,6 +14,7 @@ import {
   handlePaymentCallback,
   liveCheckoutApprovalPacket,
   liveCheckoutExecutionWindowPacket,
+  liveFlagsOperatorPreflightChecklistPacket,
   runBoundedLiveCheckoutExecutor,
   liveCheckoutPreflight,
   liveOrderWarehouseSmokePlan,
@@ -284,6 +285,21 @@ const server = createServer(async (req, res) => {
       const payload = await readRequestJson(req);
       const result = await runBoundedLiveCheckoutExecutor(payload);
       sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-flags-operator-preflight-checklist-packet' && req.method === 'GET') {
+      sendJson(res, 200, await liveFlagsOperatorPreflightChecklistPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-flags-operator-preflight-checklist-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
       return;
     }
 
