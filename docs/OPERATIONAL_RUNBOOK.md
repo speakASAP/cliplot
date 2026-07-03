@@ -703,6 +703,30 @@ the temporary flag set, restore flag set, required operator request fields,
 pre-open validation, and post-close validation. It is not permission to call
 checkout, Orders, Warehouse, Payments, or Notifications mutation endpoints.
 
+The repo-owned bounded operator command is:
+
+```bash
+npm run operator:bounded-live-window -- https://cliplot.alfares.cz
+```
+
+By default it is dry-run only. It preflights all `ENABLE_LIVE_*` flags are
+`false`, prints only sanitized request metadata, and does not open flags or call
+mutation endpoints. Live execution requires all of these explicit gates inside
+the approved owner window:
+
+```bash
+CLIPLOT_LIVE_OPERATOR_EXECUTE=true \
+CLIPLOT_LIVE_OPERATOR_CONFIRM=CLIPLOT_GOAL10_BOUNDED_LIVE_EXECUTE \
+npm run operator:bounded-live-window -- https://cliplot.alfares.cz --execute
+```
+
+The script is responsible for opening only the required live flags, applying
+non-secret approval/window metadata overrides, posting the documented bounded
+executor request, restoring all `ENABLE_LIVE_*` flags to `false` in a cleanup
+path, and proving restoration from the running pod. It must not print secret
+values, raw request/response bodies, customer PII, raw provider payloads,
+recipients, or message bodies.
+
 ## Controlled Orders/Warehouse Smoke Evidence
 
 The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with
