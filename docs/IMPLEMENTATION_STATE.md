@@ -222,8 +222,20 @@ notification sends, and Docs/RAG ingestion gated.
   `callbackReplayEnabled=false`, `replayExecutionAllowed=false`,
   `liveStatusWritesNow=false`, `wouldMutateNow=false`, `mutation=false`,
   `persistence=false`, and `providerCall=false`.
-- Final live revenue closure remains blocked until approval IDs and runtime
-  evidence exist.
+- GOAL-12 controlled full checkout live window completed on
+  `2026-07-03T12:35:19Z` using deployed image
+  `localhost:5000/cliplot:abdf9eb`. The bounded executor returned
+  `live_checkout_bounded_execution_completed_cleanup_completed` for external
+  order `cliplot-full-checkout-20260703T123519Z`, created order
+  `28783f0d-9652-4ced-8bd1-0a1b6cec42ff`, created a payment with
+  `status=processing`, sent the notification with `status=sent`, replayed the
+  order idempotently to the same order id, cancelled the order, and verified
+  Warehouse `activeReservationCount=0`. All four live flags were restored to
+  `false`; post-close `npm run readiness:bundle` passed and revenue closure
+  returned `approval_required_live_revenue_closure`, `wouldMutateNow=false`,
+  `blockerCount=5`.
+- Final live revenue closure remains blocked outside approved execution windows
+  because all live flags must stay false by default.
 
 ## Dependency-Gated Goal: GOAL-05-checkout-revenue-readiness
 
