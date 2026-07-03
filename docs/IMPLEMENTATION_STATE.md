@@ -709,3 +709,13 @@ the primary proof. If Payments returns `429`, Cliplot reports
 exists in the running process, with `freshness.status=stale_rate_limited` and no
 mutation, persistence, provider call, secret value, or payment row output. A 429
 without recent proof remains blocked.
+
+### 2026-07-03 - Live checkout activation gate bundle coverage
+
+The aggregate readiness bundle now includes the live checkout activation gate and
+both bounded payment/notification execution-window checks. Production must prove
+that payment and notification metadata approvals may be present while
+`ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
+`ENABLE_LIVE_NOTIFICATIONS=false` keep checkout non-mutating. The activation
+matrix still requires partial flag combinations to stay blocked, and only the
+simulated all-flags/all-approvals case may report `ready_for_approved_live_mutation`.

@@ -24,7 +24,8 @@ assert(preflight.mutationPlan?.wouldCreatePayment === false, 'live activation wo
 assert(preflight.mutationPlan?.wouldSendNotification === false, 'live activation would send notification in guarded deployment', preflight);
 assert(preflight.liveFlags?.order === false && preflight.liveFlags?.payment === false && preflight.liveFlags?.notification === false, 'live flags are not all false', preflight.liveFlags || {});
 assert(preflight.approvals?.order === true, 'order approval metadata should be present after controlled smoke evidence', preflight.approvals || {});
-assert(preflight.approvals?.payment === false && preflight.approvals?.notification === false, 'payment/notification approval IDs are unexpectedly present', preflight.approvals || {});
+assert(preflight.approvals?.payment === true, 'payment approval metadata should be present after owner metadata acceptance', preflight.approvals || {});
+assert(preflight.approvals?.notification === true, 'notification approval metadata should be present after owner metadata acceptance', preflight.approvals || {});
 assert(Array.isArray(packet.requiredApprovalIds) && packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_APPROVAL_ID'), 'order approval ID name is missing', packet);
 assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_PAYMENT_APPROVAL_ID'), 'payment approval ID name is missing', packet);
 assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID'), 'notification approval ID name is missing', packet);
