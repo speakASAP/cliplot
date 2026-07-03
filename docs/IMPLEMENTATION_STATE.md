@@ -631,6 +631,21 @@ live payment creation, Warehouse reservation, notification sends,
 provider-refresh reads, and Cliplot-local payment status storage remain disabled.
 
 
+### 2026-07-03 - Notification-send approval evidence packet
+
+`GET /api/notifications/send-approval-evidence-packet` and
+`npm run readiness:notification-send-approval` prove the current Cliplot order
+confirmation payload against Notifications `POST /notifications/validate`
+without sending a notification, calling a provider, persisting send state, or
+printing `NOTIFICATIONS_SERVICE_TOKEN`. Passing evidence returns
+`ready_for_owner_notification_send_approval_metadata`,
+`validation.status=validated_no_send`, `mutation=false`, `persistence=false`,
+`providerCall=false`, `notificationSent=false`, `ENABLE_LIVE_NOTIFICATIONS=false`,
+and `notificationApprovalPresent=false`. This packet is owner-review evidence
+only; `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` remains empty until owner
+acceptance and a separate bounded live notification execution window are
+approved.
+
 ### 2026-07-03 - Payment-create approval evidence packet
 
 `GET /api/payments/create-approval-evidence-packet` and

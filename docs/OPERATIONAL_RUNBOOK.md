@@ -496,6 +496,22 @@ through Payments and must continue returning `mutation=false`,
 `callbackPersistence=false`. `GET /payments/{paymentId}` remains forbidden for
 Cliplot passive customer status.
 
+## Notification-Send Approval Evidence
+
+Before recording `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID`, run:
+
+```bash
+npm run readiness:notification-send-approval -- https://cliplot.alfares.cz
+```
+
+The packet must use only `/notifications/validate`, return
+`ready_for_owner_notification_send_approval_metadata`, and prove
+`validated_no_send`, `mutation=false`, `providerCall=false`,
+`notificationSent=false`, `ENABLE_LIVE_NOTIFICATIONS=false`, and
+`notificationApprovalPresent=false`. It does not call `/notifications/send` and
+does not authorize live notification sends without a separate bounded execution
+window.
+
 ## Payment-Create Approval Evidence
 
 Before recording `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`, run:

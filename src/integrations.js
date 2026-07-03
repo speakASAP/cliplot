@@ -1151,6 +1151,148 @@ async function validatePaymentReadScope() {
 }
 
 
+
+export async function notificationSendApprovalEvidencePacket() {
+  const products = await fetchCatalogProducts();
+  const catalogSource = productCatalogSource(products);
+  const product = products.find((item) => item?.warehouseId && item?.productSource === 'catalog');
+  const productFilter = await catalogProductFilterReadiness();
+  const approvals = liveMutationApprovals();
+  const blockers = [];
+
+  if (!product) blockers.push('[MISSING: Warehouse-backed Catalog product for notification approval evidence]');
+  if (!serviceConfig.notificationValidation) blockers.push('[MISSING: ENABLE_NOTIFICATION_VALIDATION=true]');
+  if (!serviceConfig.notificationServiceToken) blockers.push('[MISSING: NOTIFICATIONS_SERVICE_TOKEN in Vault]');
+  if (serviceConfig.liveNotifications) blockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=false for metadata-only notification evidence]');
+  if (approvals.notification) blockers.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID must remain empty until owner accepts notification send evidence]');
+
+  let checkout = null;
+  let notificationPayload = null;
+  let notificationValidation = {
+    status: 'skipped',
+    mutation: false,
+    notificationSent: false,
+    providerCall: false,
+  };
+  let validationErrors = [];
+
+  if (product) {
+    checkout = buildReadinessCheckout(product);
+    validationErrors = validateCheckout(checkout);
+    notificationPayload = buildOrderConfirmationNotification(checkout);
+    if (validationErrors.length === 0 && serviceConfig.notificationValidation && serviceConfig.notificationServiceToken) {
+      notificationValidation = await guardedNotificationValidation(checkout, notificationPayload);
+    }
+  }
+
+  if (validationErrors.length) blockers.push(...validationErrors.map((item) => `[MISSING: checkout validation ${item}]`));
+  if (notificationValidation.status !== 'validated_no_send') blockers.push('[MISSING: Notifications validate accepted Cliplot order confirmation payload with no send]');
+  if (notificationValidation.mutation !== false) blockers.push('[MISSING: Notifications validate mutation=false]');
+  if (notificationValidation.notificationSent !== false) blockers.push('[MISSING: Notifications validate notificationSent=false]');
+  if (notificationValidation.providerCall !== false) blockers.push('[MISSING: Notifications validate providerCall=false]');
+
+  const readyForOwnerNotificationApproval = blockers.length === 0;
+  const recipientDomain = notificationPayload?.recipient?.includes('@')
+    ? notificationPayload.recipient.split('@').pop()
+    : null;
+
+  return {
+    success: true,
+    status: readyForOwnerNotificationApproval
+      ? 'ready_for_owner_notification_send_approval_metadata'
+      : 'blocked_notification_send_approval_evidence',
+    mode: 'read_only_notification_send_approval_evidence_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    notificationSent: false,
+    liveNotifications: serviceConfig.liveNotifications,
+    notificationApprovalPresent: approvals.notification,
+    requiredApprovalId: 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID',
+    approvalIdMayBeRecordedAfterOwnerAcceptance: readyForOwnerNotificationApproval,
+    catalog: {
+      status: productFilter.status,
+      catalogSource,
+      approvedCliplotSkuScope: productFilter.approvedCliplotSkuScope,
+      warehouseBackedProductCount: products.filter((item) => item?.warehouseId).length,
+      sampleProductId: product?.id || null,
+      sampleWarehouseId: product?.warehouseId || null,
+    },
+    checkoutIntent: checkout ? checkoutIntentEvidence(checkout) : null,
+    notificationContract: {
+      endpoint: serviceConfig.notificationValidatePath,
+      liveEndpoint: serviceConfig.notificationSendPath,
+      channel: notificationPayload?.channel || null,
+      type: notificationPayload?.type || null,
+      service: notificationPayload?.service || null,
+      purpose: notificationPayload?.purpose || null,
+      recipientDomain,
+      subjectFingerprint: notificationPayload?.subject ? stableFingerprint(notificationPayload.subject) : null,
+      messageFingerprint: notificationPayload?.message ? stableFingerprint(notificationPayload.message) : null,
+      templateDataFingerprint: notificationPayload?.templateData ? stableFingerprint(notificationPayload.templateData) : null,
+      idempotencyKeyFingerprint: checkout ? stableFingerprint(checkoutIdempotencyKeys(checkout).notificationValidate) : null,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      notificationSent: false,
+    },
+    validation: {
+      status: notificationValidation.status,
+      httpStatus: notificationValidation.httpStatus || null,
+      mutation: notificationValidation.mutation === true ? true : false,
+      notificationSent: notificationValidation.notificationSent === true ? true : false,
+      providerCall: notificationValidation.providerCall === true ? true : false,
+    },
+    requiredBeforeLiveNotificationSend: [
+      'owner acceptance of this no-send Notifications validate evidence',
+      'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID recorded with notification approval metadata',
+      'separate bounded live notification execution window before ENABLE_LIVE_NOTIFICATIONS=true',
+      'approved customer-facing message copy and recipient policy',
+      'post-execution validation that no duplicate notification was sent for the idempotency key',
+    ],
+    mustRemainFalseUntilApprovedWindow: [
+      'ENABLE_LIVE_NOTIFICATIONS',
+      'ENABLE_LIVE_ORDER_SUBMIT unless full checkout approval exists',
+      'ENABLE_LIVE_PAYMENT_CREATE',
+      'callback persistence',
+      'callback replay execution',
+      'live status writes',
+    ],
+    forbiddenOperations: [
+      'POST /notifications/send',
+      'send notification',
+      'call notification provider',
+      'persist notification send state',
+      'create order',
+      'create payment',
+      'reserve Warehouse stock',
+      'print notification service token or raw recipient payloads',
+    ],
+    satisfiedEvidence: [
+      ...(notificationValidation.status === 'validated_no_send' ? ['[DONE: Notifications validate accepted Cliplot order confirmation payload]'] : []),
+      ...(notificationValidation.mutation === false ? ['[DONE: Notifications validate mutation=false]'] : []),
+      ...(notificationValidation.notificationSent === false ? ['[DONE: Notifications validate notificationSent=false]'] : []),
+      ...(notificationValidation.providerCall === false ? ['[DONE: Notifications validate providerCall=false]'] : []),
+      ...(serviceConfig.liveNotifications === false ? ['[DONE: ENABLE_LIVE_NOTIFICATIONS=false]'] : []),
+      ...(approvals.notification === false ? ['[DONE: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID remains empty before owner acceptance]'] : []),
+    ],
+    blockers: [...new Set(blockers)],
+    sensitiveDataPolicy: [
+      'no NOTIFICATIONS_SERVICE_TOKEN value',
+      'no raw recipient email',
+      'no raw message body in readiness summary',
+      'synthetic checkout identity only',
+      'fingerprints instead of idempotency key and message values',
+    ],
+    next: readyForOwnerNotificationApproval
+      ? 'Owner can review this packet before deciding whether to record CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID metadata; do not enable ENABLE_LIVE_NOTIFICATIONS yet.'
+      : 'Resolve the listed notification validation blockers before recording notification approval metadata.',
+  };
+}
+
+
 export async function paymentCreateApprovalEvidencePacket() {
   const products = await fetchCatalogProducts();
   const catalogSource = productCatalogSource(products);
@@ -4460,6 +4602,20 @@ export async function submitCheckout(input) {
   const payment = serviceConfig.livePaymentCreate
     ? await createPayment(checkout, order)
     : null;
+  const approvals = liveMutationApprovals();
+  if (serviceConfig.liveNotifications && (!approvals.notification || !serviceConfig.notificationServiceToken)) {
+    return {
+      httpStatus: 503,
+      body: {
+        success: false,
+        status: 'notification_send_guard_blocked',
+        mode: 'live_checkout_notification_guard',
+        liveCheckoutPreflight: preflight,
+        mutation: false,
+        notificationSent: false,
+      },
+    };
+  }
   const notification = serviceConfig.liveNotifications
     ? await createNotification(checkout, notificationPreview)
     : null;
@@ -5464,6 +5620,7 @@ export async function liveCheckoutApprovalPacket() {
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
   const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
   const paymentCreateApproval = await paymentCreateApprovalEvidencePacket();
+  const notificationSendApproval = await notificationSendApprovalEvidencePacket();
   const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
@@ -5479,6 +5636,7 @@ export async function liveCheckoutApprovalPacket() {
     callbackReplayPolicy: callbackPolicy.status,
     callbackPersistence: callbackPersistence.status,
     paymentCreateApproval: paymentCreateApproval.status,
+    notificationSendApproval: notificationSendApproval.status,
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
     livePreflight: preflight.status,
@@ -5506,6 +5664,7 @@ export async function liveCheckoutApprovalPacket() {
     ...(paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' ? ['[DONE: payment status runtime read is approved and no-persistence]'] : []),
     ...(callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? ['[DONE: callback replay policy metadata approved with execution disabled]'] : []),
     ...(paymentCreateApproval.status === 'ready_for_owner_payment_create_approval_metadata' ? ['[DONE: valid-body payment-create approval evidence is ready with no mutation]'] : []),
+    ...(notificationSendApproval.status === 'ready_for_owner_notification_send_approval_metadata' ? ['[DONE: notification send approval evidence is ready with no send]'] : []),
     ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),
   ];
 
@@ -5557,6 +5716,9 @@ export async function liveCheckoutApprovalPacket() {
       paymentCreateApproval: paymentCreateApproval.status,
       paymentCreateValidation: paymentCreateApproval.validation?.status || null,
       readyForOwnerPaymentApproval: paymentCreateApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
+      notificationSendApproval: notificationSendApproval.status,
+      notificationValidation: notificationSendApproval.validation?.status || null,
+      readyForOwnerNotificationApproval: notificationSendApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
       callbackPersistenceEnabled: callbackPersistence.callbackPersistence,
       callbackReplayEnabled: callbackPersistence.callbackReplayEnabled,
       livePaymentCreate: serviceConfig.livePaymentCreate,
@@ -5568,6 +5730,9 @@ export async function liveCheckoutApprovalPacket() {
     notificationBoundary: {
       validation: readiness.integrations.notificationValidation,
       liveSend: readiness.integrations.notifications,
+      notificationSendApproval: notificationSendApproval.status,
+      notificationValidation: notificationSendApproval.validation?.status || null,
+      readyForOwnerNotificationApproval: notificationSendApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
       mutation: false,
       persistence: false,
       providerCall: false,
@@ -5643,6 +5808,7 @@ export async function revenueClosurePacket() {
   const paymentMapping = await paymentStatusMappingOwnershipPacket();
   const callbackPolicy = paymentCallbackReplayPolicyReadiness();
   const paymentCreateApproval = await paymentCreateApprovalEvidencePacket();
+  const notificationSendApproval = await notificationSendApprovalEvidencePacket();
   const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
@@ -5659,6 +5825,7 @@ export async function revenueClosurePacket() {
     paymentMapping: paymentMapping.status,
     callbackReplayPolicy: callbackPolicy.status,
     paymentCreateApproval: paymentCreateApproval.status,
+    notificationSendApproval: notificationSendApproval.status,
     liveStatusWriteApproval: liveStatusWriteApproval.status,
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
@@ -5790,6 +5957,9 @@ export async function revenueClosurePacket() {
     notifications: {
       validation: readiness.integrations.notificationValidation,
       liveSend: readiness.integrations.notifications,
+      notificationSendApproval: notificationSendApproval.status,
+      notificationValidation: notificationSendApproval.validation?.status || null,
+      readyForOwnerNotificationApproval: notificationSendApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
       mutation: false,
       providerCall: false,
       persistence: false,
