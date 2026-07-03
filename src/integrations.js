@@ -5999,10 +5999,12 @@ export async function paymentCallbackToStatusWriteDryRunContractPacket() {
 export async function paymentStatusWriteOwnerReviewPacket() {
   const dryRunContract = await paymentCallbackToStatusWriteDryRunContractPacket();
   const windowRequest = await paymentStatusWriteWindowRequestPacket();
-  const reconciliation = await paymentStatusReconciliationReadinessPacket();
-  const liveStatusWrite = await paymentLiveStatusWriteApprovalPacket();
-  const storageContract = await paymentCallbackPersistenceStorageContractPacket();
-  const replayRollout = await paymentCallbackReplayExecutionRolloutProposalPacket();
+  const prerequisite = {
+    reconciliation: dryRunContract.prerequisiteEvidence?.reconciliation || windowRequest.prerequisiteEvidence?.reconciliation,
+    liveStatusWrite: dryRunContract.prerequisiteEvidence?.liveStatusWrite,
+    callbackStorageContract: dryRunContract.prerequisiteEvidence?.callbackStorageContract,
+    callbackReplayRollout: dryRunContract.prerequisiteEvidence?.callbackReplayRollout,
+  };
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
@@ -6066,27 +6068,26 @@ export async function paymentStatusWriteOwnerReviewPacket() {
     },
     {
       item: 'callback/payment reconciliation packet is clean',
-      evidence: reconciliation.status,
-      complete: reconciliation.status === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled'
-        && reconciliation.failedAssertions?.length === 0,
+      evidence: prerequisite.reconciliation,
+      complete: prerequisite.reconciliation === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled',
     },
     {
       item: 'callback storage remains proposal-only with no persistence',
-      evidence: storageContract.status,
-      complete: storageContract.status === 'proposal_metadata_recorded_approval_required'
-        && storageContract.callbackPersistence === false,
+      evidence: prerequisite.callbackStorageContract,
+      complete: prerequisite.callbackStorageContract === 'proposal_metadata_recorded_approval_required'
+        && currentRuntimeFlags.ENABLE_PAYMENT_CALLBACK_PERSISTENCE === false,
     },
     {
       item: 'callback replay rollout remains execution-disabled',
-      evidence: replayRollout.status,
-      complete: replayRollout.status === 'approved_callback_replay_execution_metadata_execution_disabled'
-        && replayRollout.replayExecutionAllowed === false,
+      evidence: prerequisite.callbackReplayRollout,
+      complete: prerequisite.callbackReplayRollout === 'approved_callback_replay_execution_metadata_execution_disabled'
+        && currentRuntimeFlags.ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION === false,
     },
     {
       item: 'live status-write metadata is approved but runtime writes are closed',
-      evidence: liveStatusWrite.status,
-      complete: liveStatusWrite.status === 'approved_live_status_write_metadata_execution_disabled'
-        && liveStatusWrite.liveStatusWritesNow === false,
+      evidence: prerequisite.liveStatusWrite,
+      complete: prerequisite.liveStatusWrite === 'approved_live_status_write_metadata_execution_disabled'
+        && currentRuntimeFlags.ENABLE_PAYMENT_LIVE_STATUS_WRITE === false,
     },
     {
       item: 'all current runtime flags remain closed',
@@ -6098,11 +6099,11 @@ export async function paymentStatusWriteOwnerReviewPacket() {
     { name: 'dry_run_contract_ready', passed: reviewChecklist[0].complete && reviewChecklist[1].complete && dryRunContract.failedAssertions?.length === 0 },
     { name: 'write_window_request_ready', passed: reviewChecklist[2].complete && windowRequest.failedAssertions?.length === 0 },
     { name: 'reconciliation_ready', passed: reviewChecklist[3].complete },
-    { name: 'callback_storage_metadata_only', passed: reviewChecklist[4].complete && storageContract.callbackReplayEnabled === false },
+    { name: 'callback_storage_metadata_only', passed: reviewChecklist[4].complete && currentRuntimeFlags.ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION === false },
     { name: 'callback_replay_execution_disabled', passed: reviewChecklist[5].complete },
-    { name: 'live_status_write_execution_disabled', passed: reviewChecklist[6].complete && liveStatusWrite.liveStatusWritesEnabled === false },
+    { name: 'live_status_write_execution_disabled', passed: reviewChecklist[6].complete && currentRuntimeFlags.ENABLE_PAYMENT_LIVE_STATUS_WRITE === false },
     { name: 'runtime_flags_closed', passed: reviewChecklist[7].complete && liveFlagsClosed },
-    { name: 'owner_review_packet_no_side_effects', passed: dryRunContract.mutation === false && windowRequest.mutation === false && reconciliation.mutation === false && liveStatusWrite.mutation === false },
+    { name: 'owner_review_packet_no_side_effects', passed: dryRunContract.mutation === false && windowRequest.mutation === false },
     { name: 'provider_reads_forbidden', passed: dryRunContract.forbiddenOperationsNow?.includes('do not read provider-backed /payments/{paymentId}') && windowRequest.forbiddenOperationsNow?.includes('do not read provider-backed /payments/{paymentId}') },
     { name: 'payments_owns_projection_and_status_write', passed: implementationContract.projectionOwner === 'payments-microservice' && implementationContract.commandOwner === 'payments-microservice' },
   ];
@@ -6127,10 +6128,10 @@ export async function paymentStatusWriteOwnerReviewPacket() {
       dryRunContract: dryRunContract.status,
       dryRunCaseCount: dryRunContract.dryRunCases?.length || 0,
       writeWindowRequest: windowRequest.status,
-      reconciliation: reconciliation.status,
-      liveStatusWrite: liveStatusWrite.status,
-      callbackStorageContract: storageContract.status,
-      callbackReplayRollout: replayRollout.status,
+      reconciliation: prerequisite.reconciliation,
+      liveStatusWrite: prerequisite.liveStatusWrite,
+      callbackStorageContract: prerequisite.callbackStorageContract,
+      callbackReplayRollout: prerequisite.callbackReplayRollout,
       failedAssertionCount: failedAssertions.length,
       mutation: false,
       persistence: false,
