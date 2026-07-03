@@ -57,6 +57,8 @@ assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_ORDER
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_PAYMENT_CREATE=true')), 'payment live flag blocker missing', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_NOTIFICATIONS=true')), 'notification live flag blocker missing', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW')), 'concrete checkout window blocker missing', packet);
+assert(packet.readinessEvidence?.paymentExecutionWindowMetadataReady === true, 'payment execution-window metadata should be ready', packet);
+assert(packet.readinessEvidence?.notificationExecutionWindowMetadataReady === true, 'notification execution-window metadata should be ready', packet);
 assert(packet.duplicatePolicy?.duplicateCheckRequired === 'IDEMPOTENCY_KEYS_NOT_USED', 'duplicate policy missing', packet);
 assert(packet.forbiddenOperationsNow?.includes('POST /payments/create'), 'payment create forbidden operation missing', packet);
 assert(packet.forbiddenOperationsNow?.includes('POST /notifications/send'), 'notification send forbidden operation missing', packet);

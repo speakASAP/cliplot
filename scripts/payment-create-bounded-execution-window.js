@@ -28,7 +28,7 @@ const packetResult = await getJson('/api/payments/create-execution-window-packet
 const packet = packetResult.payload;
 
 assert(packetResult.response.status === 200 && packet.success, 'payment execution window packet failed', packet);
-assert(packet.status === 'approval_required_payment_create_execution_window', 'payment execution window should be blocked by default', packet);
+assert(['approval_required_payment_create_execution_window', 'approved_payment_create_window_metadata_execution_disabled'].includes(packet.status), 'payment execution window status mismatch', packet);
 assert(packet.mode === 'guarded_payment_create_bounded_execution_window_packet', 'payment execution window mode mismatch', packet);
 assert(packet.mutation === false, 'payment execution packet reports mutation', packet);
 assert(packet.persistence === false, 'payment execution packet reports persistence', packet);
@@ -44,11 +44,9 @@ assert(packet.fullCheckoutIsolation?.liveNotifications === false, 'payment packe
 assert(packet.forbiddenOperationsNow?.includes('POST /payments/create'), 'payment create forbidden operation missing', packet);
 assert(packet.forbiddenOperationsNow?.includes('send notification'), 'notification boundary missing from payment packet', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_PAYMENT_CREATE=true')), 'payment live flag blocker missing', packet);
-assert(
-  packet.executionBlockers?.some((item) => item.includes('CLIPLOT_LIVE_PAYMENT_APPROVAL_ID')) || packet.executionBlockers?.some((item) => item.includes('CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW')),
-  'payment execution window should be blocked by missing approval metadata or missing concrete window',
-  packet,
-);
+assert(packet.approvalMetadata?.approvalPresent === true, 'payment approval metadata should be recorded', packet);
+assert(packet.approvalMetadata?.metadataReady === (packet.status === 'approved_payment_create_window_metadata_execution_disabled'), 'payment metadata readiness mismatch', packet);
+assert(packet.blockerClassification?.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_PAYMENT_CREATE=true')), 'payment live execution blocker missing', packet);
 
 const executorResult = await postJson('/api/payments/create-bounded-executor', {
   confirm: 'PLAN_ONLY',

@@ -729,3 +729,12 @@ still blocked by false live flags and the missing concrete
 `CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW`. The stub returns `approval_required`
 and does not create orders, reserve Warehouse stock, create payments, send
 notifications, persist callbacks/status writes, call providers, or print secrets.
+
+### 2026-07-03 - Payment and notification execution-window metadata
+
+Recorded execution-disabled payment-create and notification-send window metadata
+and split bounded-window readiness into metadata, execution, and guardrail
+blocker classes. Payment and notification approval/window metadata can now be
+reported as ready while `ENABLE_LIVE_PAYMENT_CREATE=false` and
+`ENABLE_LIVE_NOTIFICATIONS=false` continue to block execution. Full checkout
+execution remains blocked by the live flags and missing full checkout window.

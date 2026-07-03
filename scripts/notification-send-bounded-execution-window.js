@@ -28,7 +28,7 @@ const packetResult = await getJson('/api/notifications/send-execution-window-pac
 const packet = packetResult.payload;
 
 assert(packetResult.response.status === 200 && packet.success, 'notification execution window packet failed', packet);
-assert(packet.status === 'approval_required_notification_send_execution_window', 'notification execution window should be blocked by default', packet);
+assert(['approval_required_notification_send_execution_window', 'approved_notification_send_window_metadata_execution_disabled'].includes(packet.status), 'notification execution window status mismatch', packet);
 assert(packet.mode === 'guarded_notification_send_bounded_execution_window_packet', 'notification execution window mode mismatch', packet);
 assert(packet.mutation === false, 'notification execution packet reports mutation', packet);
 assert(packet.persistence === false, 'notification execution packet reports persistence', packet);
@@ -44,11 +44,9 @@ assert(packet.fullCheckoutIsolation?.livePaymentCreate === false, 'notification 
 assert(packet.forbiddenOperationsNow?.includes('POST /notifications/send'), 'notification send forbidden operation missing', packet);
 assert(packet.forbiddenOperationsNow?.includes('create payment'), 'payment boundary missing from notification packet', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_NOTIFICATIONS=true')), 'notification live flag blocker missing', packet);
-assert(
-  packet.executionBlockers?.some((item) => item.includes('CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID')) || packet.executionBlockers?.some((item) => item.includes('CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW')),
-  'notification execution window should be blocked by missing approval metadata or missing concrete window',
-  packet,
-);
+assert(packet.approvalMetadata?.approvalPresent === true, 'notification approval metadata should be recorded', packet);
+assert(packet.approvalMetadata?.metadataReady === (packet.status === 'approved_notification_send_window_metadata_execution_disabled'), 'notification metadata readiness mismatch', packet);
+assert(packet.blockerClassification?.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_NOTIFICATIONS=true')), 'notification live execution blocker missing', packet);
 
 const executorResult = await postJson('/api/notifications/send-bounded-executor', {
   confirm: 'PLAN_ONLY',

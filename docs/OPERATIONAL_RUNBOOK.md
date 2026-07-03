@@ -547,14 +547,15 @@ curl -s https://cliplot.alfares.cz/api/payments/create-execution-window-packet
 ```
 
 The packet and executor stub must stay non-mutating and return
-`liveExecutionAllowed=false` outside an approved window. The readiness script is
-compatible with both states: approval ID absent, or approval metadata recorded
-while the live flag or concrete window still blocks execution. The default production
-state must keep `ENABLE_LIVE_PAYMENT_CREATE=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
-`ENABLE_LIVE_NOTIFICATIONS=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
-The bounded window requires all of these before any future live payment create
-can be wired: `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`,
-`CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW`, a request idempotency key,
+`liveExecutionAllowed=false` outside an approved window. Production records
+`CLIPLOT_LIVE_PAYMENT_APPROVAL_ID` and
+`CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW` as metadata while keeping execution
+disabled. The default production state must keep
+`ENABLE_LIVE_PAYMENT_CREATE=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
+`ENABLE_LIVE_NOTIFICATIONS=false`, and
+`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`. The bounded window requires all of
+these before any future live payment create can be wired: the payment approval
+metadata, a concrete execution window, a request idempotency key,
 `duplicateCheck=IDEMPOTENCY_KEY_NOT_USED`,
 `rollbackPlan=PAYMENT_VOID_OR_CANCEL_OWNER_ASSIGNED`, and
 `validationPlan=EXACTLY_ONE_PAYMENT_RESULT_BY_IDEMPOTENCY_KEY`.
@@ -585,14 +586,15 @@ curl -s https://cliplot.alfares.cz/api/notifications/send-execution-window-packe
 ```
 
 The packet and executor stub must stay non-mutating and return
-`liveExecutionAllowed=false` outside an approved window. The readiness script is
-compatible with both states: approval ID absent, or approval metadata recorded
-while the live flag or concrete window still blocks execution. The default production
-state must keep `ENABLE_LIVE_NOTIFICATIONS=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
-`ENABLE_LIVE_PAYMENT_CREATE=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
-The bounded window requires all of these before any future live notification send
-can be wired: `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID`,
-`CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW`, a request idempotency key,
+`liveExecutionAllowed=false` outside an approved window. Production records
+`CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` and
+`CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW` as metadata while keeping execution
+disabled. The default production state must keep
+`ENABLE_LIVE_NOTIFICATIONS=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
+`ENABLE_LIVE_PAYMENT_CREATE=false`, and
+`ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`. The bounded window requires all of
+these before any future live notification send can be wired: the notification
+approval metadata, a concrete execution window, a request idempotency key,
 `duplicateCheck=IDEMPOTENCY_KEY_NOT_USED`,
 `rollbackPlan=NOTIFICATION_DUPLICATE_RESPONSE_OWNER_ASSIGNED`, and
 `validationPlan=EXACTLY_ONE_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEY`.

@@ -1183,21 +1183,31 @@ function boundedExecutionWindowPacket(kind) {
   const windowValue = isPayment ? serviceConfig.livePaymentCreateExecutionWindow : serviceConfig.liveNotificationSendExecutionWindow;
   const rollbackOwner = isPayment ? serviceConfig.livePaymentCreateRollbackOwner : serviceConfig.liveNotificationSendRollbackOwner;
   const validationOwner = isPayment ? serviceConfig.livePaymentCreateValidationOwner : serviceConfig.liveNotificationSendValidationOwner;
-  const blockers = [];
+  const metadataBlockers = [];
+  const executionBlockers = [];
+  const guardrailBlockers = [];
+  const concreteWindowPresent = isConcreteSmokeWindow(windowValue);
 
-  if (!liveFlagEnabled) blockers.push(`[MISSING: ${liveFlagName}=true for owner-approved bounded execution window]`);
-  if (!approvalPresent) blockers.push(`[MISSING: ${approvalIdName} recorded from owner-approved execution window]`);
-  if (!isConcreteSmokeWindow(windowValue)) blockers.push(`[MISSING: concrete ${windowName}]`);
-  if (serviceConfig.liveOrderSubmit) blockers.push('[MISSING: ENABLE_LIVE_ORDER_SUBMIT=false to prove this is not full checkout activation]');
-  if (serviceConfig.liveOrderWarehouseSmoke) blockers.push('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false to isolate payment/notification window]');
-  if (isPayment && serviceConfig.liveNotifications) blockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=false during payment-only execution window]');
-  if (!isPayment && serviceConfig.livePaymentCreate) blockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=false during notification-only execution window]');
+  if (!approvalPresent) metadataBlockers.push(`[MISSING: ${approvalIdName} recorded from owner-approved execution window]`);
+  if (!concreteWindowPresent) metadataBlockers.push(`[MISSING: concrete ${windowName}]`);
+  if (!liveFlagEnabled) executionBlockers.push(`[MISSING: ${liveFlagName}=true for owner-approved bounded execution window]`);
+  if (serviceConfig.liveOrderSubmit) guardrailBlockers.push('[MISSING: ENABLE_LIVE_ORDER_SUBMIT=false to prove this is not full checkout activation]');
+  if (serviceConfig.liveOrderWarehouseSmoke) guardrailBlockers.push('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false to isolate payment/notification window]');
+  if (isPayment && serviceConfig.liveNotifications) guardrailBlockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=false during payment-only execution window]');
+  if (!isPayment && serviceConfig.livePaymentCreate) guardrailBlockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=false during notification-only execution window]');
+
+  const metadataReady = metadataBlockers.length === 0;
+  const isolationReady = guardrailBlockers.length === 0;
+  const status = metadataReady && isolationReady && !liveFlagEnabled
+    ? `approved_${kind}_window_metadata_execution_disabled`
+    : metadataReady && isolationReady && liveFlagEnabled
+      ? `approved_${kind}_window_metadata_execution_still_guarded`
+      : `approval_required_${kind}_execution_window`;
+  const blockers = [...metadataBlockers, ...executionBlockers, ...guardrailBlockers];
 
   return {
     success: true,
-    status: blockers.length === 0
-      ? `approved_${kind}_window_metadata_execution_still_guarded`
-      : `approval_required_${kind}_execution_window`,
+    status,
     mode: `guarded_${kind}_bounded_execution_window_packet`,
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
@@ -1207,6 +1217,20 @@ function boundedExecutionWindowPacket(kind) {
     liveExecutionAllowed: false,
     liveEndpoint,
     validationEndpoint,
+    approvalMetadata: {
+      approvalPresent,
+      concreteWindowPresent,
+      metadataReady,
+      executionDisabled: liveFlagEnabled === false,
+      isolationReady,
+      approvalIdName,
+      executionWindowName: windowName,
+    },
+    blockerClassification: {
+      metadataBlockers: [...new Set(metadataBlockers)],
+      executionBlockers: [...new Set(executionBlockers)],
+      guardrailBlockers: [...new Set(guardrailBlockers)],
+    },
     requiredRuntime: {
       liveFlag: liveFlagName,
       approvalId: approvalIdName,
@@ -1272,7 +1296,7 @@ function boundedExecutionWindowPacket(kind) {
     ],
     executionBlockers: [...new Set(blockers)],
     next: blockers.length === 0
-      ? 'Integrator must still intentionally wire the live executor for the approved window; this packet is metadata and remains non-mutating.'
+      ? 'Execution-window metadata is recorded; keep the live endpoint blocked until the live flag and one request idempotency tuple are intentionally opened inside an approved window.'
       : 'Keep the live endpoint blocked until owner approval, concrete window, idempotency, duplicate policy, rollback owner, and validation owner are all present.',
   };
 }
@@ -1396,8 +1420,16 @@ export async function liveCheckoutExecutionWindowPacket() {
   if (!approvals.payment) blockers.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID]');
   if (!approvals.notification) blockers.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID]');
   if (!isConcreteSmokeWindow(serviceConfig.liveCheckoutExecutionWindow)) blockers.push('[MISSING: concrete CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW]');
-  if (paymentWindow.status !== 'approved_payment_create_window_metadata_execution_still_guarded') blockers.push('[MISSING: approved payment-create bounded execution window remains blocked]');
-  if (notificationWindow.status !== 'approved_notification_send_window_metadata_execution_still_guarded') blockers.push('[MISSING: approved notification-send bounded execution window remains blocked]');
+  const paymentWindowMetadataReady = [
+    'approved_payment_create_window_metadata_execution_disabled',
+    'approved_payment_create_window_metadata_execution_still_guarded',
+  ].includes(paymentWindow.status);
+  const notificationWindowMetadataReady = [
+    'approved_notification_send_window_metadata_execution_disabled',
+    'approved_notification_send_window_metadata_execution_still_guarded',
+  ].includes(notificationWindow.status);
+  if (!paymentWindowMetadataReady) blockers.push('[MISSING: payment-create bounded execution-window metadata approval]');
+  if (!notificationWindowMetadataReady) blockers.push('[MISSING: notification-send bounded execution-window metadata approval]');
   if (liveSmokePlan.status !== 'approved_live_order_warehouse_smoke_metadata_execution_disabled') blockers.push('[MISSING: live Orders/Warehouse smoke metadata approval]');
   if (preflight.status !== 'ready_for_approved_live_mutation') blockers.push('[MISSING: live checkout activation matrix is not ready in production because live flags remain false]');
   if (revenuePacket.status !== 'ready_for_owner_live_checkout_execution') blockers.push('[MISSING: revenue closure remains approval-required until live flags/window are opened]');
@@ -1443,6 +1475,8 @@ export async function liveCheckoutExecutionWindowPacket() {
       livePreflight: preflight.status,
       paymentExecutionWindow: paymentWindow.status,
       notificationExecutionWindow: notificationWindow.status,
+      paymentExecutionWindowMetadataReady: paymentWindowMetadataReady,
+      notificationExecutionWindowMetadataReady: notificationWindowMetadataReady,
       liveSmokePlan: liveSmokePlan.status,
     },
     duplicatePolicy: {
