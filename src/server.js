@@ -25,7 +25,11 @@ import {
   paymentCallbackPersistenceStorageContractPacket,
   paymentCallbackReplayExecutionRolloutProposalPacket,
   paymentCreateApprovalEvidencePacket,
+  paymentCreateExecutionWindowPacket,
+  runBoundedPaymentCreateExecutor,
   notificationSendApprovalEvidencePacket,
+  notificationSendExecutionWindowPacket,
+  runBoundedNotificationSendExecutor,
   paymentLiveStatusWriteApprovalPacket,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
@@ -469,6 +473,38 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (url.pathname === '/api/notifications/send-execution-window-packet' && req.method === 'GET') {
+      sendJson(res, 200, notificationSendExecutionWindowPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/send-bounded-executor' && req.method === 'POST') {
+      const payload = await readRequestJson(req);
+      const result = await runBoundedNotificationSendExecutor(payload);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/send-execution-window-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/notifications/send-bounded-executor') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['POST'],
+        mutation: false,
+      });
+      return;
+    }
+
     if (url.pathname === '/api/notifications/send-approval-evidence-packet') {
       sendJson(res, 405, {
         success: false,
@@ -481,6 +517,38 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/payments/create-approval-evidence-packet' && req.method === 'GET') {
       sendJson(res, 200, await paymentCreateApprovalEvidencePacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/create-execution-window-packet' && req.method === 'GET') {
+      sendJson(res, 200, paymentCreateExecutionWindowPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/create-bounded-executor' && req.method === 'POST') {
+      const payload = await readRequestJson(req);
+      const result = await runBoundedPaymentCreateExecutor(payload);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/payments/create-execution-window-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/create-bounded-executor') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['POST'],
+        mutation: false,
+      });
       return;
     }
 
