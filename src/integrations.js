@@ -1867,7 +1867,7 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
   const notificationSend = await notificationSendApprovalEvidencePacket();
   const paymentStatusPacket = await paymentStatusReadiness();
   const paymentReadScope = await paymentReadScopeReadiness();
-  const checkoutStatusSurface = customerStatusSurfaceReadiness();
+  const checkoutStatusSurface = await customerStatusSurfaceReadiness();
   const revenueClosure = await revenueClosurePacket();
   const liveFlagsPreflight = await liveFlagsOperatorPreflightChecklistPacket();
   const preflight = liveCheckoutPreflight();
