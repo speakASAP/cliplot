@@ -13,6 +13,8 @@ import {
   catalogProductFilterReadiness,
   handlePaymentCallback,
   liveCheckoutApprovalPacket,
+  liveCheckoutExecutionWindowPacket,
+  runBoundedLiveCheckoutExecutor,
   liveCheckoutPreflight,
   liveOrderWarehouseSmokePlan,
   liveOrderWarehouseSmokeExecutionChecklistPacket,
@@ -270,6 +272,38 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/checkout/revenue-closure-packet' && req.method === 'GET') {
       sendJson(res, 200, await revenueClosurePacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-execution-window-packet' && req.method === 'GET') {
+      sendJson(res, 200, await liveCheckoutExecutionWindowPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-bounded-executor' && req.method === 'POST') {
+      const payload = await readRequestJson(req);
+      const result = await runBoundedLiveCheckoutExecutor(payload);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-execution-window-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/live-bounded-executor') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['POST'],
+        mutation: false,
+      });
       return;
     }
 

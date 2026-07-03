@@ -719,3 +719,13 @@ that payment and notification metadata approvals may be present while
 `ENABLE_LIVE_NOTIFICATIONS=false` keep checkout non-mutating. The activation
 matrix still requires partial flag combinations to stay blocked, and only the
 simulated all-flags/all-approvals case may report `ready_for_approved_live_mutation`.
+
+### 2026-07-03 - Full live checkout execution-window packet
+
+Added a read-only full checkout execution-window packet and blocked executor
+stub. The packet aggregates existing order/Warehouse, payment, notification,
+activation, and revenue evidence while proving that full checkout execution is
+still blocked by false live flags and the missing concrete
+`CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW`. The stub returns `approval_required`
+and does not create orders, reserve Warehouse stock, create payments, send
+notifications, persist callbacks/status writes, call providers, or print secrets.

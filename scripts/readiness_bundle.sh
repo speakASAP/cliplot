@@ -151,6 +151,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_step live_checkout_activation_gate npm run readiness:activation -- "$BASE_URL"
   run_step payment_create_execution_window npm run readiness:payment-create-execution-window -- "$BASE_URL"
   run_step notification_send_execution_window npm run readiness:notification-send-execution-window -- "$BASE_URL"
+  run_step live_checkout_execution_window npm run readiness:live-checkout-execution-window -- "$BASE_URL"
   run_step notification_send_approval_evidence npm run readiness:notification-send-approval -- "$BASE_URL"
   run_step payment_create_approval_evidence npm run readiness:payment-create-approval -- "$BASE_URL"
   run_step payment_live_status_write_approval npm run readiness:payment-live-status-write -- "$BASE_URL"

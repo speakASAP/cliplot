@@ -610,6 +610,29 @@ Rollback owner defaults to `CLIPLOT_NOTIFICATION_SEND_ROLLBACK_OWNER` or
 post-window validation evidence must prove exactly one notification result for
 the approved idempotency key without exposing raw recipient or message payloads.
 
+
+
+## Full Live Checkout Execution Window
+
+The full checkout execution-window packet combines the existing order/Warehouse,
+payment-create, notification-send, activation, and revenue-closure evidence into
+one non-mutating operator packet:
+
+```bash
+npm run readiness:live-checkout-execution-window -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/live-execution-window-packet
+```
+
+The packet and `POST /api/checkout/live-bounded-executor` stub must return
+`approval_required`, `liveExecutionAllowed=false`, `mutation=false`,
+`persistence=false`, `providerCall=false`, `orderCreated=false`,
+`warehouseReserved=false`, `paymentCreated=false`, and `notificationSent=false`
+until a separately approved execution window opens. It requires
+`CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW`, all checkout live flags, order/payment/
+notification idempotency keys, `duplicateCheck=IDEMPOTENCY_KEYS_NOT_USED`,
+rollback owners for order, Warehouse, payment and notification, and validation
+owners for exactly one result per idempotency key.
+
 ## Controlled Orders/Warehouse Smoke Evidence
 
 The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with

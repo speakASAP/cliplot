@@ -77,6 +77,9 @@ export const serviceConfig = {
   liveNotificationSendExecutionWindow: process.env.CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW || '',
   liveNotificationSendRollbackOwner: process.env.CLIPLOT_NOTIFICATION_SEND_ROLLBACK_OWNER || 'cliplot-notification-operator',
   liveNotificationSendValidationOwner: process.env.CLIPLOT_NOTIFICATION_SEND_VALIDATION_OWNER || 'cliplot-validation-owner',
+  liveCheckoutExecutionWindow: process.env.CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW || '',
+  liveCheckoutRollbackOwner: process.env.CLIPLOT_LIVE_CHECKOUT_ROLLBACK_OWNER || 'cliplot-operator',
+  liveCheckoutValidationOwner: process.env.CLIPLOT_LIVE_CHECKOUT_VALIDATION_OWNER || 'cliplot-validation-owner',
   liveOrderWarehouseSmokeApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID || '',
   liveOrderWarehouseSmokeCleanupApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_CLEANUP_APPROVAL_ID || '',
   liveOrderWarehouseSmokeWindow: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_WINDOW || '',
@@ -1370,6 +1373,160 @@ export async function runBoundedNotificationSendExecutor(request = {}) {
       blockers: [...new Set(blockers)],
       packet,
       sensitiveDataPolicy: ['no NOTIFICATIONS_SERVICE_TOKEN value', 'no raw recipient', 'no raw message payload'],
+    },
+  };
+}
+
+
+export async function liveCheckoutExecutionWindowPacket() {
+  const approvalPacket = await liveCheckoutApprovalPacket();
+  const paymentWindow = paymentCreateExecutionWindowPacket();
+  const notificationWindow = notificationSendExecutionWindowPacket();
+  const liveSmokePlan = await liveOrderWarehouseSmokePlan();
+  const revenuePacket = await revenueClosurePacket();
+  const preflight = liveCheckoutPreflight();
+  const approvals = liveMutationApprovals();
+  const blockers = [];
+
+  if (!serviceConfig.liveOrderSubmit) blockers.push('[MISSING: ENABLE_LIVE_ORDER_SUBMIT=true for approved full checkout execution window]');
+  if (!serviceConfig.livePaymentCreate) blockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true for approved full checkout execution window]');
+  if (!serviceConfig.liveNotifications) blockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=true for approved full checkout execution window]');
+  if (!serviceConfig.liveOrderWarehouseSmoke) blockers.push('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for approved CREATE_REPLAY_CANCEL evidence window]');
+  if (!approvals.order) blockers.push('[MISSING: CLIPLOT_LIVE_ORDER_APPROVAL_ID]');
+  if (!approvals.payment) blockers.push('[MISSING: CLIPLOT_LIVE_PAYMENT_APPROVAL_ID]');
+  if (!approvals.notification) blockers.push('[MISSING: CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID]');
+  if (!isConcreteSmokeWindow(serviceConfig.liveCheckoutExecutionWindow)) blockers.push('[MISSING: concrete CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW]');
+  if (paymentWindow.status !== 'approved_payment_create_window_metadata_execution_still_guarded') blockers.push('[MISSING: approved payment-create bounded execution window remains blocked]');
+  if (notificationWindow.status !== 'approved_notification_send_window_metadata_execution_still_guarded') blockers.push('[MISSING: approved notification-send bounded execution window remains blocked]');
+  if (liveSmokePlan.status !== 'approved_live_order_warehouse_smoke_metadata_execution_disabled') blockers.push('[MISSING: live Orders/Warehouse smoke metadata approval]');
+  if (preflight.status !== 'ready_for_approved_live_mutation') blockers.push('[MISSING: live checkout activation matrix is not ready in production because live flags remain false]');
+  if (revenuePacket.status !== 'ready_for_owner_live_checkout_execution') blockers.push('[MISSING: revenue closure remains approval-required until live flags/window are opened]');
+
+  return {
+    success: true,
+    status: blockers.length === 0
+      ? 'approved_live_checkout_execution_window_metadata_execution_still_guarded'
+      : 'approval_required_live_checkout_execution_window',
+    mode: 'guarded_live_checkout_execution_window_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    paymentCreated: false,
+    notificationSent: false,
+    orderCreated: false,
+    warehouseReserved: false,
+    liveExecutionAllowed: false,
+    liveFlags: {
+      order: serviceConfig.liveOrderSubmit,
+      payment: serviceConfig.livePaymentCreate,
+      notification: serviceConfig.liveNotifications,
+      orderWarehouseSmoke: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    approvals,
+    requiredRuntime: {
+      liveCheckoutExecutionWindow: 'CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW',
+      orderSubmitFlag: 'ENABLE_LIVE_ORDER_SUBMIT',
+      paymentCreateFlag: 'ENABLE_LIVE_PAYMENT_CREATE',
+      notificationsFlag: 'ENABLE_LIVE_NOTIFICATIONS',
+      orderWarehouseSmokeFlag: 'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+      orderIdempotencyKey: 'request body orderIdempotencyKey',
+      paymentIdempotencyKey: 'request body paymentIdempotencyKey',
+      notificationIdempotencyKey: 'request body notificationIdempotencyKey',
+      rollbackOwner: serviceConfig.liveCheckoutRollbackOwner,
+      validationOwner: serviceConfig.liveCheckoutValidationOwner,
+    },
+    readinessEvidence: {
+      approvalPacket: approvalPacket.status,
+      revenueClosure: revenuePacket.status,
+      livePreflight: preflight.status,
+      paymentExecutionWindow: paymentWindow.status,
+      notificationExecutionWindow: notificationWindow.status,
+      liveSmokePlan: liveSmokePlan.status,
+    },
+    duplicatePolicy: {
+      idempotencyKeysRequired: ['orderIdempotencyKey', 'paymentIdempotencyKey', 'notificationIdempotencyKey'],
+      duplicateCheckRequired: 'IDEMPOTENCY_KEYS_NOT_USED',
+      requiredBeforeExecution: [
+        'operator verifies order, payment, and notification idempotency keys have not been used',
+        'operator records one key tuple per approved checkout execution window',
+        'executor request must include duplicateCheck=IDEMPOTENCY_KEYS_NOT_USED',
+      ],
+    },
+    rollbackPolicy: {
+      owner: serviceConfig.liveCheckoutRollbackOwner,
+      requiredBeforeExecution: [
+        'order cancel owner assigned',
+        'Warehouse release owner assigned',
+        'payment void/cancel owner assigned',
+        'notification duplicate response owner assigned',
+      ],
+    },
+    validationPolicy: {
+      owner: serviceConfig.liveCheckoutValidationOwner,
+      requiredAfterExecution: [
+        'exactly one order create result for order idempotency key',
+        'exactly one payment create result for payment idempotency key',
+        'exactly one notification send result for notification idempotency key',
+        'no raw provider payloads, customer PII, API keys, or notification body output',
+      ],
+    },
+    forbiddenOperationsNow: [
+      'POST /api/checkout/submit live mutation',
+      'POST /api/orders',
+      'Warehouse reservation mutation',
+      'POST /payments/create',
+      'POST /notifications/send',
+      'callback persistence or replay execution',
+      'live status writes',
+      'provider-backed /payments/{paymentId} reads',
+      'printing API keys, provider payloads, customer PII, recipients, or message bodies',
+    ],
+    executionBlockers: [...new Set(blockers)],
+    next: 'Keep full checkout execution blocked until all live flags, concrete window, idempotency tuple, duplicate checks, rollback owners, and validation owners are present in an approved execution window.',
+  };
+}
+
+export async function runBoundedLiveCheckoutExecutor(request = {}) {
+  const packet = await liveCheckoutExecutionWindowPacket();
+  const blockers = [...packet.executionBlockers];
+  const executionWindow = String(request.executionWindow || '').trim();
+  const orderIdempotencyKey = String(request.orderIdempotencyKey || '').trim();
+  const paymentIdempotencyKey = String(request.paymentIdempotencyKey || '').trim();
+  const notificationIdempotencyKey = String(request.notificationIdempotencyKey || '').trim();
+
+  if (request.confirm !== 'LIVE_CHECKOUT_EXECUTION_WINDOW') blockers.push('missing_LIVE_CHECKOUT_EXECUTION_WINDOW_confirmation');
+  if (!executionWindow || executionWindow !== serviceConfig.liveCheckoutExecutionWindow) blockers.push('invalid_or_missing_live_checkout_execution_window');
+  if (!orderIdempotencyKey) blockers.push('missing_order_idempotency_key');
+  if (!paymentIdempotencyKey) blockers.push('missing_payment_idempotency_key');
+  if (!notificationIdempotencyKey) blockers.push('missing_notification_idempotency_key');
+  if (request.duplicateCheck !== 'IDEMPOTENCY_KEYS_NOT_USED') blockers.push('missing_checkout_duplicate_check');
+  if (request.rollbackPlan !== 'ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED') blockers.push('missing_checkout_rollback_plan');
+  if (request.validationPlan !== 'EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS') blockers.push('missing_checkout_validation_plan');
+
+  return {
+    httpStatus: 202,
+    body: {
+      success: true,
+      status: 'approval_required',
+      mode: 'guarded_live_checkout_bounded_executor_stub',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      orderCreated: false,
+      warehouseReserved: false,
+      paymentCreated: false,
+      notificationSent: false,
+      liveExecutionAllowed: false,
+      blockers: [...new Set(blockers)],
+      packet,
+      sensitiveDataPolicy: [
+        'no raw customer PII',
+        'no PAYMENT_API_KEY or webhook key values',
+        'no raw provider payloads',
+        'no raw notification recipient or message body',
+      ],
     },
   };
 }
