@@ -44,9 +44,7 @@ Before product checkout changes, the owner/integration lane must provide an
 approved Auth wallet contract covering:
 
 - authenticated session handoff from Cliplot to Auth wallet reads;
-- response shape for checkout profile defaults;
-- response shape for delivery address selection;
-- response shape for invoice profile selection;
+- Cliplot field mapping from Auth wallet rows to checkout/order snapshots;
 - consent/visibility rules for saved customer PII;
 - no-secret logging and frontend bundle constraints;
 - checkout fallback behavior when wallet reads fail or the customer is a guest.
@@ -84,10 +82,28 @@ approved Auth wallet contract covering:
   - runtime manifests point at Auth but do not enable wallet integration.
 - Auth source-defines the checkout-data top-level stable schema version as
   `auth.customer-data-wallet.checkout-data.v1` in Goal 10.34.
+- Auth source-defines checkout-data response shape for readiness:
+  - top-level fields: `schemaVersion`, `user`, `deliveryAddresses`,
+    `invoiceProfiles`, `defaults`;
+  - defaults fields: `deliveryAddressId`, `invoiceProfileId`;
+  - sanitized delivery address fields: `id`, `label`, `firstName`, `lastName`,
+    `company`, `street`, `street2`, `city`, `region`, `postalCode`,
+    `country`, `phone`, `email`, `deliveryInstructions`, `isDefault`,
+    `sourceApplication`, `lastUsedAt`, `createdAt`, `updatedAt`;
+  - sanitized invoice profile fields: `id`, `label`, `type`, `firstName`,
+    `lastName`, `companyName`, `companyId`, `taxId`, `vatId`, `street`,
+    `street2`, `city`, `region`, `postalCode`, `country`, `phone`, `email`,
+    `isDefault`, `sourceApplication`, `lastUsedAt`, `createdAt`, `updatedAt`;
+  - sanitized wallet rows omit `user`, `userId`, and `deletedAt`.
+- Cliplot caveats remain: wallet fields may be nullable, timestamp JSON
+  serialization is not narrowed here, `pickupPointId` is not a current Auth v1
+  response field, and invoice recipient email is `email`, not `invoiceEmail`
+  or `electronicInvoiceEmail`.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
-- `[UNKNOWN: exact Auth wallet response fields, delivery address response shape, and invoice profile response shape]`
+- `[MISSING: approved Cliplot field mapping from Auth wallet rows to checkout/order snapshots]`
+- `[MISSING: approved Cliplot guest fallback behavior when Auth wallet reads are unavailable]`
 
 ## Parallel Execution Section
 

@@ -29,8 +29,8 @@ is deployed, `/health` returned HTTP 200, and
 `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
 `/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated. Cliplot
 checkout wallet work remains blocked because selector behavior, authenticated
-browser/session handling, PII exposure rules, and response-contract details are
-not approved.
+browser/session handling, PII exposure rules, Cliplot field mapping, and guest
+fallback behavior are not approved.
 
 ## Remaining Blockers
 
@@ -42,10 +42,21 @@ not approved.
   - Runtime manifests point at Auth but do not enable wallet integration.
   - Auth source-defines the checkout-data top-level stable schema version as
     `auth.customer-data-wallet.checkout-data.v1` in Goal 10.34.
+  - Auth source-defines checkout-data top-level fields, defaults fields,
+    sanitized delivery address fields, sanitized invoice profile fields, and
+    omitted wallet row fields for consumer readiness.
+- Source-defined response-shape caveats recorded by the verifier:
+  - wallet fields may be nullable;
+  - timestamp JSON serialization is not narrowed by this readiness lane;
+  - `pickupPointId` is not a current Auth v1 response field;
+  - invoice recipient email is `email`, not `invoiceEmail` or
+    `electronicInvoiceEmail`;
+  - sanitized wallet rows omit `user`, `userId`, and `deletedAt`.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
-- `[UNKNOWN: exact Auth wallet response fields, delivery address response shape, and invoice profile response shape]`
+- `[MISSING: approved Cliplot field mapping from Auth wallet rows to checkout/order snapshots]`
+- `[MISSING: approved Cliplot guest fallback behavior when Auth wallet reads are unavailable]`
 
 ## Validation Commands
 
@@ -59,7 +70,7 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
 
 ## Validation Results
 
-- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
 - 2026-07-03 schema-version refresh validation passed:
   `npm run readiness:auth-wallet-checkout`, `node --check
   scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff
