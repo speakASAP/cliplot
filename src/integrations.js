@@ -5996,6 +5996,201 @@ export async function paymentCallbackToStatusWriteDryRunContractPacket() {
 }
 
 
+export async function paymentStatusWriteOwnerReviewPacket() {
+  const dryRunContract = await paymentCallbackToStatusWriteDryRunContractPacket();
+  const windowRequest = await paymentStatusWriteWindowRequestPacket();
+  const reconciliation = await paymentStatusReconciliationReadinessPacket();
+  const liveStatusWrite = await paymentLiveStatusWriteApprovalPacket();
+  const storageContract = await paymentCallbackPersistenceStorageContractPacket();
+  const replayRollout = await paymentCallbackReplayExecutionRolloutProposalPacket();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const statusWriteOwnersPresent = isApprovalPresent(serviceConfig.liveStatusWriteRollbackOwner)
+    && isApprovalPresent(serviceConfig.liveStatusWriteValidationOwner);
+  const currentRuntimeFlags = {
+    ENABLE_PAYMENT_CALLBACK_PERSISTENCE: serviceConfig.paymentCallbackPersistence,
+    ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION: serviceConfig.paymentCallbackReplayExecution,
+    ENABLE_PAYMENT_LIVE_STATUS_WRITE: serviceConfig.paymentLiveStatusWrite,
+    ENABLE_LIVE_PAYMENT_CREATE: serviceConfig.livePaymentCreate,
+    ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
+    ENABLE_LIVE_ORDER_SUBMIT: serviceConfig.liveOrderSubmit,
+    ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
+  };
+  const implementationContract = {
+    owner: 'payments-microservice',
+    cliplotRole: 'read_only_owner_review_and_operator_handoff_surface',
+    currentRuntimeMode: 'execution_disabled_metadata_only',
+    sourcePackets: [
+      '/api/payments/callback-to-status-write-dry-run-contract-packet',
+      '/api/payments/status-write-window-request-packet',
+      '/api/payments/status-reconciliation-readiness-packet',
+      '/api/payments/callback-persistence-storage-contract-packet',
+      '/api/payments/callback-replay-execution-rollout-proposal-packet',
+      '/api/payments/live-status-write-approval-packet',
+    ],
+    futureExecutor: '/api/payments/status-write-bounded-executor',
+    currentPacketMayCallExecutor: false,
+    currentPacketMayOpenFlags: false,
+    currentPacketMayWriteStatus: false,
+    currentPacketMayPersistCallback: false,
+    currentPacketMayReplayCallback: false,
+    currentPacketMayReadProviderPaymentDetail: false,
+    commandOwner: dryRunContract.statusWriteCommandShape?.owner || 'payments-microservice',
+    projectionOwner: dryRunContract.callbackProjectionShape?.owner || 'payments-microservice',
+    requiredReasonCode: dryRunContract.statusWriteCommandShape?.requiredReasonCode || 'OWNER_APPROVED_PAYMENT_STATUS_RECONCILIATION_WRITE',
+    idempotencyKeys: dryRunContract.callbackProjectionShape?.idempotencyKeys || [],
+    conflictHandling: dryRunContract.callbackProjectionShape?.conflictHandling || {},
+    rollbackOwner: statusWriteOwnersPresent ? serviceConfig.liveStatusWriteRollbackOwner : '[MISSING: CLIPLOT_LIVE_STATUS_WRITE_ROLLBACK_OWNER]',
+    validationOwner: statusWriteOwnersPresent ? serviceConfig.liveStatusWriteValidationOwner : '[MISSING: CLIPLOT_LIVE_STATUS_WRITE_VALIDATION_OWNER]',
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+  };
+  const reviewChecklist = [
+    {
+      item: 'synthetic callback event maps to Payments-owned projection shape',
+      evidence: dryRunContract.status,
+      complete: dryRunContract.status === 'ready_for_synthetic_callback_to_status_write_dry_run_execution_disabled',
+    },
+    {
+      item: 'projection maps to Payments-owned status-write command shape',
+      evidence: dryRunContract.dryRunMatrix?.status,
+      complete: dryRunContract.dryRunMatrix?.projectionToStatusWriteCommand === true,
+    },
+    {
+      item: 'bounded write-window request is defined but execution-disabled',
+      evidence: windowRequest.status,
+      complete: windowRequest.status === 'ready_for_bounded_payment_status_write_window_request_execution_disabled',
+    },
+    {
+      item: 'callback/payment reconciliation packet is clean',
+      evidence: reconciliation.status,
+      complete: reconciliation.status === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled'
+        && reconciliation.failedAssertions?.length === 0,
+    },
+    {
+      item: 'callback storage remains proposal-only with no persistence',
+      evidence: storageContract.status,
+      complete: storageContract.status === 'proposal_metadata_recorded_approval_required'
+        && storageContract.callbackPersistence === false,
+    },
+    {
+      item: 'callback replay rollout remains execution-disabled',
+      evidence: replayRollout.status,
+      complete: replayRollout.status === 'approved_callback_replay_execution_metadata_execution_disabled'
+        && replayRollout.replayExecutionAllowed === false,
+    },
+    {
+      item: 'live status-write metadata is approved but runtime writes are closed',
+      evidence: liveStatusWrite.status,
+      complete: liveStatusWrite.status === 'approved_live_status_write_metadata_execution_disabled'
+        && liveStatusWrite.liveStatusWritesNow === false,
+    },
+    {
+      item: 'all current runtime flags remain closed',
+      evidence: 'runtime_flags_closed',
+      complete: Object.values(currentRuntimeFlags).every((value) => value === false),
+    },
+  ];
+  const assertions = [
+    { name: 'dry_run_contract_ready', passed: reviewChecklist[0].complete && reviewChecklist[1].complete && dryRunContract.failedAssertions?.length === 0 },
+    { name: 'write_window_request_ready', passed: reviewChecklist[2].complete && windowRequest.failedAssertions?.length === 0 },
+    { name: 'reconciliation_ready', passed: reviewChecklist[3].complete },
+    { name: 'callback_storage_metadata_only', passed: reviewChecklist[4].complete && storageContract.callbackReplayEnabled === false },
+    { name: 'callback_replay_execution_disabled', passed: reviewChecklist[5].complete },
+    { name: 'live_status_write_execution_disabled', passed: reviewChecklist[6].complete && liveStatusWrite.liveStatusWritesEnabled === false },
+    { name: 'runtime_flags_closed', passed: reviewChecklist[7].complete && liveFlagsClosed },
+    { name: 'owner_review_packet_no_side_effects', passed: dryRunContract.mutation === false && windowRequest.mutation === false && reconciliation.mutation === false && liveStatusWrite.mutation === false },
+    { name: 'provider_reads_forbidden', passed: dryRunContract.forbiddenOperationsNow?.includes('do not read provider-backed /payments/{paymentId}') && windowRequest.forbiddenOperationsNow?.includes('do not read provider-backed /payments/{paymentId}') },
+    { name: 'payments_owns_projection_and_status_write', passed: implementationContract.projectionOwner === 'payments-microservice' && implementationContract.commandOwner === 'payments-microservice' },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+
+  return {
+    success: true,
+    status: failedAssertions.length === 0
+      ? 'ready_for_payment_status_write_owner_review_execution_disabled'
+      : 'blocked_payment_status_write_owner_review',
+    mode: 'read_only_payment_status_write_owner_review_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    currentPacketCallsExecutor: false,
+    prerequisiteEvidence: {
+      dryRunContract: dryRunContract.status,
+      dryRunCaseCount: dryRunContract.dryRunCases?.length || 0,
+      writeWindowRequest: windowRequest.status,
+      reconciliation: reconciliation.status,
+      liveStatusWrite: liveStatusWrite.status,
+      callbackStorageContract: storageContract.status,
+      callbackReplayRollout: replayRollout.status,
+      failedAssertionCount: failedAssertions.length,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    currentRuntimeFlags,
+    implementationContract,
+    reviewChecklist,
+    requiredBeforeRuntimeEnablement: [
+      'owner approval for callback persistence storage backend if persistence is required',
+      'owner approval for callback replay execution if replay is required',
+      'bounded CLIPLOT_LIVE_STATUS_WRITE_WINDOW',
+      'ENABLE_PAYMENT_LIVE_STATUS_WRITE=true only inside approved bounded window',
+      'post-window payment status reconciliation evidence after all flags close',
+      'readiness:bundle after all flags close',
+    ],
+    validationPlan: [
+      'pre-window: readiness:payment-callback-to-status-write-dry-run-contract pass',
+      'pre-window: readiness:payment-status-write-window-request pass',
+      'pre-window: readiness:payment-status-reconciliation pass',
+      'pre-window: readiness:payment-live-status-write pass',
+      'pre-window: readiness:payment-callback-storage-contract pass',
+      'pre-window: readiness:payment-callback-replay-rollout pass',
+      'post-window: readiness:payment-status-reconciliation pass',
+      'post-window: readiness:payment-status-write-owner-review pass',
+      'post-window: readiness:bundle pass or blocked only by unrelated external docs-rag preflight',
+    ],
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    forbiddenOperationsNow: [
+      'do not call POST /api/payments/status-write-bounded-executor from this packet',
+      'do not open ENABLE_PAYMENT_LIVE_STATUS_WRITE',
+      'do not open ENABLE_PAYMENT_CALLBACK_PERSISTENCE',
+      'do not open ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION',
+      'do not write payment status',
+      'do not persist callback state',
+      'do not execute callback replay',
+      'do not create payment',
+      'do not send notification',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not expose callback payloads, payment rows, provider payloads, provider transaction ids, customer PII, or secrets',
+    ],
+    sensitiveDataPolicy: [
+      'status and shape metadata only',
+      'sanitized fingerprints only',
+      'no raw callback payload',
+      'no payment row',
+      'no provider payload',
+      'no provider transaction id',
+      'no customer PII',
+      'no secrets',
+    ],
+    next: failedAssertions.length === 0
+      ? 'Use this packet for owner review of the Payments-owned status-write implementation contract; keep runtime execution disabled until a separate bounded window is approved.'
+      : 'Resolve failed owner-review assertions before requesting a status-write runtime window.',
+  };
+}
+
+
 export async function paymentStatusWriteWindowRequestPacket() {
   const reconciliation = await paymentStatusReconciliationReadinessPacket();
   const postLiveRevenueEvidence = await postLiveRevenueClosureEvidencePacket();

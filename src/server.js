@@ -45,6 +45,7 @@ import {
   paymentStatusReconciliationReadinessPacket,
   paymentStatusWriteWindowRequestPacket,
   paymentCallbackToStatusWriteDryRunContractPacket,
+  paymentStatusWriteOwnerReviewPacket,
   runPaymentStatusWriteBoundedExecutor,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
@@ -798,6 +799,21 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, await paymentStatusWriteWindowRequestPacket());
       return;
     }
+    if (url.pathname === '/api/payments/status-write-owner-review-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentStatusWriteOwnerReviewPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-write-owner-review-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
 
     if (url.pathname === '/api/payments/status-write-window-request-packet') {
       sendJson(res, 405, {

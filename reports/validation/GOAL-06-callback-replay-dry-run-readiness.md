@@ -143,6 +143,29 @@ npm run readiness:revenue-handoff-reconciliation -- https://cliplot.alfares.cz
 npm run readiness:bundle
 ```
 
+
+## Payment Status Write Owner Review Packet
+
+The owner review packet is a GET-only implementation handoff surface for the
+Payments-owned status-write contract:
+
+```bash
+npm run readiness:payment-status-write-owner-review -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/status-write-owner-review-packet
+```
+
+Expected status:
+`ready_for_payment_status_write_owner_review_execution_disabled`.
+
+It aggregates the synthetic callback-to-status-write dry-run contract, bounded
+write-window request, reconciliation packet, callback storage contract, callback
+replay rollout, and live status-write metadata. It must keep
+`ENABLE_PAYMENT_CALLBACK_PERSISTENCE=false`,
+`ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION=false`,
+`ENABLE_PAYMENT_LIVE_STATUS_WRITE=false`, `mutation=false`,
+`persistence=false`, `providerCall=false`, `liveExecutionAllowed=false`, and
+`currentPacketCallsExecutor=false`.
+
 ## Payment Status Write Bounded Executor Guard
 
 The disabled guard endpoint is `POST /api/payments/status-write-bounded-executor`

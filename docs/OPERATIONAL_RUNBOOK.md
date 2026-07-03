@@ -112,6 +112,28 @@ Current evidence: docs-rag preflight reaches
   guarded checkout and returns `warehouseReservationReadiness` without creating a
   reservation or decrementing stock. Live Warehouse reservation still requires
   approved live order-create evidence.
+
+## Payment Status Write Owner Review
+
+Before any future bounded status-write window, run the GET-only owner review
+packet:
+
+```bash
+npm run readiness:payment-status-write-owner-review -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/status-write-owner-review-packet
+```
+
+Expected status:
+`ready_for_payment_status_write_owner_review_execution_disabled`.
+
+This packet aggregates synthetic callback-to-status-write dry-run evidence,
+write-window request evidence, callback/payment reconciliation, callback storage
+contract metadata, callback replay rollout metadata, and live status-write
+metadata. It must not call `POST /api/payments/status-write-bounded-executor`,
+open flags, persist callbacks, replay callbacks, write payment status, read
+provider-backed `/payments/{paymentId}`, create payments, or send
+notifications.
+
 ## Live Mutation Approval IDs
 
 Live env flags alone are not sufficient to mutate checkout state. Before any
