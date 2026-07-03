@@ -5896,7 +5896,7 @@ export async function paymentCallbackToStatusWriteDryRunContractPacket() {
     { name: 'reconciliation_readiness_clean', passed: reconciliation.status === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled' && reconciliation.failedAssertions?.length === 0 },
     { name: 'live_status_write_metadata_approved_execution_disabled', passed: liveStatusWrite.status === 'approved_live_status_write_metadata_execution_disabled' && liveStatusWrite.liveStatusWritesNow === false },
     { name: 'callback_policy_execution_disabled', passed: callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' && callbackPolicy.callbackPersistence === false && callbackPolicy.callbackReplayEnabled === false },
-    { name: 'callback_storage_contract_metadata_only', passed: storageContract.owner === 'payments-microservice' && storageContract.callbackPersistence === false && storageContract.callbackReplayEnabled === false },
+    { name: 'callback_storage_contract_metadata_only', passed: storageContract.status === 'proposal_metadata_recorded_approval_required' && storageContract.callbackPersistence === false && storageContract.callbackReplayEnabled === false },
     { name: 'callback_replay_rollout_execution_disabled', passed: replayRollout.status === 'approved_callback_replay_execution_metadata_execution_disabled' && replayRollout.replayExecutionAllowed === false },
     { name: 'runtime_snapshot_read_only', passed: runtime.runtimeReadEnabled === true && runtime.paymentsSnapshotReadEnabled === true && runtime.storageRead === false && runtime.callbackPersistence === false },
     { name: 'live_flags_closed', passed: liveFlagsClosed },
