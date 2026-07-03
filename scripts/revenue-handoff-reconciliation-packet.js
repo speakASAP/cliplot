@@ -53,7 +53,19 @@ assert(packet.reconciliationBoundaries?.noLiveStatusWrites === true, 'live statu
 assert(packet.reconciliationBoundaries?.noProviderBackedPaymentIdReads === true, 'provider-backed payment read boundary missing', packet);
 assert(packet.revenueClosureDisposition?.currentlyReadyForNewMutation === false, 'packet reports ready for mutation', packet);
 assert(packet.revenueClosureDisposition?.remainingBlockersRequireFutureBoundedWindow === true, 'future bounded window disposition missing', packet);
-assert(Array.isArray(packet.revenueClosureDisposition?.blockers) && packet.revenueClosureDisposition.blockers.length >= 1, 'remaining revenue blockers missing', packet);
+const expectedRevenueBlockers = [
+  '[MISSING: ENABLE_LIVE_ORDER_SUBMIT=true only during the approved bounded live checkout window]',
+  '[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true only during a separate approved bounded payment execution window]',
+  '[MISSING: ENABLE_LIVE_NOTIFICATIONS=true only during a separate approved bounded notification execution window]',
+  '[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]',
+  '[MISSING: approved live checkout mutation activation remains blocked]',
+];
+assert(packet.revenueClosureDisposition?.blockerCount === expectedRevenueBlockers.length, 'unexpected revenue blocker count', packet);
+assert(Array.isArray(packet.revenueClosureDisposition?.expectedFutureWindowBlockers), 'expected future-window blockers missing', packet);
+assert(expectedRevenueBlockers.every((item) => packet.revenueClosureDisposition.expectedFutureWindowBlockers.includes(item)), 'expected future-window blocker set changed', packet);
+assert(Array.isArray(packet.revenueClosureDisposition?.missingExpectedRevenueBlockers) && packet.revenueClosureDisposition.missingExpectedRevenueBlockers.length === 0, 'expected revenue blocker missing', packet);
+assert(Array.isArray(packet.revenueClosureDisposition?.unexpectedRevenueBlockers) && packet.revenueClosureDisposition.unexpectedRevenueBlockers.length === 0, 'unexpected revenue blocker present', packet);
+assert(expectedRevenueBlockers.every((item) => packet.revenueClosureDisposition.blockers.includes(item)), 'remaining revenue blockers do not match expected future-window blockers', packet);
 assert(Array.isArray(packet.failedAssertions) && packet.failedAssertions.length === 0, 'handoff assertions failed', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length === 0, 'handoff blockers should be empty', packet);
 assert(packet.forbiddenOperationsNow?.includes('do not open live flags from this packet'), 'live flag forbidden operation missing', packet);

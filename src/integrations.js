@@ -7760,12 +7760,22 @@ export async function revenueHandoffReconciliationPacket() {
     && serviceConfig.liveNotifications === false
     && serviceConfig.liveOrderWarehouseSmoke === false;
   const revenueBlockers = Array.isArray(revenue.blockers) ? revenue.blockers : [];
+  const expectedFutureWindowBlockers = [
+    '[MISSING: ENABLE_LIVE_ORDER_SUBMIT=true only during the approved bounded live checkout window]',
+    '[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true only during a separate approved bounded payment execution window]',
+    '[MISSING: ENABLE_LIVE_NOTIFICATIONS=true only during a separate approved bounded notification execution window]',
+    '[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]',
+    '[MISSING: approved live checkout mutation activation remains blocked]',
+  ];
+  const missingExpectedRevenueBlockers = expectedFutureWindowBlockers.filter((item) => !revenueBlockers.includes(item));
+  const unexpectedRevenueBlockers = revenueBlockers.filter((item) => !expectedFutureWindowBlockers.includes(item));
   const assertions = [
     { name: 'post_live_window_validated', passed: postLive.status === 'validated_completed_full_checkout_live_window_closed' },
     { name: 'post_live_assertions_clean', passed: Array.isArray(postLive.failedAssertions) && postLive.failedAssertions.length === 0 },
     { name: 'current_live_flags_closed', passed: liveFlagsClosed },
     { name: 'current_preflight_blocked_no_mutation', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
     { name: 'revenue_closure_guarded', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false },
+    { name: 'expected_future_window_revenue_blocker_set', passed: missingExpectedRevenueBlockers.length === 0 && unexpectedRevenueBlockers.length === 0 },
     { name: 'handoff_contract_execution_disabled', passed: handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' && handoff.liveExecutionAllowed === false },
     { name: 'owner_runbook_execution_disabled', passed: runbook.status === 'approved_owner_live_execution_runbook_contract_execution_disabled' && runbook.liveExecutionAllowed === false },
     { name: 'callback_persistence_disabled', passed: revenue.callbackPolicy?.callbackPersistence === false },
@@ -7834,6 +7844,9 @@ export async function revenueHandoffReconciliationPacket() {
       completedWindowMayBeReviewed: failedAssertions.length === 0,
       remainingBlockersRequireFutureBoundedWindow: true,
       blockerCount: revenueBlockers.length,
+      expectedFutureWindowBlockers,
+      missingExpectedRevenueBlockers,
+      unexpectedRevenueBlockers,
       blockers: revenueBlockers,
     },
     assertions,
