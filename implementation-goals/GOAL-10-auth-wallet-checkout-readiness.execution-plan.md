@@ -115,7 +115,7 @@ evidence.
   or `electronicInvoiceEmail`.
 - Source-only contract recorded, but runtime remains gated:
   - `[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]`
-  - `[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]`
+  - `Resolved: approved synthetic browser/session wallet-read evidence passed on 2026-07-03; authenticated checkout integration remains blocked.`
   - Cliplot source-defines the no-PII wallet exposure policy in
     `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
     still gated until wallet reads/selectors exist.
@@ -196,3 +196,29 @@ git diff --cached --name-only | xargs -r rg -n "(JWT|Bearer|password|secret|toke
 Expected result: no committed secrets/tokens/customer data and no live wallet
 integration until selector behavior, browser session, PII exposure, response
 contract, field mapping, and runtime guest fallback approvals are ready.
+
+
+## 2026-07-03 Gate 5 Synthetic Browser/Session Wallet-Read Evidence
+
+Gate 5 live wallet-read smoke passed with approval id
+`CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5` against `https://auth.alfares.cz`.
+
+Sanitized evidence:
+
+- Status: `sanitized_auth_wallet_browser_session_smoke_recorded`.
+- Endpoint count: 3.
+- `/auth/profile/checkout-data`: HTTP 200, schema version
+  `auth.customer-data-wallet.checkout-data.v1`.
+- `/auth/profile/delivery-addresses`: HTTP 200.
+- `/auth/profile/invoice-profiles`: HTTP 200.
+- `checkoutSubmit=false`, `authWalletMutation=false`,
+  `paymentCreation=false`, `warehouseReservation=false`,
+  `notificationSend=false`, `databaseMutation=false`,
+  `kubernetesMutation=false`.
+- `bodyPrinted=false`, `tokenPrinted=false`, and
+  `customerDataPrinted=false` for all wallet-read results.
+
+This closes the approved synthetic browser/session wallet-read evidence gate.
+Runtime checkout selector implementation, no-PII frontend exposure evidence,
+Auth wallet row-to-checkout/order field mapping implementation, and guest
+fallback implementation remain blocked until separately scoped.

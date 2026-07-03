@@ -390,7 +390,6 @@ const sourceOnlySessionHandoffEvidence = {
 
 const blockers = [
   '[MISSING: approved runtime Cliplot checkout wallet selector behavior implementation evidence]',
-  '[MISSING: approved runtime Cliplot browser-session implementation and synthetic wallet-read evidence]',
   '[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]',
   '[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
   '[MISSING: approved runtime Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]',
@@ -408,7 +407,7 @@ const sourceKnownFacts = [
   'Cliplot source-verifies selector behavior policy for wallet defaults, manual override, manual fallback, customer-safe labels, and immutable snapshots; runtime selector UI remains gated.',
   'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
   'Cliplot source-defines guest fallback behavior for missing, rejected, timed-out, malformed, or empty Auth wallet reads; runtime evidence remains gated.',
-  'Cliplot source-verifies the browser-session handoff approval contract; runtime browser-session implementation and synthetic wallet-read evidence remain gated.',
+  'Cliplot synthetic browser/session wallet-read evidence passed on 2026-07-03; runtime checkout selector integration remains gated.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -773,10 +772,23 @@ console.log(JSON.stringify({
   authWalletPresenceGate,
   authWalletNoPiiExposurePolicy,
   sourceOnlySessionHandoffEvidence,
+  liveSyntheticWalletReadEvidence: {
+    status: 'sanitized_auth_wallet_browser_session_smoke_recorded',
+    approvalId: 'CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5',
+    endpointCount: 3,
+    checkoutDataStatusCode: 200,
+    deliveryAddressesStatusCode: 200,
+    invoiceProfilesStatusCode: 200,
+    schemaVersion: 'auth.customer-data-wallet.checkout-data.v1',
+    bodyPrinted: false,
+    tokenPrinted: false,
+    customerDataPrinted: false,
+    mutation: false,
+  },
   sourceOnlySelectorBehaviorEvidence,
   sourceOnlyWalletMappingEvidence,
   sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until browser session, runtime selector/no-PII evidence, field mapping, and runtime guest fallback approvals are available.',
+  next: 'Keep Cliplot checkout wallet integration blocked until runtime selector/no-PII evidence, field mapping, and runtime guest fallback approvals are available.',
 }, null, 2));

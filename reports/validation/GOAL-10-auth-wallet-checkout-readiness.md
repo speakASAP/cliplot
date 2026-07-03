@@ -71,7 +71,7 @@ missing.
   and must not print Authorization headers, bearer tokens, JWTs, refresh tokens,
   cookies, raw wallet response bodies, decoded token claims, customer PII, or
   service credentials.
-- `[MISSING: approved runtime Cliplot browser-session implementation and synthetic wallet-read evidence]`
+- `Resolved: approved synthetic browser/session wallet-read evidence passed on 2026-07-03; runtime checkout integration remains blocked.`
 - Source-defined no-PII wallet exposure policy recorded in
   `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
   still gated because runtime wallet reads/selectors are absent.
@@ -181,3 +181,29 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
 - Code: `scripts/auth-wallet-checkout-readiness.js` and `package.json` script
   wiring.
 - Validation: commands above.
+
+
+## 2026-07-03 Gate 5 Synthetic Browser/Session Wallet-Read Evidence
+
+Gate 5 live wallet-read smoke passed with approval id
+`CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5` against `https://auth.alfares.cz`.
+
+Sanitized evidence:
+
+- Status: `sanitized_auth_wallet_browser_session_smoke_recorded`.
+- Endpoint count: 3.
+- `/auth/profile/checkout-data`: HTTP 200, schema version
+  `auth.customer-data-wallet.checkout-data.v1`.
+- `/auth/profile/delivery-addresses`: HTTP 200.
+- `/auth/profile/invoice-profiles`: HTTP 200.
+- `checkoutSubmit=false`, `authWalletMutation=false`,
+  `paymentCreation=false`, `warehouseReservation=false`,
+  `notificationSend=false`, `databaseMutation=false`,
+  `kubernetesMutation=false`.
+- `bodyPrinted=false`, `tokenPrinted=false`, and
+  `customerDataPrinted=false` for all wallet-read results.
+
+This closes the approved synthetic browser/session wallet-read evidence gate.
+Runtime checkout selector implementation, no-PII frontend exposure evidence,
+Auth wallet row-to-checkout/order field mapping implementation, and guest
+fallback implementation remain blocked until separately scoped.
