@@ -48,3 +48,12 @@ it still mutates live Orders/Warehouse state if enabled, so it must stay blocked
 until the dedicated smoke approval ID, status-transition service token, explicit
 `CREATE_REPLAY_CANCEL` body confirmation, `approvedBy`, and `reasonCode` are all
 present.
+
+Payment-create and notification-send bounded execution stubs are narrower than
+full checkout and must remain blocked by default. They require explicit owner
+approval IDs, concrete execution windows, request idempotency keys, duplicate
+checks, rollback owners, validation owners, and proof that unrelated live flags
+stay false. The default checks must exercise only the blocked path and must not
+call `/payments/create`, `/notifications/send`, Orders create, Warehouse
+reserve, callback persistence, provider-backed payment reads, or any mutation
+endpoint.

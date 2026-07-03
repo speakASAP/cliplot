@@ -535,6 +535,81 @@ The packet must use only `/payments/validate-create` and may return either
 `liveExecutionAllowed=false`. It does not call `/payments/create` and does not
 authorize live payment creation without a separate bounded execution window.
 
+## Bounded Payment-Create Execution Window
+
+This lane is the controlled alternative to metadata-only payment approval. It
+prepares the owner-approved execution window without enabling live checkout by
+default.
+
+```bash
+npm run readiness:payment-create-execution-window -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/create-execution-window-packet
+```
+
+The packet and executor stub must stay non-mutating and return
+`liveExecutionAllowed=false` outside an approved window. The readiness script is
+compatible with both states: approval ID absent, or approval metadata recorded
+while the live flag or concrete window still blocks execution. The default production
+state must keep `ENABLE_LIVE_PAYMENT_CREATE=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
+`ENABLE_LIVE_NOTIFICATIONS=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
+The bounded window requires all of these before any future live payment create
+can be wired: `CLIPLOT_LIVE_PAYMENT_APPROVAL_ID`,
+`CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW`, a request idempotency key,
+`duplicateCheck=IDEMPOTENCY_KEY_NOT_USED`,
+`rollbackPlan=PAYMENT_VOID_OR_CANCEL_OWNER_ASSIGNED`, and
+`validationPlan=EXACTLY_ONE_PAYMENT_RESULT_BY_IDEMPOTENCY_KEY`.
+
+The executor endpoint is `POST /api/payments/create-bounded-executor`. In this
+branch it is intentionally a guarded stub: it returns `approval_required`,
+`paymentCreated=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`. It must not call `/payments/create`, create Orders,
+reserve Warehouse stock, send notifications, persist callbacks/status writes,
+read `/payments/{paymentId}`, or print `PAYMENT_API_KEY` or raw provider/customer
+payloads.
+
+Rollback owner defaults to `CLIPLOT_PAYMENT_CREATE_ROLLBACK_OWNER` or
+`cliplot-payment-operator`. Validation owner defaults to
+`CLIPLOT_PAYMENT_CREATE_VALIDATION_OWNER` or `cliplot-validation-owner`. The
+post-window validation evidence must prove exactly one payment result for the
+approved idempotency key without exposing raw provider payloads.
+
+## Bounded Notification-Send Execution Window
+
+This lane is the controlled alternative to metadata-only notification approval.
+It prepares an owner-approved notification-send window without enabling full
+checkout by default.
+
+```bash
+npm run readiness:notification-send-execution-window -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/notifications/send-execution-window-packet
+```
+
+The packet and executor stub must stay non-mutating and return
+`liveExecutionAllowed=false` outside an approved window. The readiness script is
+compatible with both states: approval ID absent, or approval metadata recorded
+while the live flag or concrete window still blocks execution. The default production
+state must keep `ENABLE_LIVE_NOTIFICATIONS=false`, `ENABLE_LIVE_ORDER_SUBMIT=false`,
+`ENABLE_LIVE_PAYMENT_CREATE=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
+The bounded window requires all of these before any future live notification send
+can be wired: `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID`,
+`CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW`, a request idempotency key,
+`duplicateCheck=IDEMPOTENCY_KEY_NOT_USED`,
+`rollbackPlan=NOTIFICATION_DUPLICATE_RESPONSE_OWNER_ASSIGNED`, and
+`validationPlan=EXACTLY_ONE_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEY`.
+
+The executor endpoint is `POST /api/notifications/send-bounded-executor`. In
+this branch it is intentionally a guarded stub: it returns `approval_required`,
+`notificationSent=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`. It must not call `/notifications/send`, create payments,
+create Orders, reserve Warehouse stock, persist send state, or print
+`NOTIFICATIONS_SERVICE_TOKEN`, raw recipients, or raw message payloads.
+
+Rollback owner defaults to `CLIPLOT_NOTIFICATION_SEND_ROLLBACK_OWNER` or
+`cliplot-notification-operator`. Validation owner defaults to
+`CLIPLOT_NOTIFICATION_SEND_VALIDATION_OWNER` or `cliplot-validation-owner`. The
+post-window validation evidence must prove exactly one notification result for
+the approved idempotency key without exposing raw recipient or message payloads.
+
 ## Controlled Orders/Warehouse Smoke Evidence
 
 The 2026-07-03 controlled `CREATE_REPLAY_CANCEL` smoke completed with

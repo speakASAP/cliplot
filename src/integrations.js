@@ -71,6 +71,12 @@ export const serviceConfig = {
   liveOrderApprovalId: process.env.CLIPLOT_LIVE_ORDER_APPROVAL_ID || '',
   livePaymentApprovalId: process.env.CLIPLOT_LIVE_PAYMENT_APPROVAL_ID || '',
   liveNotificationApprovalId: process.env.CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID || '',
+  livePaymentCreateExecutionWindow: process.env.CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW || '',
+  livePaymentCreateRollbackOwner: process.env.CLIPLOT_PAYMENT_CREATE_ROLLBACK_OWNER || 'cliplot-payment-operator',
+  livePaymentCreateValidationOwner: process.env.CLIPLOT_PAYMENT_CREATE_VALIDATION_OWNER || 'cliplot-validation-owner',
+  liveNotificationSendExecutionWindow: process.env.CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW || '',
+  liveNotificationSendRollbackOwner: process.env.CLIPLOT_NOTIFICATION_SEND_ROLLBACK_OWNER || 'cliplot-notification-operator',
+  liveNotificationSendValidationOwner: process.env.CLIPLOT_NOTIFICATION_SEND_VALIDATION_OWNER || 'cliplot-validation-owner',
   liveOrderWarehouseSmokeApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID || '',
   liveOrderWarehouseSmokeCleanupApprovalId: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_CLEANUP_APPROVAL_ID || '',
   liveOrderWarehouseSmokeWindow: process.env.CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_WINDOW || '',
@@ -1159,6 +1165,214 @@ async function validatePaymentReadScope() {
   }
 }
 
+
+
+function boundedExecutionWindowPacket(kind) {
+  const approvals = liveMutationApprovals();
+  const isPayment = kind === 'payment_create';
+  const liveFlagName = isPayment ? 'ENABLE_LIVE_PAYMENT_CREATE' : 'ENABLE_LIVE_NOTIFICATIONS';
+  const approvalIdName = isPayment ? 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID' : 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID';
+  const windowName = isPayment ? 'CLIPLOT_PAYMENT_CREATE_EXECUTION_WINDOW' : 'CLIPLOT_NOTIFICATION_SEND_EXECUTION_WINDOW';
+  const liveEndpoint = isPayment ? serviceConfig.paymentCreatePath : serviceConfig.notificationSendPath;
+  const validationEndpoint = isPayment ? serviceConfig.paymentValidateCreatePath : serviceConfig.notificationValidatePath;
+  const liveFlagEnabled = isPayment ? serviceConfig.livePaymentCreate : serviceConfig.liveNotifications;
+  const approvalPresent = isPayment ? approvals.payment : approvals.notification;
+  const windowValue = isPayment ? serviceConfig.livePaymentCreateExecutionWindow : serviceConfig.liveNotificationSendExecutionWindow;
+  const rollbackOwner = isPayment ? serviceConfig.livePaymentCreateRollbackOwner : serviceConfig.liveNotificationSendRollbackOwner;
+  const validationOwner = isPayment ? serviceConfig.livePaymentCreateValidationOwner : serviceConfig.liveNotificationSendValidationOwner;
+  const blockers = [];
+
+  if (!liveFlagEnabled) blockers.push(`[MISSING: ${liveFlagName}=true for owner-approved bounded execution window]`);
+  if (!approvalPresent) blockers.push(`[MISSING: ${approvalIdName} recorded from owner-approved execution window]`);
+  if (!isConcreteSmokeWindow(windowValue)) blockers.push(`[MISSING: concrete ${windowName}]`);
+  if (serviceConfig.liveOrderSubmit) blockers.push('[MISSING: ENABLE_LIVE_ORDER_SUBMIT=false to prove this is not full checkout activation]');
+  if (serviceConfig.liveOrderWarehouseSmoke) blockers.push('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false to isolate payment/notification window]');
+  if (isPayment && serviceConfig.liveNotifications) blockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=false during payment-only execution window]');
+  if (!isPayment && serviceConfig.livePaymentCreate) blockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=false during notification-only execution window]');
+
+  return {
+    success: true,
+    status: blockers.length === 0
+      ? `approved_${kind}_window_metadata_execution_still_guarded`
+      : `approval_required_${kind}_execution_window`,
+    mode: `guarded_${kind}_bounded_execution_window_packet`,
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    liveExecutionAllowed: false,
+    liveEndpoint,
+    validationEndpoint,
+    requiredRuntime: {
+      liveFlag: liveFlagName,
+      approvalId: approvalIdName,
+      executionWindow: windowName,
+      idempotencyKey: isPayment ? 'request body idempotencyKey for payment create' : 'request body idempotencyKey for notification send',
+      rollbackOwner,
+      validationOwner,
+    },
+    fullCheckoutIsolation: {
+      liveOrderSubmit: serviceConfig.liveOrderSubmit,
+      livePaymentCreate: serviceConfig.livePaymentCreate,
+      liveNotifications: serviceConfig.liveNotifications,
+      liveOrderWarehouseSmoke: serviceConfig.liveOrderWarehouseSmoke,
+      fullCheckoutActivationAllowed: false,
+    },
+    duplicatePolicy: {
+      requiredBeforeExecution: [
+        'operator verifies idempotency key has not been used for the selected application/order/message tuple',
+        'operator records one idempotency key per approved execution window',
+        'executor request must include duplicateCheck=IDEMPOTENCY_KEY_NOT_USED',
+      ],
+      idempotencyKeyRequired: true,
+    },
+    rollbackPolicy: isPayment ? {
+      owner: rollbackOwner,
+      requiredBeforeExecution: 'provider void/cancel path and customer-facing order boundary are assigned before payment create',
+      noOrderSubmitBoundary: true,
+    } : {
+      owner: rollbackOwner,
+      requiredBeforeExecution: 'recipient correction/escalation path and duplicate-send response owner are assigned before notification send',
+      noPaymentCreateBoundary: true,
+    },
+    validationPolicy: {
+      owner: validationOwner,
+      requiredAfterExecution: isPayment
+        ? 'confirm exactly one payment create result for the idempotency key without provider/customer payload disclosure'
+        : 'confirm exactly one notification send result for the idempotency key without raw recipient/message disclosure',
+    },
+    mustRemainFalseOutsideWindow: [
+      'ENABLE_LIVE_ORDER_SUBMIT',
+      'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+      ...(isPayment ? ['ENABLE_LIVE_NOTIFICATIONS'] : ['ENABLE_LIVE_PAYMENT_CREATE']),
+      'callback persistence',
+      'callback replay execution',
+      'provider-backed /payments/{paymentId} reads',
+    ],
+    forbiddenOperationsNow: isPayment ? [
+      'POST /payments/create',
+      'provider payment create',
+      'create order',
+      'reserve Warehouse stock',
+      'send notification',
+      'persist callback or payment status writes',
+      'print PAYMENT_API_KEY or raw provider/customer payloads',
+    ] : [
+      'POST /notifications/send',
+      'send notification',
+      'create payment',
+      'create order',
+      'reserve Warehouse stock',
+      'persist notification send state',
+      'print NOTIFICATIONS_SERVICE_TOKEN, raw recipient, or raw message payloads',
+    ],
+    executionBlockers: [...new Set(blockers)],
+    next: blockers.length === 0
+      ? 'Integrator must still intentionally wire the live executor for the approved window; this packet is metadata and remains non-mutating.'
+      : 'Keep the live endpoint blocked until owner approval, concrete window, idempotency, duplicate policy, rollback owner, and validation owner are all present.',
+  };
+}
+
+export function paymentCreateExecutionWindowPacket() {
+  return boundedExecutionWindowPacket('payment_create');
+}
+
+export function notificationSendExecutionWindowPacket() {
+  return boundedExecutionWindowPacket('notification_send');
+}
+
+export async function runBoundedPaymentCreateExecutor(request = {}) {
+  const packet = paymentCreateExecutionWindowPacket();
+  const blockers = [...packet.executionBlockers];
+  const approvalId = String(request.approvalId || '').trim();
+  const executionWindow = String(request.executionWindow || '').trim();
+  const idempotencyKey = String(request.idempotencyKey || '').trim();
+
+  if (request.confirm !== 'LIVE_PAYMENT_CREATE_WINDOW') blockers.push('missing_LIVE_PAYMENT_CREATE_WINDOW_confirmation');
+  if (!approvalId || approvalId !== serviceConfig.livePaymentApprovalId) blockers.push('invalid_or_missing_payment_approval_id');
+  if (!executionWindow || executionWindow !== serviceConfig.livePaymentCreateExecutionWindow) blockers.push('invalid_or_missing_payment_execution_window');
+  if (!idempotencyKey) blockers.push('missing_payment_create_idempotency_key');
+  if (request.duplicateCheck !== 'IDEMPOTENCY_KEY_NOT_USED') blockers.push('missing_payment_duplicate_check');
+  if (request.rollbackPlan !== 'PAYMENT_VOID_OR_CANCEL_OWNER_ASSIGNED') blockers.push('missing_payment_rollback_plan');
+  if (request.validationPlan !== 'EXACTLY_ONE_PAYMENT_RESULT_BY_IDEMPOTENCY_KEY') blockers.push('missing_payment_validation_plan');
+
+  return {
+    httpStatus: 202,
+    body: {
+      success: true,
+      status: 'approval_required',
+      mode: 'guarded_payment_create_bounded_executor_stub',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      paymentCreated: false,
+      liveExecutionAllowed: false,
+      approvalRequired: {
+        owner: true,
+        paymentCreate: true,
+        idempotencyKey: true,
+        duplicateCheck: true,
+        rollbackPlan: true,
+        validationPlan: true,
+      },
+      endpointBoundary: {
+        forbiddenLiveEndpoint: serviceConfig.paymentCreatePath,
+        validationEndpointAllowedBeforeWindow: serviceConfig.paymentValidateCreatePath,
+        fullCheckoutActivationAllowed: false,
+      },
+      blockers: [...new Set(blockers)],
+      packet,
+      sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
+    },
+  };
+}
+
+export async function runBoundedNotificationSendExecutor(request = {}) {
+  const packet = notificationSendExecutionWindowPacket();
+  const blockers = [...packet.executionBlockers];
+  const approvalId = String(request.approvalId || '').trim();
+  const executionWindow = String(request.executionWindow || '').trim();
+  const idempotencyKey = String(request.idempotencyKey || '').trim();
+
+  if (request.confirm !== 'LIVE_NOTIFICATION_SEND_WINDOW') blockers.push('missing_LIVE_NOTIFICATION_SEND_WINDOW_confirmation');
+  if (!approvalId || approvalId !== serviceConfig.liveNotificationApprovalId) blockers.push('invalid_or_missing_notification_approval_id');
+  if (!executionWindow || executionWindow !== serviceConfig.liveNotificationSendExecutionWindow) blockers.push('invalid_or_missing_notification_execution_window');
+  if (!idempotencyKey) blockers.push('missing_notification_send_idempotency_key');
+  if (request.duplicateCheck !== 'IDEMPOTENCY_KEY_NOT_USED') blockers.push('missing_notification_duplicate_check');
+  if (request.rollbackPlan !== 'NOTIFICATION_DUPLICATE_RESPONSE_OWNER_ASSIGNED') blockers.push('missing_notification_rollback_plan');
+  if (request.validationPlan !== 'EXACTLY_ONE_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEY') blockers.push('missing_notification_validation_plan');
+
+  return {
+    httpStatus: 202,
+    body: {
+      success: true,
+      status: 'approval_required',
+      mode: 'guarded_notification_send_bounded_executor_stub',
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      notificationSent: false,
+      liveExecutionAllowed: false,
+      approvalRequired: {
+        owner: true,
+        notificationSend: true,
+        idempotencyKey: true,
+        duplicateCheck: true,
+        rollbackPlan: true,
+        validationPlan: true,
+      },
+      endpointBoundary: {
+        forbiddenLiveEndpoint: serviceConfig.notificationSendPath,
+        validationEndpointAllowedBeforeWindow: serviceConfig.notificationValidatePath,
+        fullCheckoutActivationAllowed: false,
+      },
+      blockers: [...new Set(blockers)],
+      packet,
+      sensitiveDataPolicy: ['no NOTIFICATIONS_SERVICE_TOKEN value', 'no raw recipient', 'no raw message payload'],
+    },
+  };
+}
 
 
 export async function notificationSendApprovalEvidencePacket() {
