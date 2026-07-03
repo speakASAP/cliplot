@@ -16,7 +16,7 @@ assert(packet.mode === 'guarded_auth_wallet_runtime_checkout_evidence', 'runtime
 assert(packet.mutation === false, 'runtime checkout evidence reports mutation', packet);
 assert(packet.persistence === false, 'runtime checkout evidence reports persistence', packet);
 assert(packet.providerCall === false, 'runtime checkout evidence reports provider call', packet);
-assert(packet.authWalletFetch === false, 'runtime checkout evidence fetched Auth wallet data', packet);
+assert(packet.authWalletFetch === false, 'default runtime checkout evidence fetched Auth wallet data', packet);
 assert(packet.authWalletMutation === false, 'runtime checkout evidence mutated Auth wallet data', packet);
 assert(packet.checkoutSubmit === false, 'runtime checkout evidence submitted checkout', packet);
 assert(packet.orderCreated === false, 'runtime checkout evidence created an order', packet);
@@ -27,7 +27,10 @@ assert(packet.databaseMutation === false, 'runtime checkout evidence mutated dat
 assert(packet.kubernetesMutation === false, 'runtime checkout evidence mutated Kubernetes', packet);
 assert(packet.vaultMutation === false, 'runtime checkout evidence mutated Vault', packet);
 assert(packet.liveExecutionAllowed === false, 'runtime checkout evidence allows live execution', packet);
-assert(packet.browserSessionRead === false, 'runtime checkout evidence read browser session/token contents', packet);
+assert(packet.browserSessionRead === false, 'default runtime checkout evidence read browser session/token contents', packet);
+assert(packet.browserSessionFetchSourcePathImplemented === true, 'browser-session fetch source path missing', packet);
+assert(packet.browserSessionFetchEvidence?.status === 'approval_required_auth_wallet_browser_session_fetch_source_path', 'browser-session fetch source path is not approval-gated by default', packet);
+assert(packet.browserSessionFetchEvidence?.authWalletFetch === false, 'browser-session fetch source path fetched by default', packet);
 assert(packet.selectorEvidence?.selectorHelpersImplemented === true, 'selector helpers missing', packet);
 assert(packet.selectorEvidence?.selectorUiRendered === true, 'checkout selector UI integration missing', packet);
 assert(packet.selectorEvidence?.checkoutSelectorUiIntegrated === true, 'checkout selector source integration missing', packet);
@@ -93,5 +96,7 @@ console.log(JSON.stringify({
   persistence: packet.persistence,
   providerCall: packet.providerCall,
   authWalletFetch: packet.authWalletFetch,
+  browserSessionFetchSourcePathImplemented: packet.browserSessionFetchSourcePathImplemented,
+  browserSessionFetchStatus: packet.browserSessionFetchEvidence.status,
   checkoutSubmit: packet.checkoutSubmit,
 }, null, 2));

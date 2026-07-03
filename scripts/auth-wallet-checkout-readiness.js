@@ -8,6 +8,7 @@ const sourceFiles = {
   integrations: 'src/integrations.js',
   server: 'src/server.js',
   walletContract: 'docs/auth-wallet-checkout-contract.md',
+  browserSessionSmoke: 'scripts/auth-wallet-browser-session-smoke.js',
 };
 
 const walletEndpoints = [
@@ -347,7 +348,7 @@ const sourceOnlyGuestFallbackPolicy = {
 const sourceOnlySessionHandoffEvidence = {
   status: 'source_only_browser_session_contract_verified',
   runtimeWalletCodePresent: false,
-  browserSessionImplementationPresent: false,
+  browserSessionImplementationPresent: true,
   defaultModeCallsAuth: false,
   defaultModeReadsTokenContents: false,
   requiredRuntimeInputs: [
@@ -392,6 +393,8 @@ const sourceOnlySessionHandoffEvidence = {
 
 const runtimeWalletEvidence = await authWalletRuntimeCheckoutEvidencePacket();
 const runtimeWalletEvidenceReady = runtimeWalletEvidence.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls'
+  && runtimeWalletEvidence.browserSessionFetchSourcePathImplemented === true
+  && runtimeWalletEvidence.browserSessionFetchEvidence?.status === 'approval_required_auth_wallet_browser_session_fetch_source_path'
   && runtimeWalletEvidence.selectorEvidence?.selectorHelpersImplemented === true
   && runtimeWalletEvidence.selectorEvidence?.selectorUiRendered === true
   && runtimeWalletEvidence.selectorEvidence?.checkoutSelectorUiIntegrated === true
@@ -416,16 +419,16 @@ const blockers = runtimeWalletEvidenceReady ? [] : [
 const sourceKnownFacts = [
   'Cliplot remains guest-checkout first: the checkout form collects name, email, phone, address, shipping, and payment fields.',
   'Checkout submit posts guest/customer form data to /api/checkout/submit and stores a browser-local last-checkout snapshot.',
-  'Auth is currently a hosted login/register link surface plus bounded in-memory checkout wallet selector hooks; no live Auth wallet fetch is present.',
+  'Auth is currently a hosted login/register link surface plus bounded in-memory checkout wallet selector hooks; a gated browser-session fetch evidence source path exists but default execution remains blocked.',
   'Guarded checkout still returns service_identity_required before live order/payment/Warehouse mutation.',
   'Runtime manifests point at Auth but do not enable wallet integration.',
   'Auth source-defines checkout-data schemaVersion as auth.customer-data-wallet.checkout-data.v1.',
   'Auth source-defines checkout-data top-level fields, defaults fields, and sanitized delivery/invoice wallet row field names.',
-  'Cliplot source-defines the no-PII wallet exposure policy; bounded selector runtime code is present without live Auth fetch or PII evidence output.',
+  'Cliplot source-defines the no-PII wallet exposure policy; bounded selector runtime code and gated browser-session fetch evidence source are present without default live fetch or PII evidence output.',
   'Cliplot source-verifies selector behavior policy for wallet defaults, manual override, manual fallback, customer-safe labels, and immutable snapshots; runtime selector UI source hooks are integrated without live Auth fetch.',
   'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
   'Cliplot source-defines guest fallback behavior for missing, rejected, timed-out, malformed, or empty Auth wallet reads; runtime evidence remains gated.',
-  'Cliplot synthetic browser/session wallet-read evidence passed on 2026-07-03; runtime checkout selector UI source integration is present while live wallet fetch remains gated.',
+  'Cliplot synthetic browser/session wallet-read evidence passed on 2026-07-03; runtime checkout selector UI source integration is present and the live wallet fetch evidence path remains gated by default.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -480,24 +483,24 @@ const hasAuthLinkOnlySurface = includesAll(server, [
   'authLinks()',
 ]);
 const hasWalletContract = includesAll(walletContract, [
-  'Status: source/runtime selector UI source-integrated; live wallet fetch dependency-gated',
+  'Status: source/runtime selector UI plus gated browser-session fetch source path integrated; live checkout submit and wallet mutation blocked',
   'Selector Behavior',
   'Authenticated Session Handoff',
   'PII And Logging Constraints',
   'Field Mapping',
   'Guest Fallback',
   'Runtime Selector UI Integration',
-  'The browser must not call Auth wallet endpoints in this selector UI lane',
+  'The browser UI must not call Auth wallet endpoints directly in this selector UI lane',
   'selector controls must not have checkout form `name` attributes',
   'Default Auth entries may prefill the checkout only before the customer edits',
   'Manual edits must override wallet defaults for the current checkout snapshot',
   'Wallet reads must use a synthetic or real authenticated Auth bearer only in',
   'memory for the request window',
-  'Source-Only Browser Session Handoff Acceptance Criteria',
-  'default source-only verifier must not call Auth wallet endpoints',
-  'must not read token, cookie, JWT, or refresh-token contents',
-  'wallet read scope is limited to Auth checkout-data, delivery-address, and invoice-profile endpoints',
-  'runtime evidence must not print Authorization headers, bearer tokens, JWTs',
+  'Gated Browser Session Fetch Source Path Acceptance Criteria',
+  'default verifier must not call Auth wallet endpoints',
+  'The default verifier must not read token, cookie, JWT, or refresh-token',
+  'The wallet read scope is limited to Auth checkout-data, delivery-address, and',
+  'Runtime evidence must not print Authorization headers, bearer tokens, JWTs',
   'Checkout submit, Auth wallet mutation, payment creation, Warehouse reservation',
   'Do not log raw Auth wallet response bodies',
   'Do not persist reusable Auth wallet rows in Cliplot local storage',
@@ -730,7 +733,7 @@ assert(
 assert(
   sourceOnlySessionHandoffEvidence.status === 'source_only_browser_session_contract_verified'
     && sourceOnlySessionHandoffEvidence.runtimeWalletCodePresent === false
-    && sourceOnlySessionHandoffEvidence.browserSessionImplementationPresent === false
+    && sourceOnlySessionHandoffEvidence.browserSessionImplementationPresent === true
     && sourceOnlySessionHandoffEvidence.defaultModeCallsAuth === false
     && sourceOnlySessionHandoffEvidence.defaultModeReadsTokenContents === false,
   'Cliplot Auth wallet source-only browser-session contract is missing or unsafe',
@@ -767,9 +770,14 @@ assert(
   'Cliplot browser-session contract does not forbid unsafe runtime operations',
   { sourceOnlySessionHandoffEvidence },
 );
-assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integration exists before dependency gates are cleared', {
+const unexpectedRuntimeWalletReferences = runtimeWalletReferences.filter(({ path }) => ![sourceFiles.integrations, sourceFiles.browserSessionSmoke].includes(path));
+assert(unexpectedRuntimeWalletReferences.length === 0, 'unexpected runtime wallet endpoint integration exists outside the approved gated fetch source path', {
   runtimeWalletReferences,
+  unexpectedRuntimeWalletReferences,
   blockers,
+});
+assert(runtimeWalletReferences.some(({ path, endpoint }) => path === sourceFiles.integrations && endpoint === '/auth/profile/checkout-data'), 'gated Auth wallet checkout-data fetch source path missing', {
+  runtimeWalletReferences,
 });
 assert(runtimeWalletEvidenceReady, 'Auth wallet runtime readiness evidence is not complete/no-live-calls', {
   status: runtimeWalletEvidence.status,
@@ -792,8 +800,8 @@ assert(checkoutClient.includes('customer: data') && !checkoutClient.includes('se
 
 console.log(JSON.stringify({
   ok: true,
-  status: 'ready_for_auth_wallet_checkout_runtime_rollout_review_execution_disabled',
-  mode: 'source_and_runtime_helper_evidence_no_live_calls',
+  status: 'ready_for_auth_wallet_browser_session_fetch_review_execution_disabled',
+  mode: 'source_runtime_helper_and_gated_fetch_evidence_default_no_live_calls',
   mutation: false,
   persistence: false,
   providerCall: false,
@@ -807,7 +815,7 @@ console.log(JSON.stringify({
     walletContract: hasWalletContract,
     authWalletSelectorUi: true,
   },
-  runtimeWalletIntegrationPresent: 'selector_ui_source_only_no_auth_fetch',
+  runtimeWalletIntegrationPresent: 'selector_ui_plus_gated_browser_session_fetch_source_path_default_no_auth_fetch',
   runtimeWalletEvidenceReady,
   runtimeWalletEvidence: {
     status: runtimeWalletEvidence.status,
@@ -819,6 +827,8 @@ console.log(JSON.stringify({
     noPiiEvidence: runtimeWalletEvidence.noPiiEvidence?.status || null,
     guestFallbackCases: runtimeWalletEvidence.guestFallbackEvidence?.fallbackCases?.length || 0,
     authWalletFetch: runtimeWalletEvidence.authWalletFetch,
+    browserSessionFetchSourcePathImplemented: runtimeWalletEvidence.browserSessionFetchSourcePathImplemented === true,
+    browserSessionFetchStatus: runtimeWalletEvidence.browserSessionFetchEvidence?.status || null,
     checkoutSubmit: runtimeWalletEvidence.checkoutSubmit,
     mutation: runtimeWalletEvidence.mutation,
     persistence: runtimeWalletEvidence.persistence,
@@ -847,5 +857,5 @@ console.log(JSON.stringify({
   sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Runtime selector UI source integration is ready for owner rollout review; keep live wallet fetches, checkout submit changes, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
+  next: 'Runtime selector UI and gated browser-session fetch source path are ready for owner rollout review; keep checkout submit changes, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
 }, null, 2));

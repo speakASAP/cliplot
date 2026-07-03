@@ -1598,6 +1598,169 @@ const authWalletFallbackCases = [
   'wallet_empty_rows',
 ];
 
+const authWalletApprovedEndpoints = [
+  '/auth/profile/checkout-data',
+  '/auth/profile/delivery-addresses',
+  '/auth/profile/invoice-profiles',
+];
+
+const authWalletSensitiveMarkers = [
+  'Bearer ',
+  'eyJ',
+  'sk_live',
+  'sk_test',
+  'whsec_',
+  'refresh_token=',
+  'access_token=',
+  'password=',
+  'cookie=',
+  '@example.',
+];
+
+function authWalletSmokeApprovalMetadata() {
+  return {
+    approvalIdPresent: Boolean(process.env.CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID),
+    approvalIdLength: process.env.CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID?.length || 0,
+    syntheticBearerPresent: Boolean(process.env.AUTH_WALLET_SYNTHETIC_BEARER),
+    liveFlagEnabled: process.env.ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE === 'true',
+  };
+}
+
+function authWalletSmokeApprovalIdLooksNonSecret(value) {
+  return typeof value === 'string'
+    && /^CLIPLOT-AUTH-WALLET-SMOKE-[A-Z0-9-]{6,80}$/.test(value)
+    && !/(token|secret|password|bearer|cookie|jwt)/i.test(value);
+}
+
+function sanitizeAuthWalletReadStatus(status) {
+  if (status === 200) return 'wallet_read_authorized';
+  if (status === 401) return 'wallet_read_unauthenticated';
+  if (status === 403) return 'wallet_read_forbidden';
+  if (status >= 500) return 'wallet_read_server_error';
+  return 'wallet_read_unexpected_status';
+}
+
+function assertAuthWalletEvidenceSanitized(payload) {
+  const serialized = JSON.stringify(payload);
+  for (const marker of authWalletSensitiveMarkers) {
+    if (serialized.toLowerCase().includes(marker.toLowerCase())) {
+      throw new Error(`sensitive_auth_wallet_evidence_marker:${marker}`);
+    }
+  }
+}
+
+async function fetchAuthWalletEndpointStatus(baseUrl, endpoint, bearer) {
+  if (!authWalletApprovedEndpoints.includes(endpoint)) {
+    throw new Error('auth_wallet_endpoint_outside_approved_read_scope');
+  }
+
+  const response = await fetch(new URL(endpoint, baseUrl), {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      authorization: `Bearer ${bearer}`,
+    },
+  });
+  const schemaVersion = response.status === 200
+    ? String((await response.clone().json().catch(() => ({}))).schemaVersion || 'missing')
+    : 'not_read';
+
+  return {
+    endpointLabel: endpoint.replace('/auth/profile/', 'auth_profile_'),
+    statusCode: response.status,
+    statusLabel: sanitizeAuthWalletReadStatus(response.status),
+    schemaVersion,
+    bodyPrinted: false,
+    tokenPrinted: false,
+    customerDataPrinted: false,
+  };
+}
+
+export async function authWalletBrowserSessionFetchEvidence({ baseUrl = process.env.CLIPLOT_AUTH_WALLET_SMOKE_BASE_URL || 'http://127.0.0.1:8080' } = {}) {
+  const approvalMetadata = authWalletSmokeApprovalMetadata();
+  const blocked = {
+    success: true,
+    status: 'approval_required_auth_wallet_browser_session_fetch_source_path',
+    mode: 'guarded_auth_wallet_browser_session_fetch_evidence',
+    baseUrlConfigured: Boolean(baseUrl),
+    liveExecutionAllowed: false,
+    authWalletFetch: false,
+    browserSessionRead: false,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    checkoutSubmit: false,
+    authWalletMutation: false,
+    paymentCreation: false,
+    warehouseReservation: false,
+    notificationSend: false,
+    databaseMutation: false,
+    kubernetesMutation: false,
+    vaultUsage: false,
+    endpointCount: authWalletApprovedEndpoints.length,
+    allowedEndpointLabels: authWalletApprovedEndpoints.map((endpoint) => endpoint.replace('/auth/profile/', 'auth_profile_')),
+    approvalMetadata,
+    blockers: [
+      'missing_ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE_true',
+      'missing_owner_approved_synthetic_browser_session_or_bearer',
+      'missing_non_secret_CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID',
+    ],
+    liveCommandShape: 'ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID> AUTH_WALLET_SYNTHETIC_BEARER=<approved synthetic bearer> npm run smoke:auth-wallet-browser-session -- <base-url>',
+  };
+
+  if (!approvalMetadata.liveFlagEnabled) {
+    assertAuthWalletEvidenceSanitized(blocked);
+    return blocked;
+  }
+
+  if (!authWalletSmokeApprovalIdLooksNonSecret(process.env.CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID)) {
+    const error = new Error('missing_or_unsafe_non_secret_auth_wallet_smoke_approval_id');
+    error.evidence = { approvalMetadata };
+    throw error;
+  }
+  if (typeof process.env.AUTH_WALLET_SYNTHETIC_BEARER !== 'string' || process.env.AUTH_WALLET_SYNTHETIC_BEARER.length <= 20) {
+    const error = new Error('missing_approved_synthetic_bearer_for_auth_wallet_evidence_window');
+    error.evidence = { approvalMetadata };
+    throw error;
+  }
+  if (process.env.AUTH_WALLET_SYNTHETIC_COOKIE) {
+    const error = new Error('cookie_based_auth_wallet_smoke_forbidden');
+    error.evidence = { approvalMetadata };
+    throw error;
+  }
+
+  const results = [];
+  for (const endpoint of authWalletApprovedEndpoints) {
+    results.push(await fetchAuthWalletEndpointStatus(baseUrl, endpoint, process.env.AUTH_WALLET_SYNTHETIC_BEARER));
+  }
+
+  const evidence = {
+    success: true,
+    status: 'sanitized_auth_wallet_browser_session_fetch_recorded',
+    mode: 'guarded_auth_wallet_browser_session_fetch_evidence',
+    baseUrl,
+    liveExecutionAllowed: true,
+    authWalletFetch: true,
+    browserSessionRead: true,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    checkoutSubmit: false,
+    authWalletMutation: false,
+    paymentCreation: false,
+    warehouseReservation: false,
+    notificationSend: false,
+    databaseMutation: false,
+    kubernetesMutation: false,
+    vaultUsage: false,
+    endpointCount: results.length,
+    results,
+  };
+
+  assertAuthWalletEvidenceSanitized(evidence);
+  return evidence;
+}
+
 function compactCheckoutSnapshot(value) {
   return Object.fromEntries(
     Object.entries(value).filter(([, nested]) => nested !== undefined && nested !== null && nested !== ''),
@@ -1821,8 +1984,9 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     checkoutSubmitPath: '/api/checkout/submit',
     fallbackCases: authWalletFallbackCases.map(authWalletGuestFallbackEvidence),
   };
+  const browserSessionFetchEvidence = await authWalletBrowserSessionFetchEvidence();
 
-  const sanitizedEvidenceProbe = JSON.stringify({ selectorEvidence, noPiiEvidence, mappingEvidence, guestFallbackEvidence });
+  const sanitizedEvidenceProbe = JSON.stringify({ selectorEvidence, noPiiEvidence, mappingEvidence, guestFallbackEvidence, browserSessionFetchEvidence });
   noPiiEvidence.forbiddenFixtureValueOutput = forbiddenFixtureValues.every((value) => !sanitizedEvidenceProbe.includes(value));
 
   const implementationReady = selectorEvidence.defaultPrefillBeforeManualEdit
@@ -1844,7 +2008,7 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     mutation: false,
     persistence: false,
     providerCall: false,
-    authWalletFetch: false,
+    authWalletFetch: browserSessionFetchEvidence.authWalletFetch === true,
     authWalletMutation: false,
     checkoutSubmit: false,
     orderCreated: false,
@@ -1855,18 +2019,19 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
     kubernetesMutation: false,
     vaultMutation: false,
     liveExecutionAllowed: false,
-    browserSessionRead: false,
+    browserSessionRead: browserSessionFetchEvidence.browserSessionRead === true,
+    browserSessionFetchSourcePathImplemented: true,
+    browserSessionFetchEvidence,
     selectorEvidence,
     noPiiEvidence,
     mappingEvidence,
     guestFallbackEvidence,
     executionBlockers: implementationReady ? [] : ['[MISSING: Auth wallet runtime checkout evidence guardrail alignment]'],
     remainingBlockers: [
-      '[MISSING: owner-approved authenticated browser-session integration in Cliplot frontend]',
       '[MISSING: owner-approved live checkout submit using Auth wallet snapshots]',
     ],
     forbiddenOperationsNow: [
-      'Auth wallet live fetch from browser/server',
+      'ungated Auth wallet live fetch from browser/server',
       'checkout submit',
       'Auth wallet mutation',
       'Orders mutation',
@@ -1877,7 +2042,7 @@ export async function authWalletRuntimeCheckoutEvidencePacket() {
       'Kubernetes/Vault mutation',
       'printing tokens, cookies, raw wallet bodies, or customer PII',
     ],
-    next: 'Runtime selector UI source integration is recorded; keep live Auth wallet fetches and checkout submit changes blocked until a separate owner-approved rollout opens them.',
+    next: 'Runtime selector UI source integration and gated browser-session fetch source path are recorded; keep checkout submit changes and all mutations blocked until a separate owner-approved rollout opens them.',
   };
 }
 
@@ -5802,7 +5967,33 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
 }
 
 
+const paymentStatusReadinessCache = {
+  expiresAt: 0,
+  promise: null,
+};
+const PAYMENT_STATUS_READINESS_CACHE_MS = 15000;
+
 export async function paymentStatusReadiness() {
+  const now = Date.now();
+  if (paymentStatusReadinessCache.promise && paymentStatusReadinessCache.expiresAt > now) {
+    return paymentStatusReadinessCache.promise;
+  }
+
+  const promise = computePaymentStatusReadiness();
+  paymentStatusReadinessCache.promise = promise;
+  paymentStatusReadinessCache.expiresAt = now + PAYMENT_STATUS_READINESS_CACHE_MS;
+  try {
+    return await promise;
+  } catch (error) {
+    if (paymentStatusReadinessCache.promise === promise) {
+      paymentStatusReadinessCache.promise = null;
+      paymentStatusReadinessCache.expiresAt = 0;
+    }
+    throw error;
+  }
+}
+
+async function computePaymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
   const statusResult = await paymentStatus({ orderId: syntheticOrderId });
   const statusBody = statusResult.body || {};

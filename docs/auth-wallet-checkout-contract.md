@@ -1,6 +1,6 @@
 # Auth Wallet Checkout Contract
 
-Status: source/runtime selector UI source-integrated; live wallet fetch dependency-gated
+Status: source/runtime selector UI plus gated browser-session fetch source path integrated; live checkout submit and wallet mutation blocked
 Date: 2026-07-03
 Coordinator: Auth Goal 10 orchestrator
 
@@ -12,8 +12,10 @@ Vision -> Goal Impact -> System -> Feature -> Task -> Execution Plan -> Coding P
 
 This contract defines the Cliplot-specific gate for Auth customer data wallet
 checkout integration. It now allows a bounded checkout selector UI that consumes
-already-provided in-memory wallet rows, but it does not add live Auth wallet
-fetches, checkout submit changes, Auth wallet mutation, or live smoke approval.
+already-provided in-memory wallet rows and a gated browser-session wallet fetch
+evidence source path. Default execution remains blocked, and this contract still
+does not approve checkout submit changes, Auth wallet mutation, or live commerce
+mutation.
 
 ## Selector Behavior
 
@@ -41,33 +43,31 @@ fetches, checkout submit changes, Auth wallet mutation, or live smoke approval.
 - A missing, expired, or rejected Auth session must fall back to manual checkout
   without clearing the cart or blocking guest checkout.
 
-## Source-Only Browser Session Handoff Acceptance Criteria
+## Gated Browser Session Fetch Source Path Acceptance Criteria
 
-For the current source-only lane, Cliplot verifies only the future browser
-session approval contract. It does not implement browser-session wallet reads or
-call Auth endpoints.
+For the current lane, Cliplot includes a reusable guarded source path for
+browser-session wallet-read evidence. The default verifier must stay blocked and
+must not call Auth endpoints unless the explicit evidence-window flag, non-secret
+approval id, and approved synthetic bearer are supplied.
 
-- The default source-only verifier must not call Auth wallet endpoints.
+- The default verifier must not call Auth wallet endpoints.
 - The default source-only verifier must not read token, cookie, JWT, or
   refresh-token contents.
-- The source-only marker is: must not read token, cookie, JWT, or refresh-token
+- The default verifier must not read token, cookie, JWT, or refresh-token
   contents.
-- The source-only marker is: must not read token, cookie, JWT, or refresh-token contents.
 - Future runtime execution requires an owner-approved synthetic Auth account or
   browser session, an owner-approved synthetic bearer token only for the runtime
   evidence window, and a non-secret Cliplot wallet smoke approval id.
 - The wallet read scope is limited to Auth checkout-data, delivery-address, and
   invoice-profile endpoints.
-- The source-only marker is: wallet read scope is limited to Auth
-  checkout-data, delivery-address, and invoice-profile endpoints.
-- The source-only marker is: wallet read scope is limited to Auth checkout-data, delivery-address, and invoice-profile endpoints.
+- The gated fetch source path must limit reads to Auth checkout-data,
+  delivery-address, and invoice-profile endpoints.
 - Runtime evidence must not print Authorization headers, bearer tokens, JWTs,
   refresh tokens, cookies, raw wallet response bodies, decoded token claims,
   customer PII, service credentials, or request/response bodies.
-- The source-only marker is: runtime evidence must not print Authorization
-  headers, bearer tokens, JWTs, refresh tokens, cookies, raw wallet response
-  bodies, decoded token claims, customer PII, or service credentials.
-- The source-only marker is: runtime evidence must not print Authorization headers, bearer tokens, JWTs.
+- Runtime evidence must not print Authorization headers, bearer tokens, JWTs,
+  refresh tokens, cookies, raw wallet response bodies, decoded token claims,
+  customer PII, or service credentials.
 - Checkout submit, Auth wallet mutation, payment creation, Warehouse
   reservation, notification sending, DB read/write, Kubernetes mutation, Vault
   mutation, and production customer/order data reads are forbidden in the
@@ -125,17 +125,17 @@ synthetic state transitions only. The verifier must prove:
 - selector behavior evidence must not execute checkout submit, Auth wallet
   mutation, payment creation, Warehouse reservation, or notification sending.
 
-This policy approves only the source/runtime checkout selector UI scaffold. It
-does not approve runtime wallet fetches, browser-session token handoff, live
-smoke, checkout submission, payment creation, Warehouse reservation, or
-notification sending.
+This policy approves only the source/runtime checkout selector UI scaffold and
+the gated browser-session fetch evidence source path. It does not approve default
+runtime wallet fetches, checkout submission, payment creation, Warehouse
+reservation, or notification sending.
 
 ## Runtime Selector UI Integration
 
 - The checkout form may render delivery and invoice selectors from in-memory
   `CLIPLOT_AUTH_WALLET_CHECKOUT_DATA` rows that were obtained by an approved
   future browser-session lane.
-- The browser must not call Auth wallet endpoints in this selector UI lane.
+- The browser UI must not call Auth wallet endpoints directly in this selector UI lane; the approved evidence path is the guarded script/runtime helper.
 - The selector controls must not have checkout form `name` attributes, so Auth
   wallet row ids and ownership fields cannot be submitted as order truth.
 - Default delivery rows may prefill name, email, phone, and delivery address
@@ -255,8 +255,8 @@ npm run smoke:auth-wallet-browser-session -- <base-url>
 
 ## Forbidden In This Contract Lane
 
-- Runtime wallet fetch integration.
-- Auth wallet selector UI.
+- Ungated runtime wallet fetch integration.
+- Direct browser UI calls to Auth wallet endpoints.
 - Checkout submit behavior changes.
 - Live calls to Auth, Orders, Payments, Warehouse, Notifications, or Catalog.
 - Kubernetes, deploy, DB, Vault, token, cookie, or secret mutation.
@@ -298,6 +298,8 @@ Sanitized evidence:
   `customerDataPrinted=false` for all wallet-read results.
 
 This closes the approved synthetic browser/session wallet-read evidence gate.
-Runtime checkout selector implementation, no-PII frontend exposure evidence,
+Gated runtime checkout selector implementation, no-PII frontend exposure evidence,
 Auth wallet row-to-checkout/order field mapping implementation, and guest
-fallback implementation remain blocked until separately scoped.
+fallback implementation are now covered by source/runtime evidence. Checkout
+submit, Auth wallet mutation, payment, Warehouse, notification, DB, Kubernetes,
+Vault, and ungated wallet fetch execution remain blocked until separately scoped.
