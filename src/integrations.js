@@ -5733,7 +5733,7 @@ export async function customerStatusSurfaceReadiness() {
     && callbackPolicy.callbackPersistence === false
     && callbackPolicy.callbackReplayEnabled === false;
   const mappingOwnershipApproved = mappingOwnership.status === 'approved_order_payment_status_mapping_ownership'
-    && mappingOwnership.cliplotAuthoritative === false
+    && mappingOwnership.ownership?.cliplot?.authoritative === false
     && mappingOwnership.mutation === false
     && mappingOwnership.persistence === false
     && mappingOwnership.providerCall === false;
@@ -5801,9 +5801,9 @@ export async function customerStatusSurfaceReadiness() {
     },
     mappingOwnership: {
       status: mappingOwnership.status,
-      orderOwner: mappingOwnership.orderOwner,
-      paymentOwner: mappingOwnership.paymentOwner,
-      cliplotAuthoritative: mappingOwnership.cliplotAuthoritative,
+      orderOwner: mappingOwnership.ownership?.orders?.owner || 'orders-microservice',
+      paymentOwner: mappingOwnership.ownership?.payments?.owner || 'payments-microservice',
+      cliplotAuthoritative: mappingOwnership.ownership?.cliplot?.authoritative === true,
     },
     customerSafeStatusContract: paymentReadiness.customerSafeStatusContract,
     forbiddenClaimsBeforeApproval: [
