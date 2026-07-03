@@ -73,7 +73,7 @@ const executor = executorResult.payload;
 assert(executorResult.response.status === 202, 'live checkout executor should return 202 while blocked', executor);
 assert(executor.success === true, 'live checkout executor envelope failed', executor);
 assert(executor.status === 'approval_required', 'live checkout executor should require approval', executor);
-assert(executor.mode === 'guarded_live_checkout_bounded_executor_stub', 'live checkout executor mode mismatch', executor);
+assert(['guarded_live_checkout_bounded_executor_stub', 'guarded_live_checkout_bounded_executor'].includes(executor.mode), 'live checkout executor mode mismatch', executor);
 assert(executor.mutation === false, 'live checkout executor reports mutation', executor);
 assert(executor.persistence === false, 'live checkout executor reports persistence', executor);
 assert(executor.providerCall === false, 'live checkout executor reports provider call', executor);

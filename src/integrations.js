@@ -2363,6 +2363,8 @@ export async function runBoundedLiveCheckoutExecutor(request = {}) {
   const orderIdempotencyKey = String(request.orderIdempotencyKey || '').trim();
   const paymentIdempotencyKey = String(request.paymentIdempotencyKey || '').trim();
   const notificationIdempotencyKey = String(request.notificationIdempotencyKey || '').trim();
+  const approvedBy = String(request.approvedBy || '').trim().slice(0, 128);
+  const reasonCode = String(request.reasonCode || 'CLIPLOT_OWNER_FULL_CHECKOUT_LIVE_WINDOW').trim().slice(0, 128);
 
   if (request.confirm !== 'LIVE_CHECKOUT_EXECUTION_WINDOW') blockers.push('missing_LIVE_CHECKOUT_EXECUTION_WINDOW_confirmation');
   if (!executionWindow || executionWindow !== serviceConfig.liveCheckoutExecutionWindow) blockers.push('invalid_or_missing_live_checkout_execution_window');
@@ -2372,33 +2374,290 @@ export async function runBoundedLiveCheckoutExecutor(request = {}) {
   if (request.duplicateCheck !== 'IDEMPOTENCY_KEYS_NOT_USED') blockers.push('missing_checkout_duplicate_check');
   if (request.rollbackPlan !== 'ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED') blockers.push('missing_checkout_rollback_plan');
   if (request.validationPlan !== 'EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS') blockers.push('missing_checkout_validation_plan');
+  if (!approvedBy) blockers.push('missing_approvedBy');
 
-  return {
-    httpStatus: 202,
-    body: {
-      success: true,
-      status: 'approval_required',
-      mode: 'guarded_live_checkout_bounded_executor_stub',
-      mutation: false,
-      persistence: false,
-      providerCall: false,
-      orderCreated: false,
-      warehouseReserved: false,
-      paymentCreated: false,
-      notificationSent: false,
-      liveExecutionAllowed: false,
-      blockers: [...new Set(blockers)],
-      packet,
-      sensitiveDataPolicy: [
-        'no raw customer PII',
-        'no PAYMENT_API_KEY or webhook key values',
-        'no raw provider payloads',
-        'no raw notification recipient or message body',
-      ],
+  if (blockers.length) {
+    return {
+      httpStatus: 202,
+      body: {
+        success: true,
+        status: 'approval_required',
+        mode: 'guarded_live_checkout_bounded_executor',
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        orderCreated: false,
+        warehouseReserved: false,
+        paymentCreated: false,
+        notificationSent: false,
+        liveExecutionAllowed: false,
+        blockers: [...new Set(blockers)],
+        packet,
+        sensitiveDataPolicy: [
+          'no raw customer PII',
+          'no PAYMENT_API_KEY or webhook key values',
+          'no raw provider payloads',
+          'no raw notification recipient or message body',
+        ],
+      },
+    };
+  }
+
+  const products = await fetchCatalogProducts();
+  const product = products.find((item) => item?.warehouseId && item?.productSource === 'catalog');
+  if (!product) {
+    return {
+      httpStatus: 409,
+      body: {
+        success: false,
+        status: 'live_checkout_product_scope_missing',
+        mode: 'guarded_live_checkout_bounded_executor',
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        orderCreated: false,
+        warehouseReserved: false,
+        paymentCreated: false,
+        notificationSent: false,
+        liveExecutionAllowed: false,
+      },
+    };
+  }
+
+  const checkout = buildLiveOrderWarehouseSmokeCheckout(await liveOrderWarehouseSmokePlan(), {
+    externalOrderId: normalizeExternalOrderId(request.externalOrderId) || `cliplot-live-checkout-${Date.now()}`,
+  });
+  const validationErrors = validateCheckout(checkout);
+  if (validationErrors.length) {
+    return {
+      httpStatus: 400,
+      body: {
+        success: false,
+        status: 'live_checkout_payload_validation_failed',
+        mode: 'guarded_live_checkout_bounded_executor',
+        errors: validationErrors,
+        mutation: false,
+        persistence: false,
+        providerCall: false,
+        orderCreated: false,
+        warehouseReserved: false,
+        paymentCreated: false,
+        notificationSent: false,
+        liveExecutionAllowed: false,
+      },
+    };
+  }
+
+  const liveRequestOptions = { timeoutMs: liveSmokeRequestTimeoutMs };
+  const approval = {
+    approved: true,
+    approvalType: 'human',
+    approvedBy,
+    reasonCode,
+    externalOrderId: checkout.externalOrderId,
+    approvalIdFingerprint: stableFingerprint(executionWindow),
+    sideEffectsHandled: {
+      payment: true,
+      warehouse: true,
+      notification: true,
+      crm: true,
+      channel: true,
     },
   };
-}
+  const evidence = {};
+  let orderId = null;
+  let paymentCreated = false;
+  let notificationSent = false;
 
+  try {
+    const beforeReadiness = await guardedWarehouseReservationReadiness(checkout);
+    evidence.beforeReadiness = beforeReadiness;
+    if (beforeReadiness.status !== 'validated_no_mutation' || beforeReadiness.valid !== true) {
+      return {
+        httpStatus: 409,
+        body: {
+          success: false,
+          status: 'warehouse_readiness_blocked_before_live_checkout',
+          mode: 'guarded_live_checkout_bounded_executor',
+          beforeReadiness,
+          mutation: false,
+          persistence: false,
+          providerCall: false,
+          orderCreated: false,
+          warehouseReserved: false,
+          paymentCreated: false,
+          notificationSent: false,
+          liveExecutionAllowed: false,
+        },
+      };
+    }
+
+    const orderPayload = buildOrderCreatePayload(checkout);
+    const create = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, orderIdempotencyKey, liveRequestOptions);
+    orderId = extractOrderId(create);
+    evidence.create = compactOrderEvidence(create);
+    if (!orderId) {
+      return {
+        httpStatus: 502,
+        body: {
+          success: false,
+          status: 'live_checkout_order_create_missing_order_id',
+          mode: 'guarded_live_checkout_bounded_executor',
+          createEvidence: evidence.create,
+          mutation: true,
+          persistence: true,
+          providerCall: true,
+          orderCreated: true,
+          warehouseReserved: 'unknown',
+          paymentCreated: false,
+          notificationSent: false,
+          liveExecutionAllowed: true,
+        },
+      };
+    }
+
+    evidence.afterCreateReservation = compactWarehouseEvidence(await readWarehouseReservation(orderId, liveRequestOptions));
+
+    const replay = await postOrderPayload(serviceConfig.ordersCreatePath, checkout, orderPayload, orderIdempotencyKey, liveRequestOptions);
+    const replayOrderId = extractOrderId(replay);
+    evidence.replay = compactOrderEvidence(replay);
+    if (replayOrderId !== orderId) {
+      const cleanup = await attemptLiveOrderWarehouseSmokeCleanup(orderId, approval, checkout);
+      return {
+        httpStatus: 409,
+        body: {
+          success: false,
+          status: cleanup.success
+            ? 'live_checkout_order_replay_id_mismatch_cleanup_completed'
+            : 'live_checkout_order_replay_id_mismatch_cleanup_incomplete',
+          mode: 'guarded_live_checkout_bounded_executor',
+          orderId,
+          replayOrderId: replayOrderId || null,
+          mutation: true,
+          persistence: true,
+          providerCall: true,
+          orderCreated: true,
+          warehouseReserved: true,
+          paymentCreated: false,
+          notificationSent: false,
+          liveExecutionAllowed: true,
+          cleanup,
+          evidence,
+        },
+      };
+    }
+
+    const paymentPayload = buildPaymentCreatePayload(checkout, { id: orderId });
+    const payment = await createPayment(checkout, { id: orderId }, paymentIdempotencyKey);
+    paymentCreated = true;
+    evidence.payment = {
+      status: payment?.status || payment?.data?.status || null,
+      resultFingerprint: stableFingerprint(payment),
+      payloadFingerprint: stableFingerprint({
+        orderId,
+        applicationId: paymentPayload.applicationId,
+        amount: paymentPayload.amount,
+        currency: paymentPayload.currency,
+        paymentMethod: paymentPayload.paymentMethod,
+      }),
+      idempotencyKeyFingerprint: stableFingerprint(paymentIdempotencyKey),
+    };
+
+    const notificationPayload = buildOrderConfirmationNotification(checkout);
+    const notification = await createNotification(checkout, notificationPayload, notificationIdempotencyKey);
+    notificationSent = true;
+    evidence.notification = {
+      status: notification?.status || notification?.data?.status || null,
+      resultFingerprint: stableFingerprint(notification),
+      payloadFingerprint: stableFingerprint({
+        channel: notificationPayload.channel,
+        type: notificationPayload.type,
+        service: notificationPayload.service,
+        purpose: notificationPayload.purpose,
+        orderId: notificationPayload.templateData?.orderId || null,
+      }),
+      idempotencyKeyFingerprint: stableFingerprint(notificationIdempotencyKey),
+    };
+
+    evidence.cancel = compactOrderEvidence(await cancelOrderThroughOrders(orderId, approval, liveRequestOptions));
+    evidence.orderReadback = compactOrderEvidence(await readOrderWithStatusToken(orderId, liveRequestOptions));
+    evidence.afterCancelReservation = compactWarehouseEvidence(await readWarehouseReservation(orderId, liveRequestOptions));
+    evidence.afterReadiness = await guardedWarehouseReservationReadiness(checkout);
+
+    const cleanup = {
+      attempted: true,
+      orderId,
+      success: cleanupCompleted(evidence),
+      cancel: evidence.cancel,
+      orderReadback: evidence.orderReadback,
+      afterCancelReservation: evidence.afterCancelReservation,
+      afterReadiness: evidence.afterReadiness,
+      errors: [],
+    };
+
+    return {
+      httpStatus: 201,
+      body: {
+        success: true,
+        status: cleanup.success
+          ? 'live_checkout_bounded_execution_completed_cleanup_completed'
+          : 'live_checkout_bounded_execution_completed_cleanup_incomplete',
+        mode: 'guarded_live_checkout_bounded_executor',
+        mutation: true,
+        persistence: true,
+        providerCall: true,
+        orderCreated: true,
+        warehouseReserved: true,
+        paymentCreated,
+        notificationSent,
+        liveExecutionAllowed: true,
+        checkoutIntent: checkoutIntentEvidence(checkout),
+        orderId,
+        cleanup,
+        evidence,
+        sensitiveDataPolicy: [
+          'no raw customer PII',
+          'no PAYMENT_API_KEY or webhook key values',
+          'no raw provider payloads',
+          'no raw notification recipient or message body',
+        ],
+      },
+    };
+  } catch (error) {
+    const cleanup = orderId
+      ? await attemptLiveOrderWarehouseSmokeCleanup(orderId, approval, checkout)
+      : { attempted: false, orderId: null, success: false, errors: [] };
+    return {
+      httpStatus: 502,
+      body: {
+        success: false,
+        status: cleanup.success
+          ? 'live_checkout_bounded_execution_failed_cleanup_completed'
+          : 'live_checkout_bounded_execution_failed_cleanup_incomplete',
+        mode: 'guarded_live_checkout_bounded_executor',
+        failedStep: paymentCreated ? 'notification_or_cleanup' : (orderId ? 'payment_or_cleanup' : 'order_create'),
+        orderId,
+        error: compactSmokeError(error),
+        mutation: Boolean(orderId) || paymentCreated || notificationSent,
+        persistence: Boolean(orderId) || paymentCreated || notificationSent,
+        providerCall: Boolean(orderId) || paymentCreated || notificationSent,
+        orderCreated: Boolean(orderId),
+        warehouseReserved: Boolean(orderId),
+        paymentCreated,
+        notificationSent,
+        liveExecutionAllowed: true,
+        cleanup,
+        evidence,
+        sensitiveDataPolicy: [
+          'no raw customer PII',
+          'no PAYMENT_API_KEY or webhook key values',
+          'no raw provider payloads',
+          'no raw notification recipient or message body',
+        ],
+      },
+    };
+  }
+}
 
 export async function liveFlagsOperatorPreflightChecklistPacket() {
   const executionWindow = await liveCheckoutExecutionWindowPacket();
