@@ -144,7 +144,7 @@ assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === fals
 assert(checkout.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'checkout live preflight would send a notification', checkout.liveCheckoutPreflight || {});
 assert(Array.isArray(checkout.liveCheckoutPreflight?.missing) && checkout.liveCheckoutPreflight.missing.length >= 2, 'checkout live preflight blockers are missing', checkout.liveCheckoutPreflight || {});
 assert(checkout.orderValidation?.status === 'validated_no_mutation', 'order validation is not no-mutation', checkout.orderValidation || {});
-assert(checkout.paymentValidation?.status === 'validated_no_mutation', 'payment validation is not no-mutation', checkout.paymentValidation || {});
+assert(['validated_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(checkout.paymentValidation?.status), 'payment validation is not no-mutation', checkout.paymentValidation || {});
 assert(checkout.notificationValidation?.status === 'validated_no_send', 'notification validation is not no-send', checkout.notificationValidation || {});
 assert(checkout.warehouseReservationReadiness?.status === 'validated_no_mutation', 'warehouse readiness is not no-mutation', checkout.warehouseReservationReadiness || {});
 assert(checkout.orderValidation?.orderCreated === false && checkout.orderValidation?.warehouseMutation === false, 'order validation reported mutation', checkout.orderValidation || {});

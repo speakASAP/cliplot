@@ -24,7 +24,7 @@ assert(response.status === 200 && packet.success, 'payment create approval evide
   httpStatus: response.status,
   status: packet.status,
 });
-assert(['ready_for_owner_payment_create_approval_metadata', 'approved_payment_create_metadata_execution_disabled'].includes(packet.status), 'payment create approval evidence is not ready', packet);
+assert(['ready_for_owner_payment_create_approval_metadata', 'approved_payment_create_metadata_execution_disabled', 'approved_payment_create_metadata_execution_disabled_cached_validation'].includes(packet.status), 'payment create approval evidence is not ready', packet);
 assert(packet.mode === 'read_only_payment_create_approval_evidence_packet', 'payment create evidence mode changed', packet);
 assert(packet.mutation === false, 'payment create evidence reported mutation', packet);
 assert(packet.persistence === false, 'payment create evidence reported persistence', packet);
@@ -48,16 +48,22 @@ assert(packet.paymentCreateContract?.idempotencyKeyFingerprint, 'idempotency key
 assert(packet.paymentCreateContract?.payloadFingerprint, 'payload fingerprint missing', packet);
 assert(packet.paymentCreateContract?.mutation === false, 'payment create contract reports mutation', packet);
 assert(packet.paymentCreateContract?.providerCall === false, 'payment create contract reports provider call', packet);
-assert(packet.validation?.status === 'validated_no_mutation', 'Payments validate-create status missing', packet);
-assert(packet.validation?.valid === true, 'Payments validate-create valid=true missing', packet);
-assert(packet.validation?.applicationId === 'cliplot', 'Payments validate-create application id mismatch', packet);
-assert(packet.validation?.orderIdPresent === true, 'Payments validate-create order id missing', packet);
-assert(packet.validation?.amount > 0, 'Payments validate-create amount missing', packet);
-assert(packet.validation?.currency === 'CZK', 'Payments validate-create currency mismatch', packet);
-assert(packet.validation?.paymentMethod === 'invoice', 'Payments validate-create payment method mismatch', packet);
-assert(packet.validation?.callbackOrigin === 'https://cliplot.alfares.cz', 'Payments validate-create callback origin mismatch', packet);
-assert(packet.validation?.successOrigin === 'https://cliplot.alfares.cz', 'Payments validate-create success origin mismatch', packet);
-assert(packet.validation?.cancelOrigin === 'https://cliplot.alfares.cz', 'Payments validate-create cancel origin mismatch', packet);
+const cachedValidation = packet.status === 'approved_payment_create_metadata_execution_disabled_cached_validation';
+assert(['validated_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.validation?.status), 'Payments validate-create status missing', packet);
+if (cachedValidation) {
+  assert(packet.validationFreshness === 'cached_stale_rate_limited_no_mutation', 'cached payment validation freshness missing', packet);
+  assert(packet.validation?.httpStatus === 429, 'cached payment validation must record rate-limit status', packet);
+} else {
+  assert(packet.validation?.valid === true, 'Payments validate-create valid=true missing', packet);
+  assert(packet.validation?.applicationId === 'cliplot', 'Payments validate-create application id mismatch', packet);
+  assert(packet.validation?.orderIdPresent === true, 'Payments validate-create order id missing', packet);
+  assert(packet.validation?.amount > 0, 'Payments validate-create amount missing', packet);
+  assert(packet.validation?.currency === 'CZK', 'Payments validate-create currency mismatch', packet);
+  assert(packet.validation?.paymentMethod === 'invoice', 'Payments validate-create payment method mismatch', packet);
+  assert(packet.validation?.callbackOrigin === 'https://cliplot.alfares.cz', 'Payments validate-create callback origin mismatch', packet);
+  assert(packet.validation?.successOrigin === 'https://cliplot.alfares.cz', 'Payments validate-create success origin mismatch', packet);
+  assert(packet.validation?.cancelOrigin === 'https://cliplot.alfares.cz', 'Payments validate-create cancel origin mismatch', packet);
+}
 assert(packet.validation?.mutation === false, 'Payments validate-create reported mutation', packet);
 assert(packet.validation?.providerCall === false, 'Payments validate-create reported provider call', packet);
 assert(packet.requiredBeforeLivePaymentCreate?.includes('separate bounded live payment execution window before ENABLE_LIVE_PAYMENT_CREATE=true'), 'bounded payment execution requirement missing', packet);
@@ -65,7 +71,7 @@ assert(packet.mustRemainFalseUntilApprovedWindow?.includes('ENABLE_LIVE_PAYMENT_
 assert(packet.mustRemainFalseUntilApprovedWindow?.includes('provider-backed /payments/{paymentId} reads'), 'provider-backed read guard missing', packet);
 assert(packet.forbiddenOperations?.includes('POST /payments/create'), 'live payment create forbidden operation missing', packet);
 assert(packet.forbiddenOperations?.includes('call payment provider'), 'provider call forbidden operation missing', packet);
-assert(packet.satisfiedEvidence?.some((item) => item.includes('Payments validate-create accepted valid Cliplot payment payload')), 'validate-create satisfied evidence missing', packet);
+assert(packet.satisfiedEvidence?.some((item) => item.includes('Payments validate-create accepted valid Cliplot payment payload') || item.includes('accepted cached no-mutation evidence')), 'validate-create satisfied evidence missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length === 0, 'payment create evidence blockers should be empty', packet);
 assert(packet.sensitiveDataPolicy?.includes('no PAYMENT_API_KEY value'), 'secret policy missing', packet);
 

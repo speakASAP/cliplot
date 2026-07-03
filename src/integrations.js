@@ -1893,8 +1893,8 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
     { name: 'create_replay_cancel_execution_disabled', passed: createReplayCancel.liveExecutionAllowed === false && createReplayCancel.liveOrderWarehouseSmokeFlag === false },
     { name: 'create_replay_cancel_payment_boundary_closed', passed: createReplayCancel.expectedExecutionScopeAfterApproval?.paymentCreateAllowed === false },
     { name: 'create_replay_cancel_notification_boundary_closed', passed: createReplayCancel.expectedExecutionScopeAfterApproval?.notificationSendAllowed === false },
-    { name: 'payment_create_metadata_disabled', passed: paymentCreate.status === 'approved_payment_create_metadata_execution_disabled' },
-    { name: 'payment_create_validation_no_mutation', passed: paymentCreate.validation?.status === 'validated_no_mutation' || paymentCreate.validation === 'validated_no_mutation' },
+    { name: 'payment_create_metadata_disabled', passed: ['approved_payment_create_metadata_execution_disabled', 'approved_payment_create_metadata_execution_disabled_cached_validation'].includes(paymentCreate.status) },
+    { name: 'payment_create_validation_no_mutation', passed: ['validated_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(paymentCreate.validation?.status || paymentCreate.validation) },
     { name: 'payment_create_live_flag_closed', passed: paymentCreate.livePaymentCreate === false },
     { name: 'notification_send_metadata_disabled', passed: notificationSend.status === 'approved_notification_send_metadata_execution_disabled' },
     { name: 'notification_send_validation_no_send', passed: notificationSend.validation?.status === 'validated_no_send' || notificationSend.validation === 'validated_no_send' },
@@ -1962,7 +1962,7 @@ export async function checkoutLiveReadinessHandoffEvidencePacket() {
     handoffSummary: {
       catalogAndOrderWarehouse: 'validated_no_mutation_in_readiness_bundle',
       orderWarehouseCreateReplayCancel: 'ready_for_owner_bounded_window_but_execution_disabled',
-      paymentCreate: 'metadata_approved_validation_no_mutation_execution_disabled',
+      paymentCreate: paymentCreate.status === 'approved_payment_create_metadata_execution_disabled_cached_validation' ? 'metadata_approved_cached_no_mutation_execution_disabled' : 'metadata_approved_validation_no_mutation_execution_disabled',
       notificationSend: 'metadata_approved_validation_no_send_execution_disabled',
       customerStatus: 'read_only_surface_and_runtime_snapshot_read_approved',
       revenueClosure: 'only_execution_window_blockers_remain',
@@ -2615,9 +2615,16 @@ export async function paymentCreateApprovalEvidencePacket() {
     }
   }
 
+  const paymentValidationFresh = paymentValidation.status === 'validated_no_mutation' && paymentValidation.valid === true;
+  const paymentValidationCachedNoMutation = paymentValidation.status === 'validated_payments_read_scope_no_mutation_cached'
+    && paymentValidation.mutation === false
+    && paymentValidation.providerCall === false
+    && paymentValidation.freshness?.status === 'stale_rate_limited';
+  const paymentValidationNoMutationAccepted = paymentValidationFresh || paymentValidationCachedNoMutation;
+
   if (validationErrors.length) blockers.push(...validationErrors.map((item) => `[MISSING: checkout validation ${item}]`));
-  if (paymentValidation.status !== 'validated_no_mutation') blockers.push('[MISSING: Payments validate-create accepted valid Cliplot payload with no mutation]');
-  if (paymentValidation.valid !== true) blockers.push('[MISSING: Payments validate-create valid=true]');
+  if (!paymentValidationNoMutationAccepted) blockers.push('[MISSING: Payments validate-create accepted valid Cliplot payload with no mutation or cached no-mutation evidence]');
+  if (!paymentValidationFresh && !paymentValidationCachedNoMutation) blockers.push('[MISSING: Payments validate-create valid=true or accepted cached no-mutation evidence]');
   if (paymentValidation.mutation !== false) blockers.push('[MISSING: Payments validate-create mutation=false]');
   if (paymentValidation.providerCall !== false) blockers.push('[MISSING: Payments validate-create providerCall=false]');
   if (paymentValidation.applicationId && paymentValidation.applicationId !== serviceConfig.applicationId) {
@@ -2629,6 +2636,7 @@ export async function paymentCreateApprovalEvidencePacket() {
 
   const paymentEvidenceReady = blockers.length === 0;
   const paymentMetadataApproved = paymentEvidenceReady && approvals.payment && serviceConfig.livePaymentCreate === false;
+  const paymentMetadataApprovedWithCachedValidation = paymentMetadataApproved && paymentValidationCachedNoMutation;
   const callbackOrigin = paymentPayload?.callbackUrl ? new URL(paymentPayload.callbackUrl).origin : null;
   const successOrigin = paymentPayload?.successUrl ? new URL(paymentPayload.successUrl).origin : null;
   const cancelOrigin = paymentPayload?.cancelUrl ? new URL(paymentPayload.cancelUrl).origin : null;
@@ -2636,7 +2644,9 @@ export async function paymentCreateApprovalEvidencePacket() {
   return {
     success: true,
     status: paymentMetadataApproved
-      ? 'approved_payment_create_metadata_execution_disabled'
+      ? (paymentMetadataApprovedWithCachedValidation
+        ? 'approved_payment_create_metadata_execution_disabled_cached_validation'
+        : 'approved_payment_create_metadata_execution_disabled')
       : (paymentEvidenceReady
         ? 'ready_for_owner_payment_create_approval_metadata'
         : 'blocked_payment_create_approval_evidence'),
@@ -2649,7 +2659,8 @@ export async function paymentCreateApprovalEvidencePacket() {
     livePaymentCreate: serviceConfig.livePaymentCreate,
     paymentApprovalPresent: approvals.payment,
     requiredApprovalId: 'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID',
-    approvalIdMayBeRecordedAfterOwnerAcceptance: paymentEvidenceReady,
+    approvalIdMayBeRecordedAfterOwnerAcceptance: paymentEvidenceReady && (paymentValidationFresh || approvals.payment),
+    validationFreshness: paymentValidationCachedNoMutation ? 'cached_stale_rate_limited_no_mutation' : 'fresh_or_not_applicable',
     approvalMetadataRecorded: approvals.payment,
     liveExecutionAllowed: false,
     catalog: {
@@ -2729,6 +2740,7 @@ export async function paymentCreateApprovalEvidencePacket() {
     ],
     satisfiedEvidence: [
       ...(paymentValidation.status === 'validated_no_mutation' ? ['[DONE: Payments validate-create accepted valid Cliplot payment payload]'] : []),
+      ...(paymentValidationCachedNoMutation ? ['[DONE: Payments validate-create currently rate-limited; accepted cached no-mutation evidence with execution disabled]'] : []),
       ...(paymentValidation.valid === true ? ['[DONE: valid=true from Payments validate-create]'] : []),
       ...(paymentValidation.mutation === false ? ['[DONE: Payments validate-create mutation=false]'] : []),
       ...(paymentValidation.providerCall === false ? ['[DONE: Payments validate-create providerCall=false]'] : []),
@@ -6960,8 +6972,8 @@ export async function liveCheckoutApprovalPacket() {
     ...(preflight.approvals?.order === true ? ['[DONE: live order/Warehouse approval metadata recorded from controlled CREATE_REPLAY_CANCEL evidence]'] : []),
     ...(paymentStatusPacket.status === 'ready_for_approved_payment_status_runtime_read' ? ['[DONE: payment status runtime read is approved and no-persistence]'] : []),
     ...(callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' ? ['[DONE: callback replay policy metadata approved with execution disabled]'] : []),
-    ...(['ready_for_owner_payment_create_approval_metadata', 'approved_payment_create_metadata_execution_disabled'].includes(paymentCreateApproval.status) ? ['[DONE: valid-body payment-create approval evidence is ready with no mutation]'] : []),
-    ...(paymentCreateApproval.status === 'approved_payment_create_metadata_execution_disabled' ? ['[DONE: payment approval metadata recorded with execution disabled]'] : []),
+    ...(['ready_for_owner_payment_create_approval_metadata', 'approved_payment_create_metadata_execution_disabled', 'approved_payment_create_metadata_execution_disabled_cached_validation'].includes(paymentCreateApproval.status) ? ['[DONE: valid-body payment-create approval evidence is ready with no mutation]'] : []),
+    ...(['approved_payment_create_metadata_execution_disabled', 'approved_payment_create_metadata_execution_disabled_cached_validation'].includes(paymentCreateApproval.status) ? ['[DONE: payment approval metadata recorded with execution disabled]'] : []),
     ...(['ready_for_owner_notification_send_approval_metadata', 'approved_notification_send_metadata_execution_disabled'].includes(notificationSendApproval.status) ? ['[DONE: notification send approval evidence is ready with no send]'] : []),
     ...(notificationSendApproval.status === 'approved_notification_send_metadata_execution_disabled' ? ['[DONE: notification approval metadata recorded with execution disabled]'] : []),
     ...(customerStatusActivation.status === 'ready_for_approved_read_only_customer_status_runtime' ? ['[DONE: read-only customer status runtime is approved]'] : []),

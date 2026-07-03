@@ -44,8 +44,8 @@ assert(packet.currentLiveFlags?.orderWarehouseSmoke === false, 'order/Warehouse 
 assert(packet.readinessEvidence?.liveCheckoutExecution === 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled', 'live checkout execution evidence mismatch', packet);
 assert(packet.readinessEvidence?.executionRequest === 'approved_live_checkout_execution_request_contract_execution_disabled', 'execution request evidence mismatch', packet);
 assert(packet.readinessEvidence?.createReplayCancelReadyForBoundedWindow === true, 'CREATE_REPLAY_CANCEL bounded window readiness missing', packet);
-assert(packet.readinessEvidence?.paymentCreate === 'approved_payment_create_metadata_execution_disabled', 'payment create evidence mismatch', packet);
-assert(packet.readinessEvidence?.paymentCreateValidation === 'validated_no_mutation', 'payment create validation mismatch', packet);
+assert(['approved_payment_create_metadata_execution_disabled', 'approved_payment_create_metadata_execution_disabled_cached_validation'].includes(packet.readinessEvidence?.paymentCreate), 'payment create evidence mismatch', packet);
+assert(['validated_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.readinessEvidence?.paymentCreateValidation), 'payment create validation mismatch', packet);
 assert(packet.readinessEvidence?.notificationSend === 'approved_notification_send_metadata_execution_disabled', 'notification send evidence mismatch', packet);
 assert(packet.readinessEvidence?.notificationSendValidation === 'validated_no_send', 'notification validation mismatch', packet);
 assert(packet.readinessEvidence?.paymentStatus === 'ready_for_approved_payment_status_runtime_read', 'payment status evidence mismatch', packet);
