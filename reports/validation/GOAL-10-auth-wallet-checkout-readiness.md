@@ -111,6 +111,12 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
   schema/status metadata, and blocker labels. The JSON evidence does not print
   fixture email, phone, street, company/tax/VAT values, wallet ids, Auth
   ownership fields, tokens, cookies, or raw wallet response bodies.
+- `scripts/auth-wallet-checkout-readiness.js` verifies source-only guest
+  fallback policy for missing Auth session, wallet 401, wallet 403, timeout,
+  malformed response, and empty wallet rows. The evidence is limited to status
+  labels and booleans: manual checkout remains available, cart remains
+  preserved, Auth wallet mutation is false, checkout submit is false, and the
+  submit path remains `/api/checkout/submit`.
 - `scripts/auth-wallet-checkout-readiness.js` now verifies the contract markers
   and still fails if runtime wallet endpoint integration appears before gates
   are cleared.
@@ -125,7 +131,7 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
   guarded checkout renderer.
 - Feature: Dependency-gated Auth wallet checkout readiness.
 - Task: Add and refresh source-only plan and verifier after the upstream Auth
-  wallet 401 gate.
+  wallet 401 gate, including source-only guest fallback policy.
 - Execution Plan: `implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md`.
 - Coding Prompt: Source-only verifier, no live calls, fail on premature runtime
   wallet endpoint usage.

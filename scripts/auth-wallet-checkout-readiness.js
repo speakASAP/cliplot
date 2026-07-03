@@ -258,12 +258,40 @@ const sourceOnlyWalletMappingEvidence = {
   forbiddenFixtureValueProtected: !serializedSnapshotFixtures.includes('MUST_NOT_COPY'),
 };
 
+const sourceOnlyGuestFallbackPolicy = {
+  status: 'source_only_guest_fallback_policy_verified',
+  runtimeWalletCodePresent: false,
+  checkoutSubmitPath: '/api/checkout/submit',
+  sanitizedEvidenceOnly: true,
+  fallbackCases: [
+    'missing_auth_session',
+    'wallet_401',
+    'wallet_403',
+    'wallet_timeout',
+    'wallet_malformed_response',
+    'wallet_empty_rows',
+  ].map((caseName) => ({
+    case: caseName,
+    manualCheckoutAvailable: true,
+    cartPreserved: true,
+    walletMutation: false,
+    checkoutSubmit: false,
+  })),
+  forbiddenOperations: [
+    'Auth wallet mutation',
+    'checkout submit',
+    'payment creation',
+    'Warehouse reservation',
+    'notification send',
+  ],
+};
+
 const blockers = [
   '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
   '[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]',
   '[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]',
   '[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
-  '[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]',
+  '[MISSING: approved runtime Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]',
 ];
 
 const sourceKnownFacts = [
@@ -276,6 +304,7 @@ const sourceKnownFacts = [
   'Auth source-defines checkout-data top-level fields, defaults fields, and sanitized delivery/invoice wallet row field names.',
   'Cliplot source-defines the no-PII wallet exposure policy; runtime wallet code is still absent and implementation evidence remains gated.',
   'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
+  'Cliplot source-defines guest fallback behavior for missing, rejected, timed-out, malformed, or empty Auth wallet reads; runtime evidence remains gated.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -350,12 +379,21 @@ const hasWalletContract = includesAll(walletContract, [
   'Source-Only Wallet Mapping Acceptance Criteria',
   'Pure mapping helpers',
   'invoice recipient email is `email`',
+  'Source-Only Guest Fallback Acceptance Criteria',
+  'missing Auth session',
+  '401',
+  '403',
+  'timeout',
+  'malformed response',
+  'empty wallet',
+  'manual checkout must remain available',
+  'cart must remain preserved',
   'Delivery address mapping to the checkout snapshot',
   'Invoice profile mapping to the checkout snapshot',
   'The checkout submit path remains `/api/checkout/submit` and must receive',
   'resolved immutable snapshots, not Auth wallet ids',
   'Runtime integration remains blocked until selector behavior, browser-session',
-  'handling, no-PII implementation evidence, field mapping, and guest fallback',
+  'fallback evidence are covered by source validation and approved synthetic',
 ]);
 const runtimeWalletReferences = Object.values(sources)
   .filter(({ path }) => path !== sourceFiles.walletContract)
@@ -480,6 +518,34 @@ assert(
   'Cliplot source-only mapping evidence leaked wallet ids, system fields, aliases, or forbidden fixture values',
   { sourceOnlyWalletMappingEvidence },
 );
+assert(
+  sourceOnlyGuestFallbackPolicy.status === 'source_only_guest_fallback_policy_verified'
+    && sourceOnlyGuestFallbackPolicy.runtimeWalletCodePresent === false
+    && sourceOnlyGuestFallbackPolicy.checkoutSubmitPath === '/api/checkout/submit'
+    && sourceOnlyGuestFallbackPolicy.sanitizedEvidenceOnly === true,
+  'Cliplot Auth wallet source-only guest fallback policy is missing',
+  { sourceOnlyGuestFallbackPolicy },
+);
+assert(
+  includesAll(sourceOnlyGuestFallbackPolicy.fallbackCases.map(({ case: caseName }) => caseName).join('|'), [
+    'missing_auth_session',
+    'wallet_401',
+    'wallet_403',
+    'wallet_timeout',
+    'wallet_malformed_response',
+    'wallet_empty_rows',
+  ]),
+  'Cliplot guest fallback cases are incomplete',
+  { sourceOnlyGuestFallbackPolicy },
+);
+assert(
+  sourceOnlyGuestFallbackPolicy.fallbackCases.every((fallbackCase) => fallbackCase.manualCheckoutAvailable === true
+    && fallbackCase.cartPreserved === true
+    && fallbackCase.walletMutation === false
+    && fallbackCase.checkoutSubmit === false),
+  'Cliplot guest fallback policy does not preserve manual checkout/cart or forbids mutation consistently',
+  { sourceOnlyGuestFallbackPolicy },
+);
 assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integration exists before dependency gates are cleared', {
   runtimeWalletReferences,
   blockers,
@@ -507,7 +573,8 @@ console.log(JSON.stringify({
   authWalletPresenceGate,
   authWalletNoPiiExposurePolicy,
   sourceOnlyWalletMappingEvidence,
+  sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, runtime no-PII evidence, field mapping, and guest fallback approvals are available.',
+  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, runtime no-PII evidence, field mapping, and runtime guest fallback approvals are available.',
 }, null, 2));

@@ -130,8 +130,27 @@ Invoice profile mapping to the checkout snapshot:
 - The checkout submit path remains `/api/checkout/submit` and must receive
   resolved immutable snapshots, not Auth wallet ids.
 - Runtime integration remains blocked until selector behavior, browser-session
-  handling, no-PII implementation evidence, field mapping, and guest fallback
-  are covered by source validation and approved synthetic runtime evidence.
+  handling, no-PII implementation evidence, field mapping, and runtime guest
+  fallback evidence are covered by source validation and approved synthetic
+  runtime evidence.
+
+## Source-Only Guest Fallback Acceptance Criteria
+
+For the current source-only lane, missing Auth session, wallet HTTP 401, wallet
+HTTP 403, timeout, malformed response, and empty wallet row scenarios must be
+represented only as sanitized status labels and booleans. In every scenario:
+
+- manual checkout must remain available;
+- cart must remain preserved;
+- checkout submit must not run as part of the fallback verifier;
+- Auth wallet data must not be mutated;
+- the current checkout submit path remains `/api/checkout/submit`;
+- evidence must not include raw wallet response bodies, customer PII, tokens,
+  cookies, or reusable wallet identifiers.
+
+This policy does not approve runtime wallet fetches, selector UI, browser-session
+handoff, live smoke, checkout submission, payment creation, Warehouse
+reservation, or notification sending.
 
 ## Forbidden In This Contract Lane
 

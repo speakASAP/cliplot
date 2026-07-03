@@ -121,9 +121,13 @@ evidence.
   - Cliplot source-verifies pure Auth wallet row to immutable checkout snapshot
     mapping with synthetic fixtures and sanitized verifier output; runtime
     implementation evidence is still gated until wallet reads/selectors exist.
+  - Cliplot source-defines guest fallback behavior for missing Auth session,
+    wallet 401, wallet 403, timeout, malformed response, and empty wallet rows.
+    The source-only verifier preserves manual checkout/cart, forbids fallback
+    mutation and checkout submit, and emits sanitized labels/booleans only.
   - `[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]`
   - `[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]`
-  - `[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]`
+  - `[MISSING: approved runtime Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]`
 
 ## Parallel Execution Section
 
@@ -133,7 +137,7 @@ evidence.
 | Cliplot source readiness verifier | ready now | Cliplot worker | `scripts/auth-wallet-checkout-readiness.js`, `package.json` | `npm run readiness:auth-wallet-checkout` |
 | Checkout wallet contract | source-prepared | Cliplot coordinator | `docs/auth-wallet-checkout-contract.md`, readiness verifier | source validation only |
 | Checkout wallet UX plan | dependency-gated | product/checkout owner | future checkout UI files | owner-approved selector behavior and guest fallback implementation |
-| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after selector, session, runtime no-PII, mapping, fallback implementation and synthetic evidence exist |
+| Runtime integration | blocked | integration owner | future Cliplot runtime files | only after selector, session, runtime no-PII, mapping, runtime fallback implementation and synthetic evidence exist |
 | Final integration | blocked | Cliplot orchestrator | checkout/frontend/backend files | guarded checkout smoke plus wallet-specific no-mutation tests |
 
 ## Execution Plan
@@ -146,7 +150,7 @@ evidence.
 3. Wire the verifier into `package.json` without changing runtime behavior.
 4. Add the source-only Cliplot wallet checkout contract and verifier markers
    for selector behavior, session handoff, no-PII exposure, pure fixture field
-   mapping, and guest fallback.
+   mapping, and guest fallback policy.
 5. Record validation evidence in `reports/validation`.
 6. Commit the repo-local readiness work only; do not deploy.
 
@@ -174,5 +178,5 @@ git diff --cached --name-only | xargs -r rg -n "(JWT|Bearer|password|secret|toke
 ```
 
 Expected result: no committed secrets/tokens/customer data and no live wallet
-integration until selector behavior, browser session, PII exposure, and response
-contract approvals are ready.
+integration until selector behavior, browser session, PII exposure, response
+contract, field mapping, and runtime guest fallback approvals are ready.
