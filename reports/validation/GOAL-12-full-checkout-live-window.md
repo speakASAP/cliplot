@@ -94,3 +94,46 @@ closed runtime. It must return
 `validated_completed_full_checkout_live_window_closed`, keep
 `liveExecutionAllowed=false`, and keep revenue closure
 `approval_required_live_revenue_closure` while all live flags are `false`.
+
+## Post-Live Revenue Closure Packet Validation
+
+Validated after deployment of `localhost:5000/cliplot:617c23e`.
+
+Commands:
+
+```bash
+npm run readiness:post-live-revenue-closure -- https://cliplot.alfares.cz
+npm run readiness:bundle
+```
+
+Evidence:
+
+```text
+postLiveRevenueClosure=validated_completed_full_checkout_live_window_closed
+completedWindow=validated_completed_full_checkout_live_window_closed
+executorStatus=live_checkout_bounded_execution_completed_cleanup_completed
+orderId=28783f0d-9652-4ced-8bd1-0a1b6cec42ff
+paymentStatus=processing
+notificationStatus=sent
+liveFlagsClosed=true
+revenueClosure=approval_required_live_revenue_closure
+revenueBlockerCount=5
+liveExecutionAllowed=false
+failedAssertionCount=0
+mutation=false
+persistence=false
+providerCall=false
+READINESS_STEP=post_live_revenue_closure exit=0
+READINESS_STEP=guarded_checkout_smoke exit=0
+CLIPLOT_READINESS_BUNDLE=pass
+deployment.image=localhost:5000/cliplot:617c23e
+deployment.ready=1
+deployment.available=1
+```
+
+The first external packet probe during rollout briefly reached the older
+fallback route and returned the storefront HTML. After the rollout converged to
+the single `617c23e` pod, the packet returned JSON and the full readiness bundle
+passed. The current runtime remains closed and this packet does not open flags,
+call the bounded executor, or perform order, Warehouse, payment, notification,
+callback, status-write, provider-read, or secret-printing side effects.

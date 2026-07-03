@@ -775,3 +775,15 @@ flags remain false, revenue closure remains approval-required, and no order,
 Warehouse, payment, or notification mutation occurs. It records required
 operator request fields, pre-open validation, restore flags, and post-close
 validation before any separate live execution action is considered.
+### 2026-07-03 - Post-live revenue closure evidence packet
+
+Deployed `localhost:5000/cliplot:617c23e` adds a read-only post-live revenue
+closure evidence packet. Production validation returns
+`validated_completed_full_checkout_live_window_closed`, references the completed
+bounded checkout window for order
+`28783f0d-9652-4ced-8bd1-0a1b6cec42ff`, and proves the current runtime is closed:
+`liveFlagsClosed=true`, `liveExecutionAllowed=false`,
+`revenueClosure=approval_required_live_revenue_closure`,
+`failedAssertionCount=0`, `mutation=false`, `persistence=false`, and
+`providerCall=false`. `npm run readiness:bundle` passes with the
+`post_live_revenue_closure` step included.
