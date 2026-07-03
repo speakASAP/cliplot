@@ -40,10 +40,12 @@ not approved.
   - Auth is currently only a hosted login/register link surface.
   - Guarded checkout still returns `service_identity_required`.
   - Runtime manifests point at Auth but do not enable wallet integration.
+  - Auth source-defines the checkout-data top-level stable schema version as
+    `auth.customer-data-wallet.checkout-data.v1` in Goal 10.34.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
-- `[UNKNOWN: exact Auth wallet response fields and stable version identifier]`
+- `[UNKNOWN: exact Auth wallet response fields, delivery address response shape, and invoice profile response shape]`
 
 ## Validation Commands
 
@@ -52,20 +54,20 @@ npm run readiness:auth-wallet-checkout
 node --check scripts/auth-wallet-checkout-readiness.js
 npm run check
 git diff --check
-git diff --cached --name-only | xargs -r rg -n "(Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cookie|oauth|jwt)[A-Z0-9_ -]*(=|:)[^`[:space:]]+)"
+rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cookie|oauth|jwt)[A-Z0-9_ -]*(=|:)[^[:space:]]+" scripts/auth-wallet-checkout-readiness.js implementation-goals/GOAL-10-auth-wallet-checkout-readiness.execution-plan.md reports/validation/GOAL-10-auth-wallet-checkout-readiness.md
 ```
 
 ## Validation Results
 
-- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
-- 2026-07-03 source-known facts refresh validation target:
+- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- 2026-07-03 schema-version refresh validation passed:
   `npm run readiness:auth-wallet-checkout`, `node --check
   scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff
-  --check`, targeted literal-secret scan.
+  --check`, and targeted dangerous literal-secret scan on changed files.
 - `node --check scripts/auth-wallet-checkout-readiness.js`: PASS.
 - `npm run check`: PASS; repository syntax-check chain includes the new verifier.
 - `git diff --check`: PASS.
-- Staged dangerous literal secret scan: PASS after staging; no matches.
+- Targeted dangerous literal secret scan: PASS; no matches.
 
 ## Intent Compliance Report
 

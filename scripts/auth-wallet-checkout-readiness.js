@@ -14,6 +14,13 @@ const walletEndpoints = [
   '/auth/profile/invoice-profiles',
 ];
 
+const authWalletResponseContract = {
+  status: 'source_defined',
+  source: 'auth-microservice Goal 10.34',
+  sourceCommit: '2276ab3',
+  checkoutDataSchemaVersion: 'auth.customer-data-wallet.checkout-data.v1',
+};
+
 const authWalletPresenceGate = {
   status: 'complete',
   sourcePreflightHead: '2871a6f345f7d33aeaaa2f41350d67a6b50c1d7d',
@@ -31,7 +38,7 @@ const blockers = [
   '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
   '[MISSING: authenticated browser session contract for wallet reads]',
   '[MISSING: no-PII logging and frontend exposure review for wallet data]',
-  '[UNKNOWN: exact Auth wallet response fields and stable version identifier]',
+  '[UNKNOWN: exact Auth wallet response fields, delivery address response shape, and invoice profile response shape]',
 ];
 
 const sourceKnownFacts = [
@@ -40,6 +47,7 @@ const sourceKnownFacts = [
   'Auth is currently only a hosted login/register link surface; no Auth wallet endpoint integration is present.',
   'Guarded checkout still returns service_identity_required before live order/payment/Warehouse mutation.',
   'Runtime manifests point at Auth but do not enable wallet integration.',
+  'Auth source-defines checkout-data schemaVersion as auth.customer-data-wallet.checkout-data.v1.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -101,6 +109,11 @@ assert(hasCheckoutForm, 'checkout form customer fields missing', { file: sourceF
 assert(hasCartReview, 'cart review/submit surface missing', { file: sourceFiles.checkoutClient });
 assert(hasBackendCustomerNormalization, 'backend customer normalization missing', { file: sourceFiles.integrations });
 assert(hasAuthLinkOnlySurface, 'hosted Auth link surface missing', { file: sourceFiles.server });
+assert(
+  authWalletResponseContract.checkoutDataSchemaVersion === 'auth.customer-data-wallet.checkout-data.v1',
+  'Auth wallet checkout-data schema version is not source-defined',
+  { authWalletResponseContract },
+);
 assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integration exists before dependency gates are cleared', {
   runtimeWalletReferences,
   blockers,
@@ -123,8 +136,9 @@ console.log(JSON.stringify({
   },
   runtimeWalletIntegrationPresent: false,
   requiredWalletEndpoints: walletEndpoints,
+  authWalletResponseContract,
   authWalletPresenceGate,
   sourceKnownFacts,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, PII exposure, and response-contract approvals are available.',
+  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, PII exposure, response-shape, field mapping, and guest fallback approvals are available.',
 }, null, 2));

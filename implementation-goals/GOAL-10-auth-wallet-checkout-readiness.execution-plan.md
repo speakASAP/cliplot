@@ -82,10 +82,12 @@ approved Auth wallet contract covering:
   - guarded checkout still returns `service_identity_required` before live
     order/payment/Warehouse mutation;
   - runtime manifests point at Auth but do not enable wallet integration.
+- Auth source-defines the checkout-data top-level stable schema version as
+  `auth.customer-data-wallet.checkout-data.v1` in Goal 10.34.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session contract for wallet reads]`
 - `[MISSING: no-PII logging and frontend exposure review for wallet data]`
-- `[UNKNOWN: exact Auth wallet response fields and stable version identifier]`
+- `[UNKNOWN: exact Auth wallet response fields, delivery address response shape, and invoice profile response shape]`
 
 ## Parallel Execution Section
 
