@@ -67,3 +67,21 @@ writes, payment creation, notification sends, provider-backed payment detail
 reads, and Cliplot-local payment truth disabled. It must report
 `mutation=false`, `persistence=false`, `providerCall=false`,
 `liveExecutionAllowed=false`, and `failedAssertionCount=0`.
+
+
+## Payment Status Write-Window Request Packet
+
+The write-window request packet is read-only and execution-disabled:
+
+```bash
+npm run readiness:payment-status-write-window-request -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/status-write-window-request-packet
+```
+
+Expected status:
+`ready_for_bounded_payment_status_write_window_request_execution_disabled`.
+
+It must define operator request fields, rollback steps, validation steps, and
+post-window reconciliation evidence while keeping callback persistence, callback
+replay execution, live status writes, payment creation, notification sends,
+provider-backed payment reads, and Cliplot-local payment truth disabled.

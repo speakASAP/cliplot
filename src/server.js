@@ -41,6 +41,7 @@ import {
   runBoundedNotificationSendExecutor,
   paymentLiveStatusWriteApprovalPacket,
   paymentStatusReconciliationReadinessPacket,
+  paymentStatusWriteWindowRequestPacket,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
@@ -732,6 +733,21 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/status-reconciliation-readiness-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-write-window-request-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentStatusWriteWindowRequestPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-write-window-request-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

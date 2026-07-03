@@ -422,6 +422,23 @@ npm run readiness:payment-status-reconciliation -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/payments/status-reconciliation-readiness-packet
 ```
 
+
+`GET /api/payments/status-write-window-request-packet` is the read-only request
+contract for a future bounded payment status write window. It defines required
+operator fields (`confirm=PAYMENT_STATUS_WRITE_WINDOW`, approval id, approved
+by, reason code, bounded window, rollback owner, validation owner, and
+post-window reconciliation evidence), rollback steps, validation steps, and
+post-window evidence without implementing or invoking a writer. It must return
+`ready_for_bounded_payment_status_write_window_request_execution_disabled` with
+`liveExecutionAllowed=false`, `mutation=false`, `persistence=false`,
+`providerCall=false`, all write/replay/persistence flags false, and no callback
+payloads, payment rows, provider payloads, customer PII, or secrets.
+
+```bash
+npm run readiness:payment-status-write-window-request -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/status-write-window-request-packet
+```
+
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the

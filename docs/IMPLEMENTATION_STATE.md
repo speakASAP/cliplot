@@ -811,3 +811,15 @@ and live-status-write metadata for owner review while keeping callback
 persistence, replay execution, status writes, payment creation, notification
 sends, provider-backed payment detail reads, and Cliplot-local payment truth
 disabled.
+
+
+### 2026-07-03 - Payment status write-window request packet
+
+Added a read-only payment status write-window request packet at
+`GET /api/payments/status-write-window-request-packet` with
+`npm run readiness:payment-status-write-window-request`. It defines future
+operator request fields, rollback steps, validation steps, and post-window
+reconciliation evidence for a bounded status write window while keeping callback
+persistence, callback replay execution, live status writes, payment creation,
+notification sends, provider-backed payment reads, and Cliplot-local payment
+truth disabled.
