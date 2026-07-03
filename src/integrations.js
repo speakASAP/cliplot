@@ -1553,6 +1553,168 @@ export async function liveCheckoutExecutionWindowPacket() {
       : 'Keep full checkout execution blocked until all live flags, concrete window, idempotency tuple, duplicate checks, rollback owners, and validation owners are present in an approved execution window.',
   };
 }
+export async function liveCheckoutExecutionEvidencePacket() {
+  const executionWindow = await liveCheckoutExecutionWindowPacket();
+  const createReplayCancel = await liveOrderWarehouseSmokeExecutionChecklistPacket();
+  const preflight = liveCheckoutPreflight();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const sideEffectsFalse = executionWindow.mutation === false
+    && executionWindow.persistence === false
+    && executionWindow.providerCall === false
+    && executionWindow.orderCreated === false
+    && executionWindow.warehouseReserved === false
+    && executionWindow.paymentCreated === false
+    && executionWindow.notificationSent === false
+    && createReplayCancel.mutation === false
+    && createReplayCancel.persistence === false
+    && createReplayCancel.providerCall === false
+    && createReplayCancel.liveExecutionAllowed === false
+    && preflight.wouldMutate === false;
+  const guardrailBlockers = [
+    ...(liveFlagsClosed ? [] : ['[MISSING: all live checkout flags closed before evidence-packet review]']),
+    ...(sideEffectsFalse ? [] : ['[MISSING: current packet/preflight side-effect evidence is false]']),
+    ...(preflight.status === 'blocked' ? [] : ['[MISSING: live checkout preflight remains blocked before execution window]']),
+  ];
+  const status = guardrailBlockers.length === 0
+    ? 'read_only_live_checkout_execution_evidence_packet_recorded_execution_disabled'
+    : 'blocked_live_checkout_execution_evidence_packet_guardrail_mismatch';
+
+  return {
+    success: true,
+    status,
+    mode: 'read_only_live_checkout_execution_evidence_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    sideEffectsAllowed: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    orderCreated: false,
+    warehouseReserved: false,
+    paymentCreated: false,
+    notificationSent: false,
+    callbackPersistence: false,
+    callbackReplay: false,
+    statusWrite: false,
+    providerRead: false,
+    liveFlagsClosed,
+    liveFlags: {
+      order: serviceConfig.liveOrderSubmit,
+      payment: serviceConfig.livePaymentCreate,
+      notification: serviceConfig.liveNotifications,
+      orderWarehouseSmoke: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    liveFlagNames: {
+      order: 'ENABLE_LIVE_ORDER_SUBMIT',
+      payment: 'ENABLE_LIVE_PAYMENT_CREATE',
+      notification: 'ENABLE_LIVE_NOTIFICATIONS',
+      orderWarehouseSmoke: 'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE',
+    },
+    boundedRun: {
+      objective: 'Record future evidence requirements for exactly one owner-approved bounded CREATE_REPLAY_CANCEL/live checkout run.',
+      currentExecution: 'disabled_read_only_packet_only',
+      confirmationRequired: 'CREATE_REPLAY_CANCEL plus LIVE_CHECKOUT_EXECUTION_WINDOW in the separately approved executor path',
+      maxOrderQuantity: 1,
+      syntheticCustomerOnly: true,
+      idempotencyTupleRequired: ['orderIdempotencyKey', 'paymentIdempotencyKey', 'notificationIdempotencyKey'],
+      duplicateCheckRequired: 'IDEMPOTENCY_KEYS_NOT_USED',
+      cleanupThroughOrdersOnly: true,
+      directWarehouseMutationAllowed: false,
+    },
+    futureEvidenceRequirements: {
+      beforeWindow: [
+        'owner approval ids recorded without printing secret or approval values',
+        'concrete execution window recorded',
+        'live flags closed before operator opens a bounded window',
+        'Orders validate-create evidence is valid and non-mutating',
+        'Warehouse availability/readback evidence proves quantity 1 is available',
+        'payment create and notification send bounded-window packets remain execution-disabled',
+      ],
+      duringCreate: [
+        'one Orders create result for the approved order idempotency key',
+        'one Warehouse reservation for the selected product and warehouse',
+        'one payment create result for the approved payment idempotency key only after approval',
+        'one notification send result for the approved notification idempotency key only after approval',
+      ],
+      duringReplay: [
+        'same order id is returned for repeated order idempotency key',
+        'payment replay is duplicate-safe for the approved payment idempotency key',
+        'notification replay is duplicate-safe for the approved notification idempotency key',
+        'Warehouse reserved quantity does not increase on replay',
+      ],
+      duringCancel: [
+        'Orders status is cancelled through Orders status endpoint',
+        'Warehouse reservation is cancelled/released through Orders cleanup',
+        'payment rollback/void owner evidence is recorded if payment was created',
+        'customer notification duplicate-response owner evidence is recorded if notification was sent',
+      ],
+      afterWindow: [
+        'live flags restored closed',
+        'availability/reserved counts return to the before snapshot after cancel/release',
+        'no callback persistence or replay rows were written by this lane',
+        'no raw provider payloads, customer PII, tokens, approval ids, recipients, or message bodies are printed',
+      ],
+    },
+    readinessEvidence: {
+      executionWindowStatus: executionWindow.status,
+      createReplayCancelStatus: createReplayCancel.status,
+      livePreflightStatus: preflight.status,
+      livePreflightWouldMutate: preflight.wouldMutate,
+      livePreflightWouldCreateOrder: preflight.mutationPlan?.wouldCreateOrder === true,
+      livePreflightWouldReserveWarehouse: preflight.mutationPlan?.wouldReserveWarehouse === true,
+      livePreflightWouldCreatePayment: preflight.mutationPlan?.wouldCreatePayment === true,
+      livePreflightWouldSendNotification: preflight.mutationPlan?.wouldSendNotification === true,
+      sideEffectsFalse,
+    },
+    guardrails: {
+      getOnlyRoute: true,
+      currentMethodAllowsMutation: false,
+      executorCalled: false,
+      liveFlagsClosed,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      liveExecutionAllowed: false,
+      callbackPersistenceAllowed: false,
+      callbackReplayAllowed: false,
+      dbWriteAllowed: false,
+      providerCallAllowed: false,
+      secretPrintingAllowed: false,
+    },
+    relatedPackets: {
+      executionWindow: '/api/checkout/live-execution-window-packet',
+      createReplayCancelChecklist: '/api/checkout/live-order-warehouse-create-replay-cancel-contract-packet',
+      liveFlagsOperatorPreflight: '/api/checkout/live-flags-operator-preflight-checklist-packet',
+    },
+    forbiddenOperationsNow: [
+      'POST /api/checkout/submit',
+      'POST /api/checkout/live-bounded-executor',
+      'POST /api/checkout/live-order-warehouse-smoke-executor',
+      'POST /api/orders',
+      'Warehouse reservation mutation',
+      'POST /payments/create',
+      'POST /notifications/send',
+      'callback persistence or replay execution',
+      'database writes',
+      'provider calls',
+      'printing secrets, approval values, provider payloads, customer PII, recipients, or message bodies',
+    ],
+    executionBlockers: [...new Set([
+      ...guardrailBlockers,
+      '[MISSING: owner-approved bounded live checkout execution window]',
+      '[MISSING: one unused order/payment/notification idempotency tuple]',
+      '[MISSING: operator-owned rollback and validation evidence capture]',
+      '[MISSING: temporary live flag open/restore checklist executed by owner]',
+    ])],
+    next: 'This packet is read-only evidence planning. Do not open live flags or call mutation endpoints from this lane.',
+  };
+}
 
 export async function runBoundedLiveCheckoutExecutor(request = {}) {
   const packet = await liveCheckoutExecutionWindowPacket();
