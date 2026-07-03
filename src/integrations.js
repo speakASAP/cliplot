@@ -1562,17 +1562,16 @@ export async function liveCheckoutExecutionWindowPacket() {
   if (!serviceConfig.livePaymentCreate) executionBlockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true for approved full checkout execution window]');
   if (!serviceConfig.liveNotifications) executionBlockers.push('[MISSING: ENABLE_LIVE_NOTIFICATIONS=true for approved full checkout execution window]');
   if (!serviceConfig.liveOrderWarehouseSmoke) executionBlockers.push('[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for approved CREATE_REPLAY_CANCEL evidence window]');
-  const paymentWindowMetadataReady = [
-    'approved_payment_create_window_metadata_execution_disabled',
-    'approved_payment_create_window_metadata_execution_still_guarded',
-  ].includes(paymentWindow.status);
-  const notificationWindowMetadataReady = [
-    'approved_notification_send_window_metadata_execution_disabled',
-    'approved_notification_send_window_metadata_execution_still_guarded',
-  ].includes(notificationWindow.status);
+  const paymentWindowMetadataReady = paymentWindow.approvalMetadata?.metadataReady === true;
+  const notificationWindowMetadataReady = notificationWindow.approvalMetadata?.metadataReady === true;
+  const liveSmokeMetadataReady = liveSmokePlan.approvals?.orderWarehouseSmoke === true
+    && liveSmokePlan.approvals?.orderWarehouseSmokeCleanup === true
+    && liveSmokePlan.approvals?.orderWarehouseSmokeWindow === true
+    && liveSmokePlan.approvals?.orderWarehouseSmokeRollbackOwner === true
+    && liveSmokePlan.approvals?.orderWarehouseSmokeValidationOwner === true;
   if (!paymentWindowMetadataReady) metadataBlockers.push('[MISSING: payment-create bounded execution-window metadata approval]');
   if (!notificationWindowMetadataReady) metadataBlockers.push('[MISSING: notification-send bounded execution-window metadata approval]');
-  if (liveSmokePlan.status !== 'approved_live_order_warehouse_smoke_metadata_execution_disabled') metadataBlockers.push('[MISSING: live Orders/Warehouse smoke metadata approval]');
+  if (!liveSmokeMetadataReady) metadataBlockers.push('[MISSING: live Orders/Warehouse smoke metadata approval]');
   if (preflight.status !== 'ready_for_approved_live_mutation') executionBlockers.push('[MISSING: live checkout activation matrix is not ready in production because live flags remain false]');
   if (revenuePacket.status !== 'ready_for_owner_live_checkout_execution') guardrailBlockers.push('[MISSING: revenue closure remains approval-required until live flags/window are opened]');
 
@@ -1647,6 +1646,7 @@ export async function liveCheckoutExecutionWindowPacket() {
       liveCheckoutExecutionWindowMetadataReady: metadataReady,
       liveCheckoutExecutionWindowConcrete: checkoutWindowConcrete,
       liveSmokePlan: liveSmokePlan.status,
+      liveSmokeMetadataReady,
     },
     duplicatePolicy: {
       idempotencyKeysRequired: ['orderIdempotencyKey', 'paymentIdempotencyKey', 'notificationIdempotencyKey'],
@@ -2705,7 +2705,7 @@ export async function liveFlagsOperatorPreflightChecklistPacket() {
       CLIPLOT_LIVE_ORDER_APPROVAL_ID: executionWindow.approvals?.order === true,
       CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: executionWindow.approvals?.payment === true,
       CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: executionWindow.approvals?.notification === true,
-      CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID: executionWindow.readinessEvidence?.liveSmokePlan === 'approved_live_order_warehouse_smoke_metadata_execution_disabled',
+      CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID: executionWindow.readinessEvidence?.liveSmokeMetadataReady === true,
       CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW: executionWindow.approvalMetadata?.checkoutWindowConcrete === true,
     },
     requiredTemporaryFlagSet: {
