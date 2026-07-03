@@ -767,6 +767,24 @@ read-only evidence renderer. It is not permission to reconcile, persist
 callbacks, replay callbacks, update order/payment status, read provider-backed
 payment detail, open flags, or call mutation endpoints.
 
+## Owner Bounded-Window Handoff
+
+`GET /api/checkout/owner-bounded-window-readiness-handoff-packet` is the
+GET-only owner handoff packet for the next bounded live checkout window. It
+aggregates live readiness handoff, execution request, owner runbook, flag
+preflight, payment-create window, notification-send window, Auth wallet no-live
+checkout evidence, post-live revenue closure, and revenue handoff reconciliation.
+It must keep all live flags closed, `liveExecutionAllowed=false`,
+`mutation=false`, `persistence=false`, and `providerCall=false`, and it must
+report exactly the five expected revenue blockers for a future owner-opened
+bounded window. It is not permission to open flags or call executors.
+
+Validate with:
+
+```bash
+npm run readiness:owner-bounded-window-handoff -- https://cliplot.alfares.cz
+```
+
 ## Operator Readiness Bundle
 
 Run the read-only bundle before handoff or live-mutation approval reviews:

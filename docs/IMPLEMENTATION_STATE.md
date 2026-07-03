@@ -854,3 +854,15 @@ and guest fallback evidence are complete. It still keeps `authWalletFetch=false`
 `checkoutSubmit=false`, `mutation=false`, `persistence=false`, and
 `providerCall=false`; live wallet reads and selector UI remain a separate
 owner-approved rollout lane.
+
+### 2026-07-03 - Owner bounded-window handoff packet
+
+Added GET-only owner bounded-window handoff evidence at
+`/api/checkout/owner-bounded-window-readiness-handoff-packet` and
+`npm run readiness:owner-bounded-window-handoff`. The packet aggregates the
+ready execution-disabled checkout, payment-create, notification-send, Auth
+wallet, post-live revenue, and revenue handoff packets while keeping all live
+flags closed and preserving `mutation=false`, `persistence=false`,
+`providerCall=false`, and `liveExecutionAllowed=false`. It asserts the remaining
+revenue blockers are exactly the five owner live-window blockers and does not
+open flags or call executors.

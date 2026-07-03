@@ -158,3 +158,20 @@ It must leave revenue closure guarded for future bounded windows and must not
 persist callback state, replay callbacks, write live statuses, read
 provider-backed payment detail, open live flags, or expose raw PII/provider
 payloads.
+
+## Owner Bounded-Window Handoff Packet
+
+Added the read-only owner bounded-window handoff packet for future live-window
+review:
+
+```bash
+npm run readiness:owner-bounded-window-handoff -- https://cliplot.alfares.cz
+```
+
+Expected evidence: `ready_for_owner_bounded_window_handoff_execution_disabled`,
+all live flags closed, `liveExecutionAllowed=false`, `mutation=false`,
+`persistence=false`, `providerCall=false`, payment-create and notification-send
+execution windows metadata-ready, Auth wallet runtime checkout evidence recorded
+with no live calls, post-live revenue closure validated, revenue handoff ready,
+and exactly five expected revenue blockers for the future owner-opened bounded
+window.

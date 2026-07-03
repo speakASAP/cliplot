@@ -19,6 +19,7 @@ import {
   checkoutLiveReadinessHandoffEvidencePacket,
   authWalletRuntimeCheckoutEvidencePacket,
   liveOwnerExecutionRunbookPacket,
+  ownerBoundedWindowReadinessHandoffPacket,
   liveFlagsOperatorPreflightChecklistPacket,
   runBoundedLiveCheckoutExecutor,
   liveCheckoutPreflight,
@@ -370,6 +371,22 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/checkout/live-readiness-handoff-evidence-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+
+    if (url.pathname === '/api/checkout/owner-bounded-window-readiness-handoff-packet' && req.method === 'GET') {
+      sendJson(res, 200, await ownerBoundedWindowReadinessHandoffPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/owner-bounded-window-readiness-handoff-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

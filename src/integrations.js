@@ -3190,6 +3190,149 @@ export async function liveFlagsOperatorPreflightChecklistPacket() {
 }
 
 
+export async function ownerBoundedWindowReadinessHandoffPacket() {
+  const revenue = await revenueClosurePacket();
+  const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
+  const executionRequest = await liveCheckoutExecutionRequestPacket();
+  const ownerRunbook = await liveOwnerExecutionRunbookPacket();
+  const flagPreflight = await liveFlagsOperatorPreflightChecklistPacket();
+  const paymentWindow = paymentCreateExecutionWindowPacket();
+  const notificationWindow = notificationSendExecutionWindowPacket();
+  const authWalletRuntime = await authWalletRuntimeCheckoutEvidencePacket();
+  const postLive = await postLiveRevenueClosureEvidencePacket();
+  const revenueHandoff = await revenueHandoffReconciliationPacket();
+  const preflight = liveCheckoutPreflight();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const expectedRevenueBlockers = [
+    '[MISSING: ENABLE_LIVE_ORDER_SUBMIT=true only during the approved bounded live checkout window]',
+    '[MISSING: ENABLE_LIVE_PAYMENT_CREATE=true only during a separate approved bounded payment execution window]',
+    '[MISSING: ENABLE_LIVE_NOTIFICATIONS=true only during a separate approved bounded notification execution window]',
+    '[MISSING: ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true for owner-approved smoke execution window]',
+    '[MISSING: approved live checkout mutation activation remains blocked]',
+  ];
+  const revenueBlockers = Array.isArray(revenue.blockers) ? revenue.blockers : [];
+  const missingExpectedRevenueBlockers = expectedRevenueBlockers.filter((item) => !revenueBlockers.includes(item));
+  const unexpectedRevenueBlockers = revenueBlockers.filter((item) => !expectedRevenueBlockers.includes(item));
+  const assertions = [
+    { name: 'live_flags_closed', passed: liveFlagsClosed },
+    { name: 'current_preflight_blocked_non_mutating', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
+    { name: 'handoff_ready_execution_disabled', passed: handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' && handoff.liveExecutionAllowed === false },
+    { name: 'execution_request_ready_execution_disabled', passed: executionRequest.status === 'approved_live_checkout_execution_request_contract_execution_disabled' && executionRequest.liveExecutionAllowed === false },
+    { name: 'owner_runbook_ready_execution_disabled', passed: ownerRunbook.status === 'approved_owner_live_execution_runbook_contract_execution_disabled' && ownerRunbook.liveExecutionAllowed === false },
+    { name: 'flag_preflight_ready_execution_disabled', passed: flagPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled' && flagPreflight.liveExecutionAllowed === false },
+    { name: 'payment_create_window_metadata_ready_disabled', passed: paymentWindow.status === 'approved_payment_create_window_metadata_execution_disabled' && paymentWindow.liveExecutionAllowed === false },
+    { name: 'notification_send_window_metadata_ready_disabled', passed: notificationWindow.status === 'approved_notification_send_window_metadata_execution_disabled' && notificationWindow.liveExecutionAllowed === false },
+    { name: 'auth_wallet_evidence_no_live_calls', passed: authWalletRuntime.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls' && authWalletRuntime.authWalletFetch === false && authWalletRuntime.checkoutSubmit === false },
+    { name: 'post_live_window_closed_evidence_valid', passed: postLive.status === 'validated_completed_full_checkout_live_window_closed' && postLive.liveExecutionAllowed === false },
+    { name: 'revenue_handoff_ready_execution_disabled', passed: revenueHandoff.status === 'ready_for_revenue_handoff_reconciliation_review_execution_disabled' && revenueHandoff.liveExecutionAllowed === false },
+    { name: 'revenue_closure_only_expected_window_blockers', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false && missingExpectedRevenueBlockers.length === 0 && unexpectedRevenueBlockers.length === 0 },
+    { name: 'no_current_mutation_persistence_provider_or_side_effects', passed: true },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+
+  return {
+    success: true,
+    status: failedAssertions.length === 0
+      ? 'ready_for_owner_bounded_window_handoff_execution_disabled'
+      : 'blocked_owner_bounded_window_handoff',
+    mode: 'read_only_owner_bounded_window_readiness_handoff_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    executorCalled: false,
+    liveFlagsClosed,
+    currentLiveFlags: {
+      ENABLE_LIVE_ORDER_SUBMIT: serviceConfig.liveOrderSubmit,
+      ENABLE_LIVE_PAYMENT_CREATE: serviceConfig.livePaymentCreate,
+      ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    readinessEvidence: {
+      liveReadinessHandoff: handoff.status,
+      liveCheckoutExecutionRequest: executionRequest.status,
+      ownerExecutionRunbook: ownerRunbook.status,
+      liveFlagsOperatorPreflight: flagPreflight.status,
+      paymentCreateExecutionWindow: paymentWindow.status,
+      notificationSendExecutionWindow: notificationWindow.status,
+      authWalletRuntimeCheckout: authWalletRuntime.status,
+      authWalletFetch: authWalletRuntime.authWalletFetch,
+      authWalletCheckoutSubmit: authWalletRuntime.checkoutSubmit,
+      postLiveRevenueClosure: postLive.status,
+      revenueHandoffReconciliation: revenueHandoff.status,
+      revenueClosure: revenue.status,
+      revenueBlockerCount: revenueBlockers.length,
+      unexpectedRevenueBlockerCount: unexpectedRevenueBlockers.length,
+      paymentReadScopeStatus: handoff.readinessEvidence?.paymentReadScopeStatus || null,
+      paymentReadScopeFreshness: handoff.readinessEvidence?.paymentReadScopeFreshness || null,
+    },
+    remainingRevenueClosure: {
+      status: revenue.status,
+      blockerCount: revenueBlockers.length,
+      expectedRevenueBlockers,
+      missingExpectedRevenueBlockers,
+      unexpectedRevenueBlockers,
+      blockers: revenueBlockers,
+    },
+    ownerWindowRequest: {
+      executionWindow: serviceConfig.liveCheckoutExecutionWindow,
+      temporaryFlagOpenRequired: ownerRunbook.ownerRunbook?.temporaryFlagOpenRequired || flagPreflight.requiredTemporaryFlagSet,
+      restoreFlagsRequired: ownerRunbook.ownerRunbook?.restoreFlagsRequired || flagPreflight.requiredRestoreFlagSet,
+      fullCheckoutExecutorRequest: executionRequest.ownerExecutionRequest?.executorRequest || null,
+      createReplayCancelRequest: executionRequest.ownerExecutionRequest?.createReplayCancelRequest || null,
+      requiredIdempotency: [
+        'one unused orderIdempotencyKey',
+        'one unused paymentIdempotencyKey',
+        'one unused notificationIdempotencyKey',
+      ],
+      duplicateCheck: 'IDEMPOTENCY_KEYS_NOT_USED',
+      rollbackPlan: 'ORDER_WAREHOUSE_PAYMENT_NOTIFICATION_ROLLBACK_OWNERS_ASSIGNED',
+      validationPlan: 'EXACTLY_ONE_ORDER_PAYMENT_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEYS',
+    },
+    handoffBoundaries: {
+      mayOpenFlagsNow: false,
+      mayCallExecutorNow: false,
+      maySubmitCheckoutNow: false,
+      mayCreatePaymentNow: false,
+      maySendNotificationNow: false,
+      mayPersistCallbacksNow: false,
+      mayReplayCallbacksNow: false,
+      mayWriteLiveStatusNow: false,
+      mayReadProviderPaymentDetailNow: false,
+      authWalletLiveFetchAllowedNow: false,
+      evidenceOnly: true,
+    },
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    forbiddenOperationsNow: [
+      'do not open live flags from this packet',
+      'do not call POST /api/checkout/live-bounded-executor',
+      'do not call POST /api/checkout/live-order-warehouse-smoke-executor',
+      'do not call POST /api/checkout/submit',
+      'do not call POST /payments/create',
+      'do not call POST /notifications/send',
+      'do not persist callbacks',
+      'do not execute callback replay',
+      'do not write live order or payment status',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not fetch Auth wallet rows or browser session tokens from this packet',
+      'do not print secrets, raw provider payloads, customer PII, recipients, or message bodies',
+    ],
+    next: failedAssertions.length === 0
+      ? 'Owner bounded-window handoff is ready for review; runtime mutation still requires a separate operator action to open flags temporarily and restore them immediately after execution.'
+      : 'Resolve failed handoff assertions before owner bounded-window review.',
+  };
+}
+
+
 export async function notificationSendApprovalEvidencePacket() {
   const products = await fetchCatalogProducts();
   const catalogSource = productCatalogSource(products);
