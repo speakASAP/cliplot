@@ -53,6 +53,49 @@ bounded implementation and approved synthetic evidence.
   and short non-reversible ids only.
 - Frontend exposure must be limited to fields needed for checkout selection and
   immutable checkout snapshots.
+- This policy is source-resolved for the future implementation lane, but
+  runtime implementation evidence remains gated until Cliplot actually adds
+  wallet reads/selectors.
+
+## Source-Only No-PII Evidence Policy
+
+For the current source-only lane, allowed evidence is limited to:
+
+- status codes;
+- booleans;
+- `schemaVersion`;
+- blocker labels;
+- short non-reversible ids.
+
+Forbidden evidence for future runtime wallet code includes raw wallet response
+bodies, names, phone numbers, emails, street addresses, company ids, tax ids,
+VAT ids, tokens, cookies, passwords, secrets, and service credentials.
+
+The future implementation verifier must prove that browser logs, server logs,
+reports, approval packets, and frontend selector labels do not expose forbidden
+evidence. Because runtime wallet code is not present yet, this contract resolves
+the policy only; implementation evidence remains dependency-gated.
+
+## Source-Only Wallet Mapping Acceptance Criteria
+
+Pure mapping helpers may be validated with synthetic fixture rows before runtime
+wallet reads exist. That source-only verifier must prove:
+
+- delivery address rows map only into current-checkout contact and delivery
+  snapshot fields;
+- invoice profile rows map only into current-checkout billing snapshot fields;
+- nullable wallet fields are skipped instead of serialized as reusable profile
+  truth;
+- invoice recipient email is `email`;
+- `invoiceEmail` and `electronicInvoiceEmail` are not accepted aliases;
+- `id`, `user`, `userId`, `deletedAt`, `sourceApplication`, `lastUsedAt`,
+  `createdAt`, `updatedAt`, and `isDefault` are excluded from checkout
+  snapshots;
+- no token, cookie, raw response body, wallet id, or Auth ownership field is
+  printed in verifier output.
+
+This mapping evidence does not approve runtime wallet fetches, browser-session
+handling, selector UI, checkout submit changes, or live smokes.
 
 ## Field Mapping
 
@@ -87,8 +130,8 @@ Invoice profile mapping to the checkout snapshot:
 - The checkout submit path remains `/api/checkout/submit` and must receive
   resolved immutable snapshots, not Auth wallet ids.
 - Runtime integration remains blocked until selector behavior, browser-session
-  handling, no-PII exposure, field mapping, and guest fallback are covered by
-  source validation and approved synthetic runtime evidence.
+  handling, no-PII implementation evidence, field mapping, and guest fallback
+  are covered by source validation and approved synthetic runtime evidence.
 
 ## Forbidden In This Contract Lane
 

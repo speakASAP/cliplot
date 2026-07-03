@@ -60,8 +60,16 @@ missing.
 - Source-only contract recorded in `docs/auth-wallet-checkout-contract.md`.
 - `[MISSING: owner approval for Cliplot checkout wallet selector behavior]`
 - `[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]`
-- `[MISSING: no-PII logging/frontend exposure implementation evidence for wallet data]`
-- `[MISSING: approved Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]`
+- Source-defined no-PII wallet exposure policy recorded in
+  `docs/auth-wallet-checkout-contract.md`; runtime implementation evidence is
+  still gated because runtime wallet reads/selectors are absent.
+- Source-only Auth wallet row mapping evidence is verified with synthetic
+  fixtures and sanitized output: delivery rows map to contact/delivery snapshot
+  fields, invoice rows map to billing snapshot fields, nullable fields are
+  skipped, invoice recipient email is `email`, and wallet ids/Auth ownership
+  fields/timestamp metadata/legacy invoice email aliases are excluded.
+- `[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]`
+- `[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]`
 - `[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]`
 
 ## Validation Commands
@@ -92,6 +100,17 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
   authenticated session handoff, no-PII logging/frontend exposure constraints,
   field mapping from Auth wallet rows to immutable checkout/order snapshots, and
   guest fallback behavior.
+- The contract now records a source-only no-PII evidence policy: allowed
+  evidence is limited to status codes, booleans, `schemaVersion`, blocker
+  labels, and short non-reversible ids; forbidden evidence includes raw wallet
+  response bodies, names, phone numbers, emails, street addresses, company ids,
+  tax ids, VAT ids, tokens, cookies, passwords, secrets, and service
+  credentials.
+- `scripts/auth-wallet-checkout-readiness.js` verifies source-only mapping
+  assertions with synthetic fixture rows, but prints only booleans, field names,
+  schema/status metadata, and blocker labels. The JSON evidence does not print
+  fixture email, phone, street, company/tax/VAT values, wallet ids, Auth
+  ownership fields, tokens, cookies, or raw wallet response bodies.
 - `scripts/auth-wallet-checkout-readiness.js` now verifies the contract markers
   and still fails if runtime wallet endpoint integration appears before gates
   are cleared.

@@ -104,11 +104,165 @@ const authWalletPresenceGate = {
   evidence: 'Auth coordinator Goal 10.42 runtime verifier passed after current Source Preflight live refresh; FlipFlop non-mutating post-deploy smoke also passed.',
 };
 
+const authWalletNoPiiExposurePolicy = {
+  status: 'source_policy_defined',
+  runtimeWalletCodePresent: false,
+  allowedEvidenceFields: [
+    'status codes',
+    'booleans',
+    'schemaVersion',
+    'blocker labels',
+    'short non-reversible ids',
+  ],
+  forbiddenEvidenceFields: [
+    'raw wallet response bodies',
+    'names',
+    'phone numbers',
+    'emails',
+    'street addresses',
+    'company ids',
+    'tax ids',
+    'VAT ids',
+    'tokens',
+    'cookies',
+    'passwords',
+    'secrets',
+    'service credentials',
+  ],
+  storageBoundary: 'Do not persist reusable Auth wallet rows in Cliplot local storage; only immutable checkout snapshots may be submitted after implementation approval.',
+  frontendBoundary: 'Expose only fields needed for customer selection and immutable checkout snapshots; selector labels must avoid raw full address dumps.',
+  loggingBoundary: 'Do not log raw Auth wallet response bodies or customer PII in source validation, browser logs, server logs, reports, or approval evidence.',
+};
+
+const fixtureDeliveryAddress = {
+  id: 'delivery-fixture-id',
+  label: 'Default delivery',
+  firstName: 'FIRST_NAME_FIXTURE',
+  lastName: 'LAST_NAME_FIXTURE',
+  company: null,
+  street: 'DELIVERY_STREET_FIXTURE',
+  street2: null,
+  city: 'DELIVERY_CITY_FIXTURE',
+  region: null,
+  postalCode: 'POSTAL_FIXTURE',
+  country: 'CZ',
+  phone: 'PHONE_FIXTURE',
+  email: 'EMAIL_FIXTURE',
+  deliveryInstructions: 'DELIVERY_NOTE_FIXTURE',
+  isDefault: true,
+  sourceApplication: 'auth-microservice',
+  lastUsedAt: '2026-07-03T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  updatedAt: '2026-07-02T00:00:00.000Z',
+  user: { id: 'MUST_NOT_COPY_USER' },
+  userId: 'MUST_NOT_COPY_USER',
+  deletedAt: null,
+};
+
+const fixtureInvoiceProfile = {
+  id: 'invoice-fixture-id',
+  label: 'Business invoice',
+  type: 'company',
+  firstName: 'FIRST_NAME_FIXTURE',
+  lastName: 'LAST_NAME_FIXTURE',
+  companyName: 'COMPANY_NAME_FIXTURE',
+  companyId: 'COMPANY_ID_FIXTURE',
+  taxId: 'TAX_ID_FIXTURE',
+  vatId: 'VAT_ID_FIXTURE',
+  street: 'BILLING_STREET_FIXTURE',
+  street2: null,
+  city: 'BILLING_CITY_FIXTURE',
+  region: null,
+  postalCode: 'BILLING_POSTAL_FIXTURE',
+  country: 'CZ',
+  phone: 'BILLING_PHONE_FIXTURE',
+  email: 'BILLING_EMAIL_FIXTURE',
+  isDefault: true,
+  sourceApplication: 'auth-microservice',
+  lastUsedAt: '2026-07-03T00:00:00.000Z',
+  createdAt: '2026-07-01T00:00:00.000Z',
+  updatedAt: '2026-07-02T00:00:00.000Z',
+  invoiceEmail: 'MUST_NOT_COPY_INVOICE_EMAIL',
+  electronicInvoiceEmail: 'MUST_NOT_COPY_ELECTRONIC_INVOICE_EMAIL',
+  user: { id: 'MUST_NOT_COPY_USER' },
+  userId: 'MUST_NOT_COPY_USER',
+  deletedAt: null,
+};
+
+function compactObject(value) {
+  return Object.fromEntries(Object.entries(value).filter(([, nested]) => nested !== undefined && nested !== null && nested !== ''));
+}
+
+function mapDeliveryAddressToCheckoutSnapshot(address) {
+  return compactObject({
+    customerName: [address.firstName, address.lastName].filter(Boolean).join(' '),
+    email: address.email,
+    phone: address.phone,
+    deliveryAddress: compactObject({
+      name: [address.firstName, address.lastName].filter(Boolean).join(' '),
+      company: address.company,
+      street: [address.street, address.street2].filter(Boolean).join(', '),
+      city: address.city,
+      region: address.region,
+      postalCode: address.postalCode,
+      country: address.country,
+      note: address.deliveryInstructions,
+    }),
+  });
+}
+
+function mapInvoiceProfileToCheckoutSnapshot(profile) {
+  return compactObject({
+    billingAddress: compactObject({
+      type: profile.type,
+      name: [profile.firstName, profile.lastName].filter(Boolean).join(' '),
+      companyName: profile.companyName,
+      companyId: profile.companyId,
+      taxId: profile.taxId,
+      vatId: profile.vatId,
+      street: [profile.street, profile.street2].filter(Boolean).join(', '),
+      city: profile.city,
+      region: profile.region,
+      postalCode: profile.postalCode,
+      country: profile.country,
+      phone: profile.phone,
+      email: profile.email,
+    }),
+  });
+}
+
+const deliverySnapshotFixture = mapDeliveryAddressToCheckoutSnapshot(fixtureDeliveryAddress);
+const invoiceSnapshotFixture = mapInvoiceProfileToCheckoutSnapshot(fixtureInvoiceProfile);
+const walletMappingExcludedFields = [
+  'id',
+  'user',
+  'userId',
+  'deletedAt',
+  'sourceApplication',
+  'lastUsedAt',
+  'createdAt',
+  'updatedAt',
+  'isDefault',
+  'invoiceEmail',
+  'electronicInvoiceEmail',
+];
+const serializedSnapshotFixtures = JSON.stringify({ deliverySnapshotFixture, invoiceSnapshotFixture });
+const sourceOnlyWalletMappingEvidence = {
+  status: 'source_only_mapping_contract_verified',
+  deliverySnapshotFields: Object.keys(deliverySnapshotFixture),
+  deliveryAddressFields: Object.keys(deliverySnapshotFixture.deliveryAddress || {}),
+  billingAddressFields: Object.keys(invoiceSnapshotFixture.billingAddress || {}),
+  excludedFields: walletMappingExcludedFields,
+  excludedFieldsProtected: walletMappingExcludedFields.every((field) => !serializedSnapshotFixtures.includes(`"${field}":`)),
+  forbiddenAliasProtected: !serializedSnapshotFixtures.includes('invoiceEmail') && !serializedSnapshotFixtures.includes('electronicInvoiceEmail'),
+  forbiddenFixtureValueProtected: !serializedSnapshotFixtures.includes('MUST_NOT_COPY'),
+};
+
 const blockers = [
   '[MISSING: owner approval for Cliplot checkout wallet selector behavior]',
   '[MISSING: authenticated browser session implementation and approved synthetic runtime evidence for wallet reads]',
-  '[MISSING: no-PII logging/frontend exposure implementation evidence for wallet data]',
-  '[MISSING: approved Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
+  '[MISSING: no-PII logging/frontend exposure implementation evidence for future runtime wallet code]',
+  '[MISSING: approved runtime Cliplot field mapping implementation from Auth wallet rows to checkout/order snapshots]',
   '[MISSING: approved Cliplot guest fallback implementation evidence when Auth wallet reads are unavailable]',
 ];
 
@@ -120,6 +274,8 @@ const sourceKnownFacts = [
   'Runtime manifests point at Auth but do not enable wallet integration.',
   'Auth source-defines checkout-data schemaVersion as auth.customer-data-wallet.checkout-data.v1.',
   'Auth source-defines checkout-data top-level fields, defaults fields, and sanitized delivery/invoice wallet row field names.',
+  'Cliplot source-defines the no-PII wallet exposure policy; runtime wallet code is still absent and implementation evidence remains gated.',
+  'Cliplot source-verifies pure Auth wallet row mapping into immutable checkout snapshots without wallet ids or Auth ownership fields.',
 ];
 
 function assert(condition, message, evidence = {}) {
@@ -186,12 +342,20 @@ const hasWalletContract = includesAll(walletContract, [
   'memory for the request window',
   'Do not log raw Auth wallet response bodies',
   'Do not persist reusable Auth wallet rows in Cliplot local storage',
+  'Evidence may contain booleans, status codes, schema version, blocker labels',
+  'Selector labels must avoid raw full address dumps',
+  'Source-Only No-PII Evidence Policy',
+  'Forbidden evidence',
+  'future runtime wallet code',
+  'Source-Only Wallet Mapping Acceptance Criteria',
+  'Pure mapping helpers',
+  'invoice recipient email is `email`',
   'Delivery address mapping to the checkout snapshot',
   'Invoice profile mapping to the checkout snapshot',
   'The checkout submit path remains `/api/checkout/submit` and must receive',
   'resolved immutable snapshots, not Auth wallet ids',
   'Runtime integration remains blocked until selector behavior, browser-session',
-  'handling, no-PII exposure, field mapping, and guest fallback',
+  'handling, no-PII implementation evidence, field mapping, and guest fallback',
 ]);
 const runtimeWalletReferences = Object.values(sources)
   .filter(({ path }) => path !== sourceFiles.walletContract)
@@ -262,6 +426,60 @@ assert(
   'Auth wallet sanitized exclusion contract is incomplete',
   { authWalletResponseContract },
 );
+assert(
+  authWalletNoPiiExposurePolicy.status === 'source_policy_defined'
+    && authWalletNoPiiExposurePolicy.runtimeWalletCodePresent === false,
+  'Cliplot Auth wallet no-PII exposure policy is not source-defined',
+  { authWalletNoPiiExposurePolicy },
+);
+assert(
+  includesAll(authWalletNoPiiExposurePolicy.allowedEvidenceFields.join('|'), [
+    'status codes',
+    'booleans',
+    'schemaVersion',
+    'blocker labels',
+  ]),
+  'Cliplot no-PII policy allowed evidence fields are incomplete',
+  { authWalletNoPiiExposurePolicy },
+);
+assert(
+  includesAll(authWalletNoPiiExposurePolicy.forbiddenEvidenceFields.join('|'), [
+    'raw wallet response bodies',
+    'emails',
+    'street addresses',
+    'tokens',
+    'cookies',
+    'secrets',
+  ]),
+  'Cliplot no-PII policy forbidden evidence fields are incomplete',
+  { authWalletNoPiiExposurePolicy },
+);
+assert(
+  sourceOnlyWalletMappingEvidence.status === 'source_only_mapping_contract_verified',
+  'Cliplot Auth wallet source-only mapping evidence is missing',
+  { sourceOnlyWalletMappingEvidence },
+);
+assert(
+  invoiceSnapshotFixture.billingAddress.email === fixtureInvoiceProfile.email
+    && invoiceSnapshotFixture.billingAddress.companyId === fixtureInvoiceProfile.companyId
+    && invoiceSnapshotFixture.billingAddress.vatId === fixtureInvoiceProfile.vatId,
+  'Cliplot invoice wallet row mapping does not produce the expected checkout snapshot',
+  { sourceOnlyWalletMappingEvidence },
+);
+assert(
+  deliverySnapshotFixture.email === fixtureDeliveryAddress.email
+    && deliverySnapshotFixture.deliveryAddress.street === 'DELIVERY_STREET_FIXTURE'
+    && deliverySnapshotFixture.deliveryAddress.postalCode === fixtureDeliveryAddress.postalCode,
+  'Cliplot delivery wallet row mapping does not produce the expected checkout snapshot',
+  { sourceOnlyWalletMappingEvidence },
+);
+assert(
+  sourceOnlyWalletMappingEvidence.excludedFieldsProtected
+    && sourceOnlyWalletMappingEvidence.forbiddenFixtureValueProtected
+    && sourceOnlyWalletMappingEvidence.forbiddenAliasProtected,
+  'Cliplot source-only mapping evidence leaked wallet ids, system fields, aliases, or forbidden fixture values',
+  { sourceOnlyWalletMappingEvidence },
+);
 assert(runtimeWalletReferences.length === 0, 'runtime wallet endpoint integration exists before dependency gates are cleared', {
   runtimeWalletReferences,
   blockers,
@@ -287,7 +505,9 @@ console.log(JSON.stringify({
   requiredWalletEndpoints: walletEndpoints,
   authWalletResponseContract,
   authWalletPresenceGate,
+  authWalletNoPiiExposurePolicy,
+  sourceOnlyWalletMappingEvidence,
   sourceKnownFacts,
   blockers,
-  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, PII exposure, field mapping, and guest fallback approvals are available.',
+  next: 'Keep Cliplot checkout wallet integration blocked until selector behavior, browser session, runtime no-PII evidence, field mapping, and guest fallback approvals are available.',
 }, null, 2));
