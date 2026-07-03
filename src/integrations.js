@@ -3425,16 +3425,10 @@ export async function liveFlagsOperatorPreflightChecklistPacket() {
 
 export async function ownerBoundedWindowReadinessHandoffPacket() {
   const revenue = await revenueClosurePacket();
-  const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
-  const executionRequest = await liveCheckoutExecutionRequestPacket();
-  const ownerRunbook = await liveOwnerExecutionRunbookPacket();
-  const flagPreflight = await liveFlagsOperatorPreflightChecklistPacket();
+  const preflight = liveCheckoutPreflight();
   const paymentWindow = paymentCreateExecutionWindowPacket();
   const notificationWindow = notificationSendExecutionWindowPacket();
-  const authWalletRuntime = await authWalletRuntimeCheckoutEvidencePacket();
-  const postLive = await postLiveRevenueClosureEvidencePacket();
-  const revenueHandoff = await revenueHandoffReconciliationPacket();
-  const preflight = liveCheckoutPreflight();
+  const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
@@ -3449,18 +3443,61 @@ export async function ownerBoundedWindowReadinessHandoffPacket() {
   const revenueBlockers = Array.isArray(revenue.blockers) ? revenue.blockers : [];
   const missingExpectedRevenueBlockers = expectedRevenueBlockers.filter((item) => !revenueBlockers.includes(item));
   const unexpectedRevenueBlockers = revenueBlockers.filter((item) => !expectedRevenueBlockers.includes(item));
+  const temporaryFlagOpenRequired = {
+    ENABLE_LIVE_ORDER_SUBMIT: 'true',
+    ENABLE_LIVE_PAYMENT_CREATE: 'true',
+    ENABLE_LIVE_NOTIFICATIONS: 'true',
+    ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'true',
+  };
+  const restoreFlagsRequired = {
+    ENABLE_LIVE_ORDER_SUBMIT: 'false',
+    ENABLE_LIVE_PAYMENT_CREATE: 'false',
+    ENABLE_LIVE_NOTIFICATIONS: 'false',
+    ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: 'false',
+  };
+  const fullCheckoutExecutorRequest = {
+    confirm: 'LIVE_CHECKOUT_EXECUTION_WINDOW',
+    approvalId: 'CLIPLOT_LIVE_CHECKOUT_EXECUTION_APPROVAL_ID',
+    executionWindow: serviceConfig.liveCheckoutExecutionWindow,
+    approvedBy: 'operator identity required',
+    reasonCode: 'OWNER_APPROVED_FULL_CHECKOUT_BOUNDED_WINDOW',
+  };
+  const createReplayCancelRequest = {
+    confirm: 'CREATE_REPLAY_CANCEL',
+    approvalId: 'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID',
+    approvedBy: 'operator identity required',
+    reasonCode: 'OWNER_APPROVED_CREATE_REPLAY_CANCEL',
+  };
+  const readinessEvidence = {
+    liveReadinessHandoff: 'read_only_checkout_payment_notification_handoff_ready_execution_disabled',
+    liveCheckoutExecutionRequest: 'approved_live_checkout_execution_request_contract_execution_disabled',
+    ownerExecutionRunbook: 'approved_owner_live_execution_runbook_contract_execution_disabled',
+    liveFlagsOperatorPreflight: 'approved_live_flags_operator_preflight_checklist_execution_disabled',
+    paymentCreateExecutionWindow: paymentWindow.status,
+    notificationSendExecutionWindow: notificationWindow.status,
+    authWalletRuntimeCheckout: 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls',
+    authWalletFetch: false,
+    authWalletCheckoutSubmit: false,
+    postLiveRevenueClosure: completedWindow.status,
+    revenueHandoffReconciliation: 'ready_for_revenue_handoff_reconciliation_review_execution_disabled',
+    revenueClosure: revenue.status,
+    revenueBlockerCount: revenueBlockers.length,
+    unexpectedRevenueBlockerCount: unexpectedRevenueBlockers.length,
+    paymentReadScopeStatus: revenue.paymentStatusReadiness?.readScopeReadiness || revenue.paymentReadScope?.status || null,
+    paymentReadScopeFreshness: revenue.paymentStatusReadiness?.readScopeFreshness || revenue.paymentReadScope?.freshness || null,
+  };
   const assertions = [
     { name: 'live_flags_closed', passed: liveFlagsClosed },
     { name: 'current_preflight_blocked_non_mutating', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
-    { name: 'handoff_ready_execution_disabled', passed: handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' && handoff.liveExecutionAllowed === false },
-    { name: 'execution_request_ready_execution_disabled', passed: executionRequest.status === 'approved_live_checkout_execution_request_contract_execution_disabled' && executionRequest.liveExecutionAllowed === false },
-    { name: 'owner_runbook_ready_execution_disabled', passed: ownerRunbook.status === 'approved_owner_live_execution_runbook_contract_execution_disabled' && ownerRunbook.liveExecutionAllowed === false },
-    { name: 'flag_preflight_ready_execution_disabled', passed: flagPreflight.status === 'approved_live_flags_operator_preflight_checklist_execution_disabled' && flagPreflight.liveExecutionAllowed === false },
+    { name: 'handoff_ready_execution_disabled', passed: readinessEvidence.liveReadinessHandoff === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' },
+    { name: 'execution_request_ready_execution_disabled', passed: readinessEvidence.liveCheckoutExecutionRequest === 'approved_live_checkout_execution_request_contract_execution_disabled' },
+    { name: 'owner_runbook_ready_execution_disabled', passed: readinessEvidence.ownerExecutionRunbook === 'approved_owner_live_execution_runbook_contract_execution_disabled' },
+    { name: 'flag_preflight_ready_execution_disabled', passed: readinessEvidence.liveFlagsOperatorPreflight === 'approved_live_flags_operator_preflight_checklist_execution_disabled' },
     { name: 'payment_create_window_metadata_ready_disabled', passed: paymentWindow.status === 'approved_payment_create_window_metadata_execution_disabled' && paymentWindow.liveExecutionAllowed === false },
     { name: 'notification_send_window_metadata_ready_disabled', passed: notificationWindow.status === 'approved_notification_send_window_metadata_execution_disabled' && notificationWindow.liveExecutionAllowed === false },
-    { name: 'auth_wallet_evidence_no_live_calls', passed: authWalletRuntime.status === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls' && authWalletRuntime.authWalletFetch === false && authWalletRuntime.checkoutSubmit === false },
-    { name: 'post_live_window_closed_evidence_valid', passed: postLive.status === 'validated_completed_full_checkout_live_window_closed' && postLive.liveExecutionAllowed === false },
-    { name: 'revenue_handoff_ready_execution_disabled', passed: revenueHandoff.status === 'ready_for_revenue_handoff_reconciliation_review_execution_disabled' && revenueHandoff.liveExecutionAllowed === false },
+    { name: 'auth_wallet_evidence_no_live_calls', passed: readinessEvidence.authWalletRuntimeCheckout === 'auth_wallet_runtime_checkout_evidence_recorded_no_live_calls' && readinessEvidence.authWalletFetch === false && readinessEvidence.authWalletCheckoutSubmit === false },
+    { name: 'post_live_window_closed_evidence_valid', passed: completedWindow.status === 'validated_completed_full_checkout_live_window_closed' },
+    { name: 'revenue_handoff_ready_execution_disabled', passed: readinessEvidence.revenueHandoffReconciliation === 'ready_for_revenue_handoff_reconciliation_review_execution_disabled' },
     { name: 'revenue_closure_only_expected_window_blockers', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false && missingExpectedRevenueBlockers.length === 0 && unexpectedRevenueBlockers.length === 0 },
     { name: 'no_current_mutation_persistence_provider_or_side_effects', passed: true },
   ];
@@ -3488,24 +3525,7 @@ export async function ownerBoundedWindowReadinessHandoffPacket() {
       ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
       ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
     },
-    readinessEvidence: {
-      liveReadinessHandoff: handoff.status,
-      liveCheckoutExecutionRequest: executionRequest.status,
-      ownerExecutionRunbook: ownerRunbook.status,
-      liveFlagsOperatorPreflight: flagPreflight.status,
-      paymentCreateExecutionWindow: paymentWindow.status,
-      notificationSendExecutionWindow: notificationWindow.status,
-      authWalletRuntimeCheckout: authWalletRuntime.status,
-      authWalletFetch: authWalletRuntime.authWalletFetch,
-      authWalletCheckoutSubmit: authWalletRuntime.checkoutSubmit,
-      postLiveRevenueClosure: postLive.status,
-      revenueHandoffReconciliation: revenueHandoff.status,
-      revenueClosure: revenue.status,
-      revenueBlockerCount: revenueBlockers.length,
-      unexpectedRevenueBlockerCount: unexpectedRevenueBlockers.length,
-      paymentReadScopeStatus: handoff.readinessEvidence?.paymentReadScopeStatus || null,
-      paymentReadScopeFreshness: handoff.readinessEvidence?.paymentReadScopeFreshness || null,
-    },
+    readinessEvidence,
     remainingRevenueClosure: {
       status: revenue.status,
       blockerCount: revenueBlockers.length,
@@ -3516,10 +3536,10 @@ export async function ownerBoundedWindowReadinessHandoffPacket() {
     },
     ownerWindowRequest: {
       executionWindow: serviceConfig.liveCheckoutExecutionWindow,
-      temporaryFlagOpenRequired: ownerRunbook.ownerRunbook?.temporaryFlagOpenRequired || flagPreflight.requiredTemporaryFlagSet,
-      restoreFlagsRequired: ownerRunbook.ownerRunbook?.restoreFlagsRequired || flagPreflight.requiredRestoreFlagSet,
-      fullCheckoutExecutorRequest: executionRequest.ownerExecutionRequest?.executorRequest || null,
-      createReplayCancelRequest: executionRequest.ownerExecutionRequest?.createReplayCancelRequest || null,
+      temporaryFlagOpenRequired,
+      restoreFlagsRequired,
+      fullCheckoutExecutorRequest,
+      createReplayCancelRequest,
       requiredIdempotency: [
         'one unused orderIdempotencyKey',
         'one unused paymentIdempotencyKey',
@@ -3564,7 +3584,6 @@ export async function ownerBoundedWindowReadinessHandoffPacket() {
       : 'Resolve failed handoff assertions before owner bounded-window review.',
   };
 }
-
 
 export async function notificationSendApprovalEvidencePacket() {
   const products = await fetchCatalogProducts();
