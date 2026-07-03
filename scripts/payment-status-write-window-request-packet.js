@@ -35,7 +35,9 @@ assert(packet.currentPacketEnablesRuntime === false, 'request packet enables run
 assert(packet.prerequisiteEvidence?.reconciliation === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled', 'reconciliation prerequisite missing', packet);
 assert(packet.prerequisiteEvidence?.callbackReadiness === 'validated_guarded_ack_no_persistence', 'callback readiness prerequisite missing', packet);
 assert(packet.prerequisiteEvidence?.paymentStatus === 'ready_for_approved_payment_status_runtime_read', 'payment status prerequisite missing', packet);
-assert(packet.operatorRequestContract?.currentPacketAcceptsRequests === false, 'packet accepts write requests', packet);
+assert(packet.operatorRequestContract?.currentPacketAcceptsRequests === false, 'packet accepts runtime write requests', packet);
+assert(packet.operatorRequestContract?.currentPacketAcceptsGuardedRequests === true, 'packet missing guarded request endpoint', packet);
+assert(packet.operatorRequestContract?.endpoint === '/api/payments/status-write-bounded-executor', 'guarded executor endpoint missing', packet);
 assert(packet.operatorRequestContract?.currentPacketMayOpenFlags === false, 'packet may open flags', packet);
 assert(packet.operatorRequestContract?.currentPacketMayExecuteWrites === false, 'packet may execute writes', packet);
 assert(packet.operatorRequestContract?.requestFields?.some((field) => field.name === 'confirm' && field.requiredValue === 'PAYMENT_STATUS_WRITE_WINDOW'), 'confirm request field missing', packet);

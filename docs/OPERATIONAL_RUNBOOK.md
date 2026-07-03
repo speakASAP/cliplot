@@ -439,6 +439,20 @@ npm run readiness:payment-status-write-window-request -- https://cliplot.alfares
 curl -s https://cliplot.alfares.cz/api/payments/status-write-window-request-packet
 ```
 
+`POST /api/payments/status-write-bounded-executor` is the disabled guard
+surface for the same future window. It accepts a JSON request only to return
+approval-required evidence. It must keep `liveExecutionAllowed=false`,
+`paymentStatusWritten=false`, `orderStatusWritten=false`,
+`callbackPersisted=false`, `callbackReplayExecuted=false`, `providerBackedRead=false`,
+`mutation=false`, `persistence=false`, `providerCall=false`, and `sideEffects=false`.
+It must not persist callbacks, replay callbacks, write statuses, create payments,
+send notifications, call provider APIs, or return raw callback/payment/provider/PII/secret
+data.
+
+```bash
+npm run readiness:payment-status-write-bounded-executor -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the

@@ -42,6 +42,7 @@ import {
   paymentLiveStatusWriteApprovalPacket,
   paymentStatusReconciliationReadinessPacket,
   paymentStatusWriteWindowRequestPacket,
+  runPaymentStatusWriteBoundedExecutor,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
   paymentStatusStorageReadiness,
@@ -752,6 +753,23 @@ const server = createServer(async (req, res) => {
         success: false,
         status: 'method_not_allowed',
         allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-write-bounded-executor' && req.method === 'POST') {
+      const payload = await readRequestJson(req);
+      const result = await runPaymentStatusWriteBoundedExecutor(payload);
+      sendJson(res, result.httpStatus, result.body);
+      return;
+    }
+
+    if (url.pathname === '/api/payments/status-write-bounded-executor') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['POST'],
         mutation: false,
       });
       return;

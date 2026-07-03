@@ -823,3 +823,14 @@ reconciliation evidence for a bounded status write window while keeping callback
 persistence, callback replay execution, live status writes, payment creation,
 notification sends, provider-backed payment reads, and Cliplot-local payment
 truth disabled.
+
+### 2026-07-03 - Payment status write bounded executor guard
+
+Added disabled-only `POST /api/payments/status-write-bounded-executor` with
+`npm run readiness:payment-status-write-bounded-executor`. The route accepts an
+operator-shaped request only to return `approval_required` evidence and the
+current write-window request packet. It keeps payment status writes, order status
+writes, callback persistence, callback replay execution, payment creation,
+notification sends, provider-backed `/payments/{paymentId}` reads, mutation,
+persistence, provider calls, and side effects disabled. Runtime write execution
+remains a separate future approval lane.

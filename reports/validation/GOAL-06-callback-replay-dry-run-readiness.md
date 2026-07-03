@@ -85,3 +85,13 @@ It must define operator request fields, rollback steps, validation steps, and
 post-window reconciliation evidence while keeping callback persistence, callback
 replay execution, live status writes, payment creation, notification sends,
 provider-backed payment reads, and Cliplot-local payment truth disabled.
+
+## Payment Status Write Bounded Executor Guard
+
+The disabled guard endpoint is `POST /api/payments/status-write-bounded-executor`
+with `npm run readiness:payment-status-write-bounded-executor`. It returns
+`approval_required` and verifies no payment status write, order status write,
+callback persistence, callback replay execution, payment creation, notification
+send, provider-backed read, mutation, persistence, provider call, or side effect
+occurred. It embeds the read-only write-window request packet as evidence and
+keeps runtime implementation blocked for a later approval lane.
