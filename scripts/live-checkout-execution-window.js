@@ -28,7 +28,7 @@ const packetResult = await getJson('/api/checkout/live-execution-window-packet')
 const packet = packetResult.payload;
 
 assert(packetResult.response.status === 200 && packet.success, 'live checkout execution window packet failed', packet);
-assert(packet.status === 'approval_required_live_checkout_execution_window', 'live checkout execution window should remain blocked by default', packet);
+assert(['approval_required_live_checkout_execution_window', 'approved_live_checkout_execution_window_metadata_execution_disabled'].includes(packet.status), 'live checkout execution window status mismatch', packet);
 assert(packet.mode === 'guarded_live_checkout_execution_window_packet', 'live checkout execution window mode mismatch', packet);
 assert(packet.mutation === false, 'live checkout packet reports mutation', packet);
 assert(packet.persistence === false, 'live checkout packet reports persistence', packet);
@@ -56,7 +56,8 @@ if (packet.approvals.notification === false) {
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_ORDER_SUBMIT=true')), 'order live flag blocker missing', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_PAYMENT_CREATE=true')), 'payment live flag blocker missing', packet);
 assert(packet.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_NOTIFICATIONS=true')), 'notification live flag blocker missing', packet);
-assert(packet.executionBlockers?.some((item) => item.includes('CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW')), 'concrete checkout window blocker missing', packet);
+assert(packet.approvalMetadata?.metadataReady === (packet.status === 'approved_live_checkout_execution_window_metadata_execution_disabled'), 'live checkout metadata readiness mismatch', packet);
+assert(packet.blockerClassification?.executionBlockers?.some((item) => item.includes('ENABLE_LIVE_ORDER_SUBMIT=true')), 'order live execution blocker missing', packet);
 assert(packet.readinessEvidence?.paymentExecutionWindowMetadataReady === true, 'payment execution-window metadata should be ready', packet);
 assert(packet.readinessEvidence?.notificationExecutionWindowMetadataReady === true, 'notification execution-window metadata should be ready', packet);
 assert(packet.duplicatePolicy?.duplicateCheckRequired === 'IDEMPOTENCY_KEYS_NOT_USED', 'duplicate policy missing', packet);
@@ -91,6 +92,7 @@ console.log(JSON.stringify({
   ok: true,
   baseUrl,
   packetStatus: packet.status,
+  metadataReady: packet.approvalMetadata?.metadataReady,
   executorStatus: executor.status,
   liveExecutionAllowed: executor.liveExecutionAllowed,
   blockerCount: executor.blockers.length,

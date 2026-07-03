@@ -626,14 +626,17 @@ curl -s https://cliplot.alfares.cz/api/checkout/live-execution-window-packet
 ```
 
 The packet and `POST /api/checkout/live-bounded-executor` stub must return
-`approval_required`, `liveExecutionAllowed=false`, `mutation=false`,
-`persistence=false`, `providerCall=false`, `orderCreated=false`,
-`warehouseReserved=false`, `paymentCreated=false`, and `notificationSent=false`
-until a separately approved execution window opens. It requires
-`CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW`, all checkout live flags, order/payment/
-notification idempotency keys, `duplicateCheck=IDEMPOTENCY_KEYS_NOT_USED`,
-rollback owners for order, Warehouse, payment and notification, and validation
-owners for exactly one result per idempotency key.
+`approval_required` or `approved_live_checkout_execution_window_metadata_execution_disabled`,
+`liveExecutionAllowed=false`, `mutation=false`, `persistence=false`,
+`providerCall=false`, `orderCreated=false`, `warehouseReserved=false`,
+`paymentCreated=false`, and `notificationSent=false` until a separately
+approved execution window opens. Production records
+`CLIPLOT_LIVE_CHECKOUT_EXECUTION_WINDOW` as metadata while keeping all checkout
+live flags false. The bounded executor still requires all checkout live flags,
+order/payment/notification idempotency keys,
+`duplicateCheck=IDEMPOTENCY_KEYS_NOT_USED`, rollback owners for order,
+Warehouse, payment and notification, and validation owners for exactly one
+result per idempotency key.
 
 ## Controlled Orders/Warehouse Smoke Evidence
 

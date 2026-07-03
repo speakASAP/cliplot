@@ -738,3 +738,11 @@ blocker classes. Payment and notification approval/window metadata can now be
 reported as ready while `ENABLE_LIVE_PAYMENT_CREATE=false` and
 `ENABLE_LIVE_NOTIFICATIONS=false` continue to block execution. Full checkout
 execution remains blocked by the live flags and missing full checkout window.
+
+### 2026-07-03 - Full checkout execution-window metadata
+
+Recorded execution-disabled full checkout window metadata and split the full
+checkout packet into metadata, execution, and guardrail blocker classes. The
+payment, notification, order approval, Orders/Warehouse smoke, and full checkout
+window metadata can now be reported as ready while all live flags remain false
+and full checkout execution remains blocked.
