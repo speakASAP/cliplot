@@ -214,6 +214,14 @@ notification sends, and Docs/RAG ingestion gated.
   checks `/health`, `/api/checkout/live-preflight`,
   `/api/integrations/readiness`, and `/api/payments/status` without POST or
   Kubernetes API permissions.
+- GOAL-06 callback replay dry-run assertions are validated on deployed image
+  `localhost:5000/cliplot:abdf9eb`. Production checks passed for callback
+  policy, callback persistence metadata, storage contract, replay rollout,
+  live-status-write metadata, revenue closure, and the full readiness bundle.
+  The lane remains metadata-only with `callbackPersistence=false`,
+  `callbackReplayEnabled=false`, `replayExecutionAllowed=false`,
+  `liveStatusWritesNow=false`, `wouldMutateNow=false`, `mutation=false`,
+  `persistence=false`, and `providerCall=false`.
 - Final live revenue closure remains blocked until approval IDs and runtime
   evidence exist.
 

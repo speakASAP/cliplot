@@ -611,3 +611,78 @@ The cached state is only allowed after a recent fresh synthetic missing-order
 `scopeValidated=true`, and preserves `mutation=false`, `persistence=false`, and
 `providerCall=false`. A 429 without a recent proof remains
 `temporarily_rate_limited_payments_read_scope` and blocks activation.
+
+## Callback Replay Dry-Run Assertions Validation
+
+Status: validated after k3s/containerd recovery.
+
+Commit: `abdf9eb`
+
+Commands:
+
+```bash
+npm run check
+npm run build
+python3 scripts/pre_coding_gate.py --root .
+python3 scripts/strict_doc_audit.py --root . --format markdown --fail-on-issues
+python3 scripts/deployment_readiness_gate.py --root .
+npm run readiness:payment-callback-policy -- https://cliplot.alfares.cz
+npm run readiness:payment-callback-persistence -- https://cliplot.alfares.cz
+npm run readiness:payment-callback-storage-contract -- https://cliplot.alfares.cz
+npm run readiness:payment-callback-replay-rollout -- https://cliplot.alfares.cz
+npm run readiness:payment-live-status-write -- https://cliplot.alfares.cz
+npm run readiness:revenue-closure -- https://cliplot.alfares.cz
+npm run readiness:bundle
+git diff --check
+```
+
+Evidence:
+
+```text
+npm run check=pass
+npm run build=pass
+STATIC_ASSET_CHECK=pass
+PRE_CODING_GATE=pass
+STRICT_DOC_AUDIT=pass
+DEPLOYMENT_READINESS=pass
+git diff --check=pass
+deployment.image=localhost:5000/cliplot:abdf9eb
+deployment.updated=1
+deployment.ready=1
+deployment.available=1
+paymentCallbackPolicy=approved_callback_replay_policy_metadata_execution_disabled
+callbackPersistence=approved_callback_persistence_metadata_execution_disabled
+callbackPersistence.blockerCount=0
+callbackPersistence.callbackPersistence=false
+callbackPersistence.callbackReplayEnabled=false
+callbackPersistence.mutation=false
+callbackPersistence.persistence=false
+callbackPersistence.providerCall=false
+callbackStorageContract=proposal_metadata_recorded_approval_required
+callbackStorageContract.owner=payments-microservice
+callbackReplayRollout=approved_callback_replay_execution_metadata_execution_disabled
+callbackReplayRollout.replayExecutionAllowed=false
+callbackReplayRollout.dryRunOnlyNow=true
+callbackReplayRollout.syntheticReplayDryRunAssertions=6
+callbackReplayRollout.syntheticCases=duplicate_same_semantic_callback,incompatible_terminal_status_conflict,terminal_status_ordering_rule,retention_and_deletion_metadata,rollback_and_validation_owner,runtime_guard_closed
+liveStatusWrite=approved_live_status_write_metadata_execution_disabled
+liveStatusWrite.liveStatusWritesNow=false
+revenueClosure=approval_required_live_revenue_closure
+revenueClosure.wouldMutateNow=false
+revenueClosure.blockerCount=5
+READINESS_STEP=docs_rag_preflight exit=0
+READINESS_STEP=guarded_checkout_smoke exit=0
+checkoutHttpStatus=202
+checkoutStatus=service_identity_required
+orderValidation=validated_no_mutation
+paymentValidation=validated_no_mutation
+notificationValidation=validated_no_send
+warehouseReservationReadiness=validated_no_mutation
+CLIPLOT_READINESS_BUNDLE=pass
+```
+
+The validated callback replay dry-run assertion lane is metadata-only. It does
+not persist callbacks, replay callbacks, write payment/order status, create
+orders, reserve Warehouse stock, create payments, call the payment provider, or
+send notifications. Live revenue closure remains intentionally guarded with
+`wouldMutateNow=false`.
