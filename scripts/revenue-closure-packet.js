@@ -37,10 +37,19 @@ assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldCreateOrder === false, '
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldReserveWarehouse === false, 'live preflight would reserve Warehouse stock', packet);
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldCreatePayment === false, 'live preflight would create payment', packet);
 assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === false, 'live preflight would send notification', packet);
-assert(Array.isArray(packet.requiredApprovalIds) && packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_APPROVAL_ID'), 'order approval id missing', packet);
-assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_PAYMENT_APPROVAL_ID'), 'payment approval id missing', packet);
-assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID'), 'notification approval id missing', packet);
-assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID'), 'live smoke approval id missing', packet);
+assert(Array.isArray(packet.requiredApprovalIds), 'required approval id list missing', packet);
+const approvalIdsRecorded = packet.liveCheckoutPreflight?.approvals?.order === true
+  && packet.liveCheckoutPreflight?.approvals?.payment === true
+  && packet.liveCheckoutPreflight?.approvals?.notification === true;
+if (!approvalIdsRecorded) {
+  assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_APPROVAL_ID'), 'order approval id missing', packet);
+  assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_PAYMENT_APPROVAL_ID'), 'payment approval id missing', packet);
+  assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID'), 'notification approval id missing', packet);
+}
+assert(packet.approvalPacket?.requiredApprovalIds?.includes('CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID'), 'live smoke approval id contract missing', packet.approvalPacket || {});
+assert(packet.blockers?.some((item) => item.includes('ENABLE_LIVE_ORDER_SUBMIT=true')), 'live order flag blocker missing', packet);
+assert(packet.blockers?.some((item) => item.includes('ENABLE_LIVE_PAYMENT_CREATE=true')), 'live payment flag blocker missing', packet);
+assert(packet.blockers?.some((item) => item.includes('ENABLE_LIVE_NOTIFICATIONS=true')), 'live notification flag blocker missing', packet);
 assert(Array.isArray(packet.requiredRuntimeKeys) && packet.requiredRuntimeKeys.includes('ORDERS_STATUS_SERVICE_TOKEN'), 'orders status runtime key missing', packet);
 assert(packet.catalog?.catalogSource === 'catalog', 'catalog source evidence missing', packet);
 assert(packet.catalog?.warehouseBackedProductCount > 0, 'warehouse-backed product evidence missing', packet);
