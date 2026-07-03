@@ -5724,9 +5724,20 @@ export async function customerStatusSurfaceReadiness() {
   const currentPaymentStatus = (await paymentStatus({ orderId: syntheticOrderId })).body || {};
   const paymentReadiness = await paymentStatusReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const mappingOwnership = await paymentStatusMappingOwnershipPacket();
   const runtime = paymentStatusRuntimeReadiness();
   const approvedRuntimeRead = runtime.runtimeReadEnabled === true
     && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
+  const callbackPolicyApproved = callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled'
+    && callbackPolicy.callbackPersistence === false
+    && callbackPolicy.callbackReplayEnabled === false;
+  const mappingOwnershipApproved = mappingOwnership.status === 'approved_order_payment_status_mapping_ownership'
+    && mappingOwnership.cliplotAuthoritative === false
+    && mappingOwnership.mutation === false
+    && mappingOwnership.persistence === false
+    && mappingOwnership.providerCall === false;
+  const uxCopyApproved = approvedRuntimeRead;
   const guarded = ['payment_status_guarded_no_persistence', 'payment_status_snapshot_not_available', 'payment_status_snapshot_temporarily_unavailable', 'payment_status_snapshot_read'].includes(currentPaymentStatus.status)
     && currentPaymentStatus.mutation === false
     && currentPaymentStatus.persistence === false
@@ -5783,6 +5794,17 @@ export async function customerStatusSurfaceReadiness() {
       forbiddenEndpoint: snapshotReadApproval.readContract?.forbiddenEndpoint,
       providerRefreshRisk: snapshotReadApproval.readContract?.providerRefreshRisk,
     },
+    callbackPolicy: {
+      status: callbackPolicy.status,
+      callbackPersistence: callbackPolicy.callbackPersistence,
+      callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
+    },
+    mappingOwnership: {
+      status: mappingOwnership.status,
+      orderOwner: mappingOwnership.orderOwner,
+      paymentOwner: mappingOwnership.paymentOwner,
+      cliplotAuthoritative: mappingOwnership.cliplotAuthoritative,
+    },
     customerSafeStatusContract: paymentReadiness.customerSafeStatusContract,
     forbiddenClaimsBeforeApproval: [
       'paid',
@@ -5806,10 +5828,10 @@ export async function customerStatusSurfaceReadiness() {
     ],
     blockers: [
       ...snapshotReadApproval.blockers,
-      '[MISSING: approved customer status surface rollout using provider-refresh-free Payments DB snapshot reads]',
-      '[MISSING: approved UX copy for live payment status transitions on /objednavka/stav]',
-      '[MISSING: callback persistence/replay policy]',
-      '[MISSING: approved order/payment status mapping ownership]',
+      ...(approvedRuntimeRead ? [] : ['[MISSING: approved customer status surface rollout using provider-refresh-free Payments DB snapshot reads]']),
+      ...(uxCopyApproved ? [] : ['[MISSING: approved UX copy for live payment status transitions on /objednavka/stav]']),
+      ...(callbackPolicyApproved ? [] : ['[MISSING: callback persistence/replay policy]']),
+      ...(mappingOwnershipApproved ? [] : ['[MISSING: approved order/payment status mapping ownership]']),
     ],
     sensitiveDataPolicy: [
       'no payment API key value',

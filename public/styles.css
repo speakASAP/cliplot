@@ -751,6 +751,25 @@ select {
   margin: 0;
 }
 
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid #c7d7bf;
+  border-radius: 999px;
+  background: #edf5e9;
+  color: #2f5d26;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.status-boundary {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .product-detail-link {
   text-align: center;
 }

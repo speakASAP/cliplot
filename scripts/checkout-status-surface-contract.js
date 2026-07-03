@@ -54,6 +54,9 @@ assert(readiness.customerSafeStatusContract?.labelsLocale === 'cs-CZ', 'customer
 if (approved) {
   assert(readiness.runtimeReadEnabled === true, 'approved surface runtime read not enabled', readiness);
   assert(readiness.paymentsSnapshotReadEnabled === true, 'approved surface snapshot read not enabled', readiness);
+  assert(readiness.callbackPolicy?.callbackPersistence === false, 'approved surface callback persistence enabled', readiness);
+  assert(readiness.mappingOwnership?.status === 'approved_order_payment_status_mapping_ownership', 'approved surface mapping ownership missing', readiness);
+  assert(Array.isArray(readiness.blockers) && readiness.blockers.length === 0, 'approved surface still reports blockers', readiness);
 } else {
   assert(readiness.runtimeReadEnabled === false, 'guarded surface runtime read unexpectedly enabled', readiness);
   assert(readiness.paymentsSnapshotReadEnabled === false, 'guarded surface snapshot read unexpectedly enabled', readiness);
@@ -72,7 +75,10 @@ const { response: appResponse, text: appJs } = await getText('/app.js?v=20260702
 assert(appResponse.status === 200, 'app.js unavailable', { httpStatus: appResponse.status });
 assert(appJs.includes('/api/payments/status?orderId='), 'status page payment status fetch missing from frontend', {});
 assert(appJs.includes('data-payment-status-panel'), 'payment status panel binding missing from frontend', {});
-assert(appJs.includes('payload.runtimeReadEnabled !== true'), 'guarded runtime-read condition missing from frontend', {});
+assert(appJs.includes('payload.runtimeReadEnabled !== true || payload.paymentsSnapshotReadEnabled !== true'), 'guarded runtime-read condition missing from frontend', {});
+assert(appJs.includes('data-payment-status-state'), 'payment status state marker missing from frontend', {});
+assert(appJs.includes('read_only_payments_snapshot'), 'read-only Payments snapshot source marker missing from frontend', {});
+assert(appJs.includes('Cliplot stav jen zobrazuje'), 'non-authoritative status boundary copy missing from frontend', {});
 
 console.log(JSON.stringify({
   ok: true,

@@ -571,22 +571,53 @@ async function loadAuthLinks() {
   }
 }
 
+const paymentStatusDetails = {
+  waiting_for_payment: 'Čekáme na potvrzení platby v bezpečném přehledu plateb.',
+  payment_processing: 'Platba je v bezpečném přehledu plateb rozpracovaná.',
+  payment_received: 'Platba je v bezpečném přehledu plateb označená jako přijatá.',
+  payment_failed: 'Platba se podle bezpečného přehledu nezdařila. Objednávku zatím nepotvrzujeme jako zaplacenou.',
+  payment_cancelled: 'Platba je v bezpečném přehledu zrušená.',
+  payment_refunded: 'Platba je v bezpečném přehledu vrácená.',
+  payment_status_unknown: 'Stav platby zatím v bezpečném přehledu nevidíme.',
+};
+
 function guardedPaymentStatusCopy(statusPayload = {}) {
-  if (statusPayload.status === 'payment_status_snapshot_read' && statusPayload.runtimeReadEnabled === true) {
+  const safe = statusPayload.customerSafePaymentStatus || {};
+  const code = safe.code || 'payment_status_unknown';
+  const snapshotRead = statusPayload.status === 'payment_status_snapshot_read' && statusPayload.runtimeReadEnabled === true;
+  if (snapshotRead) {
     return {
-      label: statusPayload.customerSafePaymentStatus?.label || 'Stav platby zatím neznáme',
-      detail: 'Stav platby je načtený z bezpečného přehledu objednávky.',
+      label: safe.label || 'Stav platby zatím neznáme',
+      detail: paymentStatusDetails[code] || paymentStatusDetails.payment_status_unknown,
+      state: code,
+      source: 'read_only_payments_snapshot',
+      badge: 'Načteno z plateb',
     };
   }
   if (statusPayload.status === 'payment_status_snapshot_not_available') {
     return {
       label: 'Stav platby zatím neznáme',
-      detail: 'Platba k této objednávce ještě není dostupná.',
+      detail: 'Platba k této objednávce ještě není dostupná v bezpečném přehledu plateb.',
+      state: 'snapshot_not_available',
+      source: 'read_only_payments_snapshot',
+      badge: 'Čeká na platbu',
+    };
+  }
+  if (statusPayload.status === 'payment_status_snapshot_temporarily_unavailable') {
+    return {
+      label: 'Stav platby teď nejde ověřit',
+      detail: 'Bezpečný přehled plateb je dočasně nedostupný. Objednávku zatím nepotvrzujeme jako zaplacenou.',
+      state: 'snapshot_temporarily_unavailable',
+      source: 'read_only_payments_snapshot',
+      badge: 'Dočasně nedostupné',
     };
   }
   return {
     label: 'Platba se zatím nespustila',
     detail: 'Po kontrole objednávky pošleme další pokyny k platbě.',
+    state: 'guarded_no_persistence',
+    source: 'browser_checkout_snapshot',
+    badge: 'Chráněný režim',
   };
 }
 
@@ -600,10 +631,14 @@ async function refreshCheckoutStatus(externalOrderId) {
     const payload = await response.json();
     if (!response.ok || payload.success === false) return;
     const copy = guardedPaymentStatusCopy(payload);
-    const guarded = payload.runtimeReadEnabled !== true && payload.paymentsSnapshotReadEnabled !== true;
+    const guarded = payload.runtimeReadEnabled !== true || payload.paymentsSnapshotReadEnabled !== true;
+    panel.dataset.paymentStatusState = copy.state;
+    panel.dataset.paymentStatusSource = copy.source;
     panel.innerHTML = `
+      <p><span class="status-badge">${escapeHtml(copy.badge)}</span></p>
       <p>Platba: <strong>${escapeHtml(copy.label)}</strong></p>
       <p>${escapeHtml(copy.detail)}</p>
+      <p class="status-boundary">Cliplot stav jen zobrazuje; zdrojem stavu platby je služba Payments.</p>
       ${guarded ? '<p>Zboží zatím není rezervované a objednávka není zaplacená.</p>' : ''}
     `;
   } catch {
@@ -684,7 +719,7 @@ function renderCheckoutStatusPage() {
             <dd>${formatPrice(summary.total)}</dd>
           </div>
         </dl>
-        <div class="payment-status-panel" data-payment-status-panel><p>Platba: <strong>Ověřujeme stav.</strong></p></div>
+        <div class="payment-status-panel" data-payment-status-panel data-payment-status-state="loading" data-payment-status-source="read_only_payments_snapshot"><p>Platba: <strong>Ověřujeme stav.</strong></p></div>
         <div class="hero-actions">
           <a class="primary-link" href="/#produkty">Zpět k produktům</a>
           <a class="secondary-link" href="/#checkout">Upravit objednávku</a>
