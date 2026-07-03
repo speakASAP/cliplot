@@ -175,3 +175,57 @@ execution windows metadata-ready, Auth wallet runtime checkout evidence recorded
 with no live calls, post-live revenue closure validated, revenue handoff ready,
 and exactly five expected revenue blockers for the future owner-opened bounded
 window.
+
+
+## 2026-07-03T20:06:24Z Controlled Live Window Re-run
+
+After Payments service-to-service throttling was isolated by
+`payments-microservice:a176f33`, Cliplot ran one additional controlled live
+checkout window on deployed image `localhost:5000/cliplot:5ea0804`.
+
+Sanitized executor evidence:
+
+```text
+httpStatus=201
+executorStatus=live_checkout_bounded_execution_completed_cleanup_completed
+externalOrderId=cliplot-full-checkout-20260703t200624z-816056
+orderId=7938b1c4-1fb8-44e3-a4f3-e61e71052afb
+orderCreated=true
+warehouseReserved=true
+paymentCreated=true
+notificationSent=true
+cleanupSuccess=true
+orderCancelStatus=cancelled
+orderReadbackStatus=cancelled
+warehouseActiveReservationCount=0
+paymentStatus=processing
+paymentResultFingerprint=10187d09c7b4ece8ecde831101a6cd514c8450f47c5f5d95379d3baacb51d59a
+paymentPayloadFingerprint=011a0719c397f323e92252c4f10eca88dae3aa03ab73a6ba1617be4f7d16a9f8
+paymentIdempotencyKeyFingerprint=138c2767ad39fc2f1225e081796c69631c3b643420f06dce8b91e634035d6161
+notificationStatus=sent
+notificationResultFingerprint=e8b105c6e4f95f6b4e58ac6642df0628057a08c26adbf0c0543e4e734c9729df
+notificationPayloadFingerprint=4ee7d93a2088b5bf547337aa22eacc6d8c7418e35c295c6f80f88d4caf3644e4
+notificationIdempotencyKeyFingerprint=9a728dfe4778fd5fdb7754be5af09995e0228738038c700152b50e79b8812f69
+```
+
+The restore trap returned all four live flags to `false`. Manual post-close
+checks confirmed Cliplot health `ok`, deployment image
+`localhost:5000/cliplot:5ea0804` ready `1/1`, Payments throttling markers `0`
+in the 1/2/5 minute lookback, and:
+
+```text
+postLiveRevenueClosure=validated_completed_full_checkout_live_window_closed
+revenueHandoffReconciliation=ready_for_revenue_handoff_reconciliation_review_execution_disabled
+revenueClosure=approval_required_live_revenue_closure
+liveFlagsClosed=true
+liveExecutionAllowed=false
+revenueBlockerCount=5
+failedAssertionCount=0
+mutation=false
+persistence=false
+providerCall=false
+```
+
+No raw customer PII, provider payloads, provider transaction ids, recipient
+addresses, message bodies, API keys, service tokens, or webhook keys were
+recorded.

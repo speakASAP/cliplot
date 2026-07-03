@@ -245,6 +245,15 @@ notification sends, and Docs/RAG ingestion gated.
   `false`; post-close `npm run readiness:bundle` passed and revenue closure
   returned `approval_required_live_revenue_closure`, `wouldMutateNow=false`,
   `blockerCount=5`.
+- GOAL-12 controlled full checkout live window was re-run on
+  `2026-07-03T20:06:24Z` after Payments throttling isolation deployed as
+  `payments-microservice:a176f33`. Cliplot image
+  `localhost:5000/cliplot:5ea0804` completed the bounded executor with order
+  `7938b1c4-1fb8-44e3-a4f3-e61e71052afb`, payment `status=processing`,
+  notification `status=sent`, cleanup success, order/readback `cancelled`, and
+  Warehouse `activeReservationCount=0`. All live flags were restored to
+  `false`; post-close revenue closure remained
+  `approval_required_live_revenue_closure` with `blockerCount=5`.
 - Final live revenue closure remains blocked outside approved execution windows
   because all live flags must stay false by default.
 
