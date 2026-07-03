@@ -24,15 +24,15 @@ Status: dependency-gated.
 Cliplot has checkout/cart/customer surfaces where Auth wallet delivery and
 invoice selectors may eventually apply, but runtime integration is intentionally
 not implemented in this lane. The upstream Auth wallet presence gate is now
-complete: Auth live refresh commit `c2deeae docs: record auth wallet live
-refresh`, Source Preflight HEAD
-`350700b0ad3482cf375ada8f9088392778ae8b05`, and deployed image tag
-`350700b-20260703044437` are deployed, `/health` returned HTTP 200, and
+complete: Auth current Source Preflight live refresh from HEAD
+`548df583bff50057c79c4c6705e6a379f4d1b63b` is deployed with image tag
+`548df58-20260703051411`, `/health` returned HTTP 200, and
 `/auth/profile/checkout-data`, `/auth/profile/delivery-addresses`, and
-`/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated. Cliplot
-checkout wallet work remains blocked because selector behavior, authenticated
-browser/session handling, PII exposure rules, Cliplot field mapping, and guest
-fallback behavior are not approved.
+`/auth/profile/invoice-profiles` returned HTTP 401 unauthenticated. FlipFlop
+non-mutating post-deploy smoke also passed against gateway-proxied wallet
+endpoints returning HTTP 401. Cliplot checkout wallet work remains blocked
+because selector behavior, authenticated browser/session handling, PII exposure
+rules, Cliplot field mapping, and guest fallback behavior are not approved.
 
 ## Remaining Blockers
 
@@ -72,7 +72,7 @@ rg -n "Bearer [A-Za-z0-9._-]+|eyJ[A-Za-z0-9_-]{10,}|(password|secret|token|cooki
 
 ## Validation Results
 
-- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletPresenceGate.sourcePreflightHead=350700b0ad3482cf375ada8f9088392778ae8b05`, `authWalletPresenceGate.deployedImageTag=350700b-20260703044437`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
+- `npm run readiness:auth-wallet-checkout`: PASS; reported `dependency_gated_auth_wallet_checkout_readiness`, `authWalletPresenceGate.status=complete`, `authWalletPresenceGate.sourcePreflightHead=548df583bff50057c79c4c6705e6a379f4d1b63b`, `authWalletPresenceGate.deployedImageTag=548df58-20260703051411`, `authWalletResponseContract.checkoutDataSchemaVersion=auth.customer-data-wallet.checkout-data.v1`, source-defined checkout/defaults/delivery/invoice field lists, `source_only_no_live_calls`, `mutation=false`, `persistence=false`, `providerCall=false`, and `runtimeWalletIntegrationPresent=false`.
 - 2026-07-03 schema-version refresh validation passed:
   `npm run readiness:auth-wallet-checkout`, `node --check
   scripts/auth-wallet-checkout-readiness.js`, `npm run check`, `git diff

@@ -90,9 +90,9 @@ const authWalletResponseContract = {
 
 const authWalletPresenceGate = {
   status: 'complete',
-  authLiveRefreshCommit: 'c2deeae docs: record auth wallet live refresh',
-  sourcePreflightHead: '350700b0ad3482cf375ada8f9088392778ae8b05',
-  deployedImageTag: '350700b-20260703044437',
+  authLiveRefreshCommit: 'Goal 10.42 Auth current Source Preflight live refresh',
+  sourcePreflightHead: '548df583bff50057c79c4c6705e6a379f4d1b63b',
+  deployedImageTag: '548df58-20260703051411',
   healthStatusCode: 200,
   unauthenticatedWalletStatusCode: 401,
   sendsAuthorizationHeader: false,
@@ -100,7 +100,7 @@ const authWalletPresenceGate = {
   sendsRequestBody: false,
   printsResponseBody: false,
   readsDatabase: false,
-  evidence: 'Auth coordinator Goal 10.38 runtime verifier passed after current-head live refresh.',
+  evidence: 'Auth coordinator Goal 10.42 runtime verifier passed after current Source Preflight live refresh; FlipFlop non-mutating post-deploy smoke also passed.',
 };
 
 const blockers = [
