@@ -668,6 +668,26 @@ only. After the run, `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` must be verified back t
 `false` and `npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz`
 must return `approval_required` with no mutation.
 
+
+## Post-Live Revenue Closure Evidence
+
+After a bounded full checkout window has been executed and all live flags have
+been restored to `false`, use the post-live evidence packet to distinguish the
+validated completed window from the currently closed runtime:
+
+```bash
+npm run readiness:post-live-revenue-closure -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/checkout/post-live-revenue-closure-evidence-packet
+```
+
+The packet must return `validated_completed_full_checkout_live_window_closed`,
+keep `liveExecutionAllowed=false`, `mutation=false`, `persistence=false`, and
+`providerCall=false`, and prove that revenue closure remains
+`approval_required_live_revenue_closure` because live flags are closed by
+default. It may contain only order ids and fingerprints; it must not expose raw
+customer PII, provider payloads, provider transaction ids, notification
+recipients, message bodies, service tokens, or API keys.
+
 ## Operator Readiness Bundle
 
 Run the read-only bundle before handoff or live-mutation approval reviews:

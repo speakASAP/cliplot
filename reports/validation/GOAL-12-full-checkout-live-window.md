@@ -79,3 +79,18 @@
   - First attempt read the nested live-preflight packet incorrectly and exited before mutation.
   - Second attempt patched the ConfigMap only; Deployment env overrides kept the selected runtime closed, so it exited before mutation.
 - The successful run patched both ConfigMap and Deployment env overrides, selected a pod that proved all four live flags were `true`, executed once, and restored all four flags to `false`.
+
+
+## Post-Live Revenue Closure Packet
+
+The follow-up read-only packet is:
+
+```bash
+npm run readiness:post-live-revenue-closure -- https://cliplot.alfares.cz
+```
+
+It distinguishes the validated completed live checkout window from the current
+closed runtime. It must return
+`validated_completed_full_checkout_live_window_closed`, keep
+`liveExecutionAllowed=false`, and keep revenue closure
+`approval_required_live_revenue_closure` while all live flags are `false`.

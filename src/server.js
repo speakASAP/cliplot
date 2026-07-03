@@ -25,6 +25,7 @@ import {
   liveOrderWarehouseSmokeExecutionChecklistPacket,
   orderWarehouseReadinessReport,
   revenueClosurePacket,
+  postLiveRevenueClosureEvidencePacket,
   paymentCallbackReadiness,
   paymentCallbackReplayPolicyReadiness,
   paymentCallbackPersistenceApprovalPacket,
@@ -280,6 +281,22 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+
+
+    if (url.pathname === '/api/checkout/post-live-revenue-closure-evidence-packet' && req.method === 'GET') {
+      sendJson(res, 200, await postLiveRevenueClosureEvidencePacket());
+      return;
+    }
+
+    if (url.pathname === '/api/checkout/post-live-revenue-closure-evidence-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
 
     if (url.pathname === '/api/checkout/live-execution-evidence-packet' && req.method === 'GET') {
       sendJson(res, 200, await liveCheckoutExecutionEvidencePacket());

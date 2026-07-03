@@ -7526,6 +7526,7 @@ export async function liveCheckoutApprovalPacket() {
     validation: preflight.validation,
     integrations: readiness.integrations,
     readinessEvidence,
+    postLiveWindowEvidence: completedFullCheckoutLiveWindowEvidenceSummary(),
     paymentBoundary: {
       statusReadiness: paymentStatusPacket.status,
       callbackReplayPolicy: callbackPolicy.status,
@@ -7614,6 +7615,138 @@ export async function liveCheckoutApprovalPacket() {
       : 'Resolve the listed live checkout approvals, smoke execution flag/window, callback persistence, replay, and live write blockers before enabling live checkout mutation.',
   };
 }
+
+
+function completedFullCheckoutLiveWindowEvidenceSummary() {
+  return {
+    status: 'validated_completed_full_checkout_live_window_closed',
+    evidenceRecord: 'reports/validation/GOAL-12-full-checkout-live-window.md',
+    executedAt: '2026-07-03T12:35:19Z',
+    deployedImage: 'localhost:5000/cliplot:abdf9eb',
+    externalOrderId: 'cliplot-full-checkout-20260703T123519Z',
+    orderId: '28783f0d-9652-4ced-8bd1-0a1b6cec42ff',
+    executorStatus: 'live_checkout_bounded_execution_completed_cleanup_completed',
+    httpStatus: 201,
+    cleanupSuccess: true,
+    orderCreated: true,
+    warehouseReserved: true,
+    paymentCreated: true,
+    notificationSent: true,
+    orderReplaySameOrderId: true,
+    orderCancelStatus: 'cancelled',
+    orderReadbackStatus: 'cancelled',
+    warehouseAfterCancel: {
+      reservationCount: 1,
+      activeReservationCount: 0,
+    },
+    paymentEvidence: {
+      status: 'processing',
+      resultFingerprint: 'bb6b34cab04230561577b3270ad6ee6f8c819fb753f7d402ce3d573352efdf27',
+      payloadFingerprint: '33ea2bd8a4e2b7eaaeaacc8c4011b42d3848af371349e5fa225d0647dd996d18',
+      idempotencyKeyFingerprint: '79bb7edb40b7b42a4afcacd6f0e9655e79b8668aa60c61e9d2ae20d915e6a77d',
+    },
+    notificationEvidence: {
+      status: 'sent',
+      resultFingerprint: '7fee1aed11adf9f97fcb4ddbf98078467ccc0bb8be64da7922ebb5cbb4b3c4b9',
+      payloadFingerprint: '39cb42afa4ce23cd8a27da90e914c3b81e8fc1eb5aa1ce7d9fdd9346105b8f00',
+      idempotencyKeyFingerprint: 'ce9517384889e7247193f69f6facfebc153c96c48ae6b407b912be62d3e33c56',
+    },
+    sensitiveDataPolicy: [
+      'fingerprints only',
+      'no raw customer PII',
+      'no raw notification recipient',
+      'no raw notification message body',
+      'no raw provider payload',
+      'no provider transaction id',
+      'no API keys or webhook keys',
+    ],
+  };
+}
+
+export async function postLiveRevenueClosureEvidencePacket() {
+  const revenue = await revenueClosurePacket();
+  const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
+  const runbook = await liveOwnerExecutionRunbookPacket();
+  const preflight = liveCheckoutPreflight();
+  const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const assertions = [
+    { name: 'completed_window_recorded', passed: completedWindow.status === 'validated_completed_full_checkout_live_window_closed' },
+    { name: 'completed_window_cleanup_success', passed: completedWindow.cleanupSuccess === true },
+    { name: 'completed_window_created_order_payment_notification', passed: completedWindow.orderCreated === true && completedWindow.paymentCreated === true && completedWindow.notificationSent === true },
+    { name: 'completed_window_replay_same_order', passed: completedWindow.orderReplaySameOrderId === true },
+    { name: 'completed_window_cancelled_order', passed: completedWindow.orderCancelStatus === 'cancelled' && completedWindow.orderReadbackStatus === 'cancelled' },
+    { name: 'completed_window_warehouse_released', passed: completedWindow.warehouseAfterCancel?.activeReservationCount === 0 },
+    { name: 'current_live_flags_closed', passed: liveFlagsClosed },
+    { name: 'current_preflight_blocked', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
+    { name: 'current_revenue_closure_guarded', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false },
+    { name: 'current_handoff_ready_disabled', passed: handoff.status === 'read_only_checkout_payment_notification_handoff_ready_execution_disabled' && handoff.liveExecutionAllowed === false },
+    { name: 'current_runbook_ready_disabled', passed: runbook.status === 'approved_owner_live_execution_runbook_contract_execution_disabled' && runbook.liveExecutionAllowed === false },
+    { name: 'callback_persistence_disabled', passed: revenue.callbackPolicy?.callbackPersistence === false },
+    { name: 'callback_replay_disabled', passed: revenue.callbackPolicy?.callbackReplayEnabled === false },
+    { name: 'live_status_writes_disabled', passed: revenue.liveStatusWriteApproval?.liveStatusWritesNow === false },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+
+  return {
+    success: true,
+    status: failedAssertions.length === 0
+      ? 'validated_completed_full_checkout_live_window_closed'
+      : 'blocked_post_live_revenue_closure_evidence',
+    mode: 'read_only_post_live_revenue_closure_evidence_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    completedWindow,
+    currentClosedState: {
+      liveFlagsClosed,
+      livePreflight: preflight.status,
+      wouldMutateNow: revenue.wouldMutateNow,
+      revenueClosure: revenue.status,
+      revenueBlockerCount: revenue.blockers?.length || 0,
+      liveReadinessHandoff: handoff.status,
+      ownerRunbook: runbook.status,
+      callbackPersistence: revenue.callbackPolicy?.callbackPersistence,
+      callbackReplayEnabled: revenue.callbackPolicy?.callbackReplayEnabled,
+      liveStatusWritesNow: revenue.liveStatusWriteApproval?.liveStatusWritesNow,
+    },
+    distinction: {
+      completedWindowValidated: failedAssertions.length === 0,
+      currentlyOpenLiveFlagsRequiredForNewMutation: true,
+      revenueClosureRemainsGuardedByDesign: revenue.status === 'approval_required_live_revenue_closure',
+      currentPacketMayOpenFlags: false,
+      currentPacketMayCallExecutor: false,
+    },
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    forbiddenOperationsNow: [
+      'do not open live flags from this packet',
+      'do not call POST /api/checkout/live-bounded-executor',
+      'do not call POST /api/checkout/submit',
+      'do not call POST /payments/create',
+      'do not call POST /notifications/send',
+      'do not persist callbacks',
+      'do not execute callback replay',
+      'do not write live payment/order status',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not print secrets, raw provider payloads, customer PII, recipients, or message bodies',
+    ],
+    sensitiveDataPolicy: completedWindow.sensitiveDataPolicy,
+    next: failedAssertions.length === 0
+      ? 'Completed live checkout evidence is validated and the runtime is closed; keep revenue closure approval-required until a future owner opens a new bounded window.'
+      : 'Resolve failed post-live evidence assertions before using this packet for handoff.',
+  };
+}
+
 
 export async function revenueClosurePacket() {
   const approvalPacket = await liveCheckoutApprovalPacket();
@@ -7744,6 +7877,7 @@ export async function revenueClosurePacket() {
       'NOTIFICATIONS_SERVICE_TOKEN',
     ],
     readinessEvidence,
+    postLiveWindowEvidence: completedFullCheckoutLiveWindowEvidenceSummary(),
     catalog: {
       status: productFilter.status,
       catalogSource: productFilter.catalogSource,
