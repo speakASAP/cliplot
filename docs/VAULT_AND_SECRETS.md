@@ -90,7 +90,7 @@ Do not print secret values. Validation may check presence by key name only.
 ## Live Mutation Approval Evidence
 
 Live mutation approvals are currently represented by non-secret runtime config
-IDs and default to empty strings in `k8s/configmap.yaml`:
+IDs in `k8s/configmap.yaml`:
 
 ```text
 CLIPLOT_LIVE_ORDER_APPROVAL_ID
@@ -99,7 +99,14 @@ CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID
 ```
 
-Live order, payment, and notification approval IDs must stay empty until full live checkout approval exists. The Orders/Warehouse smoke approval metadata may be recorded while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`; it is not an execution secret and does not permit mutation by itself. If any approval IDs later become sensitive or centrally issued, promote them to Vault/ExternalSecret keys by name only. Do not commit or print approval token values.
+The current ConfigMap records order, payment, and notification approval metadata
+IDs, but all live execution flags remain `false`. These IDs are not execution
+secrets and do not permit mutation by themselves: payment and notification IDs
+come from no-mutation/no-send evidence packets, and the Orders/Warehouse smoke
+metadata remains disabled while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`. If
+any approval IDs later become sensitive or centrally issued, promote them to
+Vault/ExternalSecret keys by name only. Do not commit or print approval token
+values.
 
 
 ## Live-Smoke Projection Readiness

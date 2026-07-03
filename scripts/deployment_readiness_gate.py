@@ -51,8 +51,8 @@ def main() -> int:
         'ENABLE_LIVE_NOTIFICATIONS: "false"',
         'ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: "false"',
         'CLIPLOT_LIVE_ORDER_APPROVAL_ID: "owner-approved-2026-07-03-live-order-warehouse-create-replay-cancel"',
-        'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: ""',
-        'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: ""',
+        'CLIPLOT_LIVE_PAYMENT_APPROVAL_ID: "owner-approved-2026-07-03-payment-create-metadata"',
+        'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID: "owner-approved-2026-07-03-notification-send-metadata"',
         'AUTH_PUBLIC_URL: "https://auth.alfares.cz"',
     ]
     missing_config = [item for item in required_config if item not in configmap]
@@ -96,7 +96,7 @@ def main() -> int:
         for item in missing_smoke_metadata:
             print(f"MISSING smoke metadata config {item}")
         return 1
-    print("note=Live order approval metadata is recorded from the controlled smoke, but mutation remains gated by false live flags and missing payment/notification approval IDs.")
+    print("note=Order, payment, and notification approval metadata is recorded, but mutation remains gated by false live flags and bounded execution-window requirements.")
     return 0
 
 

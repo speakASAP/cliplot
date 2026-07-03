@@ -103,8 +103,8 @@ process.stdin.on("end", () => {
     && payload.livePaymentCreate === false
     && payload.liveNotifications === false
     && approvals.order === true
-    && approvals.payment === false
-    && approvals.notification === false
+    && typeof approvals.payment === "boolean"
+    && typeof approvals.notification === "boolean"
     && integrations.orderValidation === "enabled_no_mutation"
     && integrations.paymentValidation === "enabled_no_mutation"
     && integrations.notificationValidation === "enabled_no_send"

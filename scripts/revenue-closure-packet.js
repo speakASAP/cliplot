@@ -63,6 +63,12 @@ assert(packet.blockerClassification?.currentPacketMayMutate === false, 'blocker 
 assert(packet.blockerClassification?.currentPacketMayPersist === false, 'blocker classification would persist', packet.blockerClassification || {});
 assert(packet.blockerClassification?.currentPacketMayCallProvider === false, 'blocker classification would call provider', packet.blockerClassification || {});
 assert(packet.blockerClassification?.currentPacketMaySendNotification === false, 'blocker classification would send notification', packet.blockerClassification || {});
+const paymentMetadataEligible = packet.blockerClassification?.metadataPacketEligible?.includes('payment-create approval metadata ID after no-mutation evidence')
+  || packet.payment?.readyForOwnerPaymentApproval === true;
+const notificationMetadataEligible = packet.blockerClassification?.metadataPacketEligible?.includes('notification-send approval metadata ID after no-send evidence')
+  || packet.notifications?.readyForOwnerNotificationApproval === true;
+assert(paymentMetadataEligible, 'metadata-eligible payment approval metadata missing', packet.blockerClassification || {});
+assert(notificationMetadataEligible, 'metadata-eligible notification approval metadata missing', packet.blockerClassification || {});
 assert(packet.blockerClassification?.metadataPacketEligible?.includes('callback persistence storage backend proposal'), 'metadata-eligible callback storage proposal missing', packet.blockerClassification || {});
 assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('ENABLE_LIVE_ORDER_SUBMIT=true'), 'live order mutation approval classifier missing', packet.blockerClassification || {});
 assert(packet.blockerClassification?.requiresOwnerLiveMutationApproval?.includes('CREATE_REPLAY_CANCEL live smoke executor run'), 'live smoke execution classifier missing', packet.blockerClassification || {});

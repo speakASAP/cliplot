@@ -24,16 +24,17 @@ assert(response.status === 200 && packet.success, 'notification send approval ev
   httpStatus: response.status,
   status: packet.status,
 });
-assert(packet.status === 'ready_for_owner_notification_send_approval_metadata', 'notification send approval evidence is not ready', packet);
+assert(['ready_for_owner_notification_send_approval_metadata', 'approved_notification_send_metadata_execution_disabled'].includes(packet.status), 'notification send approval evidence is not ready', packet);
 assert(packet.mode === 'read_only_notification_send_approval_evidence_packet', 'notification send evidence mode changed', packet);
 assert(packet.mutation === false, 'notification evidence reported mutation', packet);
 assert(packet.persistence === false, 'notification evidence reported persistence', packet);
 assert(packet.providerCall === false, 'notification evidence reported provider call', packet);
 assert(packet.notificationSent === false, 'notification evidence reported send', packet);
 assert(packet.liveNotifications === false, 'live notifications unexpectedly enabled', packet);
-assert(packet.notificationApprovalPresent === false, 'notification approval metadata should remain absent before owner acceptance', packet);
+assert(typeof packet.notificationApprovalPresent === 'boolean', 'notification approval metadata presence missing', packet);
 assert(packet.requiredApprovalId === 'CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID', 'notification approval id placeholder missing', packet);
 assert(packet.approvalIdMayBeRecordedAfterOwnerAcceptance === true, 'owner notification approval metadata readiness missing', packet);
+assert(packet.liveExecutionAllowed !== true, 'notification metadata approval allowed live execution', packet);
 assert(packet.catalog?.approvedCliplotSkuScope === true, 'approved Cliplot SKU scope missing', packet);
 assert(packet.catalog?.catalogSource === 'catalog', 'Catalog source evidence missing', packet);
 assert(packet.catalog?.warehouseBackedProductCount > 0, 'Warehouse-backed product evidence missing', packet);
@@ -70,6 +71,8 @@ console.log(JSON.stringify({
   validation: packet.validation.status,
   liveNotifications: packet.liveNotifications,
   notificationApprovalPresent: packet.notificationApprovalPresent,
+  approvalMetadataRecorded: packet.approvalMetadataRecorded,
+  liveExecutionAllowed: packet.liveExecutionAllowed,
   approvalReady: packet.approvalIdMayBeRecordedAfterOwnerAcceptance,
   channel: packet.notificationContract.channel,
   type: packet.notificationContract.type,

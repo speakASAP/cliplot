@@ -35,9 +35,13 @@ ENABLE_LIVE_NOTIFICATIONS=true requires CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID
 ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true requires CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID and ORDERS_STATUS_SERVICE_TOKEN
 ```
 
-Until those approval IDs are present, checkout must stay guarded and return
-approval blockers without creating orders, reservations, payments, or customer
-notifications.
+Payment and notification approval IDs may be recorded as metadata after the
+no-mutation/no-send evidence packets pass. ID presence is not execution approval:
+checkout must stay guarded while any live flag remains `false`, and the flags
+must remain false until a separate bounded live execution window is approved.
+The current metadata-only lane records payment and notification IDs while still
+requiring `ENABLE_LIVE_PAYMENT_CREATE=false`, `ENABLE_LIVE_NOTIFICATIONS=false`,
+`ENABLE_LIVE_ORDER_SUBMIT=false`, and `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
 
 The dedicated Orders/Warehouse smoke executor is narrower than normal checkout:
 it still mutates live Orders/Warehouse state if enabled, so it must stay blocked
