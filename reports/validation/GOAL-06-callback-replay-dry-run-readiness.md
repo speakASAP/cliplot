@@ -69,6 +69,27 @@ reads, and Cliplot-local payment truth disabled. It must report
 `liveExecutionAllowed=false`, and `failedAssertionCount=0`.
 
 
+
+## Synthetic Callback-To-Status-Write Dry-Run Contract
+
+The synthetic dry-run packet is GET-only and validates future mapping shapes
+without replaying callbacks or writing payment status:
+
+```bash
+npm run readiness:payment-callback-to-status-write-dry-run-contract -- https://cliplot.alfares.cz
+curl -s https://cliplot.alfares.cz/api/payments/callback-to-status-write-dry-run-contract-packet
+```
+
+Expected status:
+`ready_for_synthetic_callback_to_status_write_dry_run_execution_disabled`.
+
+It proves a synthetic callback event can map to a Payments-owned callback event
+projection and then to a future Payments-owned status-write command shape while
+keeping `ENABLE_PAYMENT_CALLBACK_PERSISTENCE=false`,
+`ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION=false`,
+`ENABLE_PAYMENT_LIVE_STATUS_WRITE=false`, `mutation=false`,
+`persistence=false`, `providerCall=false`, and `liveExecutionAllowed=false`.
+
 ## Payment Status Write-Window Request Packet
 
 The write-window request packet is read-only and execution-disabled:

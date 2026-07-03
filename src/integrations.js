@@ -5788,6 +5788,214 @@ export async function paymentStatusReconciliationReadinessPacket() {
 }
 
 
+
+export async function paymentCallbackToStatusWriteDryRunContractPacket() {
+  const reconciliation = await paymentStatusReconciliationReadinessPacket();
+  const liveStatusWrite = await paymentLiveStatusWriteApprovalPacket();
+  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const replayRollout = await paymentCallbackReplayExecutionRolloutProposalPacket();
+  const storageContract = await paymentCallbackPersistenceStorageContractPacket();
+  const runtime = paymentStatusRuntimeReadiness();
+  const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
+    && serviceConfig.livePaymentCreate === false
+    && serviceConfig.liveNotifications === false
+    && serviceConfig.liveOrderWarehouseSmoke === false;
+  const syntheticCallbackEvent = {
+    schemaVersion: 'cliplot.synthetic_callback_event.v1',
+    source: 'synthetic_dry_run_only',
+    applicationId: serviceConfig.applicationId,
+    externalOrderId: 'synthetic-cliplot-order-for-status-write-dry-run',
+    orderId: 'synthetic-order-id',
+    paymentId: 'synthetic-payment-id',
+    paymentStatus: 'processing',
+    previousPaymentStatus: 'pending',
+    event: 'payment_status_changed',
+    amount: 1659,
+    currency: 'CZK',
+    receivedAt: 'synthetic-timestamp',
+    payloadFingerprintOnly: true,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+  };
+  const callbackProjectionShape = {
+    owner: 'payments-microservice',
+    model: 'payments_owned_callback_event_projection',
+    currentPersistence: false,
+    callbackPersistenceNow: false,
+    callbackReplayEnabledNow: false,
+    idempotencyKeys: ['paymentId', 'orderId', 'event', 'paymentStatus'],
+    uniqueKeys: ['externalOrderId', 'paymentId'],
+    conflictHandling: {
+      duplicateSameSemanticCallback: 'idempotent_no_write_now',
+      incompatibleTerminalStatus: 'manual_review_no_auto_update',
+      staleSnapshotOrRateLimit: 'read_only_unknown_or_last_known_success_without_write',
+    },
+    retentionPolicy: storageContract.retentionPolicy || 'metadata_only_90_day_minimum_after_approval',
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+  };
+  const statusWriteCommandShape = {
+    owner: 'payments-microservice',
+    command: 'payments_owned_status_reconciliation_write_after_separate_approval',
+    currentRuntimeFlag: serviceConfig.paymentLiveStatusWrite,
+    liveStatusWritesNow: false,
+    wouldWritePaymentStatusNow: false,
+    wouldWriteOrderStatusNow: false,
+    wouldPersistCallbackNow: false,
+    wouldReplayCallbackNow: false,
+    wouldCallProviderNow: false,
+    allowedStatuses: ['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded'],
+    commandFields: ['applicationId', 'externalOrderId', 'orderId', 'paymentId', 'paymentStatus', 'previousPaymentStatus', 'reasonCode', 'idempotencyKeyFingerprint'],
+    requiredReasonCode: 'OWNER_APPROVED_PAYMENT_STATUS_RECONCILIATION_WRITE',
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+  };
+  const dryRunCases = [
+    {
+      caseId: 'synthetic_callback_to_projection_shape',
+      input: syntheticCallbackEvent.schemaVersion,
+      expectedProjection: callbackProjectionShape.model,
+      runtimeMutationNow: false,
+      persistenceNow: false,
+      providerCallNow: false,
+    },
+    {
+      caseId: 'projection_to_status_write_command_shape',
+      input: callbackProjectionShape.model,
+      expectedCommandOwner: statusWriteCommandShape.owner,
+      runtimeMutationNow: false,
+      persistenceNow: false,
+      providerCallNow: false,
+    },
+    {
+      caseId: 'duplicate_same_semantic_callback',
+      expected: 'idempotent_no_write_now',
+      runtimeMutationNow: false,
+      persistenceNow: false,
+      providerCallNow: false,
+    },
+    {
+      caseId: 'incompatible_terminal_status_conflict',
+      expected: 'manual_review_no_auto_update',
+      runtimeMutationNow: false,
+      persistenceNow: false,
+      providerCallNow: false,
+    },
+    {
+      caseId: 'post_window_reconciliation_evidence_required',
+      expected: 'read_only_report_after_flags_close',
+      runtimeMutationNow: false,
+      persistenceNow: false,
+      providerCallNow: false,
+    },
+  ];
+  const assertions = [
+    { name: 'reconciliation_readiness_clean', passed: reconciliation.status === 'ready_for_callback_payment_status_reconciliation_review_execution_disabled' && reconciliation.failedAssertions?.length === 0 },
+    { name: 'live_status_write_metadata_approved_execution_disabled', passed: liveStatusWrite.status === 'approved_live_status_write_metadata_execution_disabled' && liveStatusWrite.liveStatusWritesNow === false },
+    { name: 'callback_policy_execution_disabled', passed: callbackPolicy.status === 'approved_callback_replay_policy_metadata_execution_disabled' && callbackPolicy.callbackPersistence === false && callbackPolicy.callbackReplayEnabled === false },
+    { name: 'callback_storage_contract_metadata_only', passed: storageContract.owner === 'payments-microservice' && storageContract.callbackPersistence === false && storageContract.callbackReplayEnabled === false },
+    { name: 'callback_replay_rollout_execution_disabled', passed: replayRollout.status === 'approved_callback_replay_execution_metadata_execution_disabled' && replayRollout.replayExecutionAllowed === false },
+    { name: 'runtime_snapshot_read_only', passed: runtime.runtimeReadEnabled === true && runtime.paymentsSnapshotReadEnabled === true && runtime.storageRead === false && runtime.callbackPersistence === false },
+    { name: 'live_flags_closed', passed: liveFlagsClosed },
+    { name: 'all_current_write_flags_closed', passed: serviceConfig.paymentLiveStatusWrite === false && serviceConfig.paymentCallbackPersistence === false && serviceConfig.paymentCallbackReplayExecution === false },
+    { name: 'synthetic_callback_shape_only', passed: syntheticCallbackEvent.source === 'synthetic_dry_run_only' && syntheticCallbackEvent.mutation === false && syntheticCallbackEvent.persistence === false && syntheticCallbackEvent.providerCall === false },
+    { name: 'status_write_command_shape_no_runtime_write', passed: statusWriteCommandShape.liveStatusWritesNow === false && statusWriteCommandShape.wouldWritePaymentStatusNow === false },
+    { name: 'dry_run_cases_no_side_effects', passed: dryRunCases.every((item) => item.runtimeMutationNow === false && item.persistenceNow === false && item.providerCallNow === false) },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+
+  return {
+    success: true,
+    status: failedAssertions.length === 0
+      ? 'ready_for_synthetic_callback_to_status_write_dry_run_execution_disabled'
+      : 'blocked_synthetic_callback_to_status_write_dry_run',
+    mode: 'read_only_synthetic_callback_to_status_write_dry_run_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    syntheticOnly: true,
+    currentRuntimeFlags: {
+      ENABLE_PAYMENT_CALLBACK_PERSISTENCE: serviceConfig.paymentCallbackPersistence,
+      ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION: serviceConfig.paymentCallbackReplayExecution,
+      ENABLE_PAYMENT_LIVE_STATUS_WRITE: serviceConfig.paymentLiveStatusWrite,
+      ENABLE_LIVE_PAYMENT_CREATE: serviceConfig.livePaymentCreate,
+      ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
+      ENABLE_LIVE_ORDER_SUBMIT: serviceConfig.liveOrderSubmit,
+      ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
+    },
+    prerequisiteEvidence: {
+      reconciliation: reconciliation.status,
+      liveStatusWrite: liveStatusWrite.status,
+      callbackPolicy: callbackPolicy.status,
+      callbackStorageContract: storageContract.status,
+      callbackReplayRollout: replayRollout.status,
+      runtimeReadiness: runtime.status,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    syntheticCallbackEvent,
+    callbackProjectionShape,
+    statusWriteCommandShape,
+    dryRunCases,
+    dryRunMatrix: {
+      status: 'synthetic_callback_to_status_write_mapping_ready_execution_disabled',
+      callbackEventToProjection: true,
+      projectionToStatusWriteCommand: true,
+      duplicateHandling: 'idempotent_no_write_now',
+      terminalConflictHandling: 'manual_review_no_auto_update',
+      postWindowEvidenceRequired: true,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    futureEnablementRequires: [
+      'separate owner-approved callback persistence storage backend enablement',
+      'separate owner-approved callback replay execution window',
+      'separate owner-approved live status write window',
+      'ENABLE_PAYMENT_CALLBACK_PERSISTENCE=true only inside approved window',
+      'ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION=true only inside approved window',
+      'ENABLE_PAYMENT_LIVE_STATUS_WRITE=true only inside approved window',
+      'post-window read-only reconciliation evidence after all flags close',
+    ],
+    assertions,
+    failedAssertions,
+    blockers: failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    forbiddenOperationsNow: [
+      'do not persist callback state',
+      'do not execute callback replay',
+      'do not write payment status',
+      'do not write order status',
+      'do not create payment',
+      'do not send notification',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not expose callback payloads, payment rows, provider payloads, provider transaction ids, customer PII, or secrets',
+    ],
+    sensitiveDataPolicy: [
+      'synthetic ids only',
+      'fingerprints only when a real future approval exists',
+      'no raw callback payload',
+      'no payment rows',
+      'no provider payload',
+      'no provider transaction id',
+      'no customer PII',
+      'no secrets',
+    ],
+    next: failedAssertions.length === 0
+      ? 'Use this packet as the read-only dry-run contract for a future Payments-owned status-write implementation; keep runtime writes disabled until a separate bounded window is approved.'
+      : 'Resolve failed synthetic dry-run assertions before status-write implementation planning.',
+  };
+}
+
+
 export async function paymentStatusWriteWindowRequestPacket() {
   const reconciliation = await paymentStatusReconciliationReadinessPacket();
   const postLiveRevenueEvidence = await postLiveRevenueClosureEvidencePacket();

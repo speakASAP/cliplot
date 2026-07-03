@@ -423,6 +423,21 @@ curl -s https://cliplot.alfares.cz/api/payments/status-reconciliation-readiness-
 ```
 
 
+
+
+`GET /api/payments/callback-to-status-write-dry-run-contract-packet` is the read-only
+synthetic mapping contract for a future callback-to-status-write lane. It uses
+synthetic ids only and validates callback event shape, Payments-owned callback
+projection shape, status-write command shape, duplicate/idempotency behavior,
+terminal conflict handling, and post-window evidence requirements. It must keep
+callback persistence, callback replay execution, live status writes, provider
+reads, order/payment writes, payment creation, notification sends, mutation,
+persistence, and provider calls disabled.
+
+```bash
+npm run readiness:payment-callback-to-status-write-dry-run-contract -- https://cliplot.alfares.cz
+```
+
 `GET /api/payments/status-write-window-request-packet` is the read-only request
 contract for a future bounded payment status write window. It defines required
 operator fields (`confirm=PAYMENT_STATUS_WRITE_WINDOW`, approval id, approved
