@@ -1047,7 +1047,60 @@ async function validatePaymentCreate(checkout, paymentPayload) {
   });
 }
 
+const guardedPaymentValidationCache = {
+  expiresAt: 0,
+  promise: null,
+  key: null,
+};
+const guardedPaymentValidationCacheTtlMs = Number(process.env.PAYMENT_VALIDATE_CREATE_CACHE_TTL_MS || 120_000);
+
+function paymentValidationCacheKey(checkout, paymentPayload) {
+  return createHash('sha256')
+    .update(JSON.stringify({
+      applicationId: serviceConfig.applicationId,
+      paymentMethod: serviceConfig.paymentMethod,
+      total: checkout?.total,
+      currency: checkout?.currency,
+      payload: paymentPayload,
+    }))
+    .digest('hex');
+}
+
 async function guardedPaymentValidation(checkout, paymentPayload) {
+  const now = Date.now();
+  const cacheKey = paymentValidationCacheKey(checkout, paymentPayload);
+  if (guardedPaymentValidationCache.promise
+    && guardedPaymentValidationCache.key === cacheKey
+    && guardedPaymentValidationCache.expiresAt > now) {
+    const cached = await guardedPaymentValidationCache.promise;
+    return {
+      ...cached,
+      generatedAt: new Date().toISOString(),
+      cache: {
+        status: 'hit',
+        ttlMs: guardedPaymentValidationCache.expiresAt - now,
+        purpose: 'avoid_duplicate_payments_validate_create_probe_rate_limit',
+      },
+    };
+  }
+
+  const promise = computeGuardedPaymentValidation(checkout, paymentPayload);
+  guardedPaymentValidationCache.promise = promise;
+  guardedPaymentValidationCache.key = cacheKey;
+  guardedPaymentValidationCache.expiresAt = now + guardedPaymentValidationCacheTtlMs;
+  try {
+    return await promise;
+  } catch (error) {
+    if (guardedPaymentValidationCache.promise === promise) {
+      guardedPaymentValidationCache.promise = null;
+      guardedPaymentValidationCache.key = null;
+      guardedPaymentValidationCache.expiresAt = 0;
+    }
+    throw error;
+  }
+}
+
+async function computeGuardedPaymentValidation(checkout, paymentPayload) {
   if (!serviceConfig.paymentCreateValidation) {
     return {
       status: 'disabled',
@@ -1070,10 +1123,22 @@ async function guardedPaymentValidation(checkout, paymentPayload) {
       ...(payload?.data || {}),
       mutation: false,
       providerCall: false,
+      cache: {
+        status: 'miss',
+        ttlMs: guardedPaymentValidationCacheTtlMs,
+        purpose: 'avoid_duplicate_payments_validate_create_probe_rate_limit',
+      },
     };
   } catch (error) {
     if (Number(error?.status || 0) === 429) {
-      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+      return {
+        ...paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now()),
+        cache: {
+          status: 'miss_rate_limited',
+          ttlMs: guardedPaymentValidationCacheTtlMs,
+          purpose: 'avoid_duplicate_payments_validate_create_probe_rate_limit',
+        },
+      };
     }
     return {
       status: 'validation_failed_guarded',
@@ -3873,7 +3938,12 @@ export async function paymentReadScopeReadiness() {
     const evidence = await validatePaymentReadScope();
     const errorCode = evidence.payload?.error?.code || evidence.payload?.code || evidence.payload?.error || null;
     if (evidence.httpStatus === 429) {
-      return paymentReadScopeRateLimitedResult(evidence, Date.now());
+      const result = paymentReadScopeRateLimitedResult(evidence, Date.now());
+      paymentReadScopeReadinessCache = {
+        expiresAt: Date.now() + paymentReadScopeReadinessCacheTtlMs,
+        payload: result,
+      };
+      return result;
     }
     const scopeValidated = evidence.httpStatus === 404 && ['PAYMENT_STATUS_SNAPSHOT_NOT_FOUND', 'Not Found'].includes(String(errorCode));
     const result = {
@@ -3914,7 +3984,12 @@ export async function paymentReadScopeReadiness() {
     return result;
   } catch (error) {
     if (Number(error?.status || 0) === 429) {
-      return paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+      const result = paymentReadScopeRateLimitedResult({ httpStatus: 429, payload: error?.payload || {} }, Date.now());
+      paymentReadScopeReadinessCache = {
+        expiresAt: Date.now() + paymentReadScopeReadinessCacheTtlMs,
+        payload: result,
+      };
+      return result;
     }
     return {
       success: true,
