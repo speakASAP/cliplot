@@ -36,7 +36,9 @@ assert(packet.completedRevenueEvidence?.executorStatus === 'live_checkout_bounde
 assert(packet.completedRevenueEvidence?.orderReplaySameOrderId === true, 'order replay idempotency evidence missing', packet);
 assert(packet.completedRevenueEvidence?.orderFinalStatus === 'cancelled', 'order final status evidence missing', packet);
 assert(packet.completedRevenueEvidence?.warehouseActiveReservationCount === 0, 'warehouse release evidence missing', packet);
-assert(packet.completedRevenueEvidence?.paymentStatus === 'processing', 'payment processing evidence missing', packet);
+assert(packet.completedRevenueEvidence?.paymentStatus === 'processing', 'original payment processing evidence missing', packet);
+assert(packet.completedRevenueEvidence?.reconciledPaymentStatus === 'cancelled', 'reconciled payment cancellation evidence missing', packet);
+assert(packet.completedRevenueEvidence?.paymentSnapshotReadback === 'resolved_from_payments_snapshot', 'payment snapshot readback evidence missing', packet);
 assert(packet.completedRevenueEvidence?.notificationStatus === 'sent', 'notification sent evidence missing', packet);
 assert(packet.completedRevenueEvidence?.fingerprintsOnly === true, 'fingerprints-only policy missing', packet);
 assert(packet.currentClosedRuntime?.liveFlagsClosed === true, 'live flags are not closed now', packet);
@@ -82,6 +84,7 @@ console.log(JSON.stringify({
   completedOrderId: packet.completedRevenueEvidence.orderId,
   executorStatus: packet.completedRevenueEvidence.executorStatus,
   paymentStatus: packet.completedRevenueEvidence.paymentStatus,
+  reconciledPaymentStatus: packet.completedRevenueEvidence.reconciledPaymentStatus,
   notificationStatus: packet.completedRevenueEvidence.notificationStatus,
   liveFlagsClosed: packet.currentClosedRuntime.liveFlagsClosed,
   revenueClosure: packet.currentClosedRuntime.revenueClosure,

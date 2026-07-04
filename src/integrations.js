@@ -9682,12 +9682,58 @@ function completedFullCheckoutLiveWindowEvidenceSummary() {
   };
 }
 
+
+async function completedWindowPaymentSnapshotEvidence(completedWindow) {
+  if (!passivePaymentSnapshotReadAllowed() || !completedWindow?.orderId) {
+    return {
+      status: 'blocked_payments_snapshot_readback',
+      paymentStatus: null,
+      paymentIdPresent: false,
+      paymentIdFingerprint: null,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      error: completedWindow?.orderId ? 'passive payment snapshot read is not enabled' : 'completed window orderId is missing',
+    };
+  }
+  try {
+    const snapshot = await readPaymentSnapshotByOrderId(completedWindow.orderId);
+    const paymentId = snapshot?.paymentId ? String(snapshot.paymentId) : '';
+    return {
+      status: 'resolved_from_payments_snapshot',
+      applicationId: snapshot.applicationId,
+      orderIdMatchesCompletedWindow: snapshot.orderId === completedWindow.orderId,
+      paymentStatus: snapshot.paymentStatus,
+      paymentMethod: snapshot.paymentMethod || null,
+      source: snapshot.source,
+      paymentIdPresent: Boolean(paymentId),
+      paymentIdFingerprint: paymentId ? stableFingerprint(paymentId) : null,
+      mutation: snapshot.mutation,
+      persistence: snapshot.persistence,
+      providerCall: snapshot.providerCall,
+    };
+  } catch (error) {
+    return {
+      status: 'blocked_payments_snapshot_readback',
+      paymentStatus: null,
+      paymentIdPresent: false,
+      paymentIdFingerprint: null,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+      errorStatus: error?.status || null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export async function postLiveRevenueClosureEvidencePacket() {
   const revenue = await revenueClosurePacket();
   const handoff = await checkoutLiveReadinessHandoffEvidencePacket();
   const runbook = await liveOwnerExecutionRunbookPacket();
   const preflight = liveCheckoutPreflight();
   const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
+  const paymentSnapshotEvidence = await completedWindowPaymentSnapshotEvidence(completedWindow);
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
@@ -9699,6 +9745,8 @@ export async function postLiveRevenueClosureEvidencePacket() {
     { name: 'completed_window_replay_same_order', passed: completedWindow.orderReplaySameOrderId === true },
     { name: 'completed_window_cancelled_order', passed: completedWindow.orderCancelStatus === 'cancelled' && completedWindow.orderReadbackStatus === 'cancelled' },
     { name: 'completed_window_warehouse_released', passed: completedWindow.warehouseAfterCancel?.activeReservationCount === 0 },
+    { name: 'current_payment_snapshot_cancelled', passed: paymentSnapshotEvidence.paymentStatus === 'cancelled' },
+    { name: 'current_payment_snapshot_read_no_side_effects', passed: paymentSnapshotEvidence.mutation === false && paymentSnapshotEvidence.persistence === false && paymentSnapshotEvidence.providerCall === false },
     { name: 'current_live_flags_closed', passed: liveFlagsClosed },
     { name: 'current_preflight_blocked', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
     { name: 'current_revenue_closure_guarded', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false },
@@ -9725,12 +9773,15 @@ export async function postLiveRevenueClosureEvidencePacket() {
     liveExecutionAllowed: false,
     currentPacketEnablesRuntime: false,
     completedWindow,
+    paymentSnapshotEvidence,
     currentClosedState: {
       liveFlagsClosed,
       livePreflight: preflight.status,
       wouldMutateNow: revenue.wouldMutateNow,
       revenueClosure: revenue.status,
       revenueBlockerCount: revenue.blockers?.length || 0,
+      reconciledPaymentStatus: paymentSnapshotEvidence.paymentStatus,
+      paymentSnapshotReadback: paymentSnapshotEvidence.status,
       liveReadinessHandoff: handoff.status,
       ownerRunbook: runbook.status,
       callbackPersistence: revenue.callbackPolicy?.callbackPersistence,
@@ -9771,6 +9822,7 @@ export async function revenueHandoffReconciliationPacket() {
   const revenue = await revenueClosurePacket();
   const preflight = liveCheckoutPreflight();
   const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
+  const paymentSnapshotEvidence = await completedWindowPaymentSnapshotEvidence(completedWindow);
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
@@ -9788,6 +9840,8 @@ export async function revenueHandoffReconciliationPacket() {
   const assertions = [
     { name: 'completed_window_static_evidence_validated', passed: completedWindow.status === 'validated_completed_full_checkout_live_window_closed' },
     { name: 'completed_window_static_cleanup_evidence_clean', passed: completedWindow.cleanupSuccess === true && completedWindow.warehouseAfterCancel?.activeReservationCount === 0 },
+    { name: 'current_payment_snapshot_cancelled', passed: paymentSnapshotEvidence.paymentStatus === 'cancelled' },
+    { name: 'current_payment_snapshot_read_no_side_effects', passed: paymentSnapshotEvidence.mutation === false && paymentSnapshotEvidence.persistence === false && paymentSnapshotEvidence.providerCall === false },
     { name: 'current_live_flags_closed', passed: liveFlagsClosed },
     { name: 'current_preflight_blocked_no_mutation', passed: preflight.status === 'blocked' && preflight.wouldMutate === false },
     { name: 'revenue_closure_guarded', passed: revenue.status === 'approval_required_live_revenue_closure' && revenue.wouldMutateNow === false },
@@ -9827,6 +9881,9 @@ export async function revenueHandoffReconciliationPacket() {
       orderFinalStatus: completedWindow.orderReadbackStatus,
       warehouseActiveReservationCount: completedWindow.warehouseAfterCancel?.activeReservationCount,
       paymentStatus: completedWindow.paymentEvidence?.status,
+      reconciledPaymentStatus: paymentSnapshotEvidence.paymentStatus,
+      paymentSnapshotReadback: paymentSnapshotEvidence.status,
+      paymentIdFingerprint: paymentSnapshotEvidence.paymentIdFingerprint,
       notificationStatus: completedWindow.notificationEvidence?.status,
       fingerprintsOnly: true,
     },
@@ -9836,6 +9893,8 @@ export async function revenueHandoffReconciliationPacket() {
       wouldMutateNow: revenue.wouldMutateNow,
       revenueClosure: revenue.status,
       revenueBlockerCount: revenueBlockers.length,
+      reconciledPaymentStatus: paymentSnapshotEvidence.paymentStatus,
+      paymentSnapshotReadback: paymentSnapshotEvidence.status,
       liveReadinessHandoff: 'read_only_checkout_payment_notification_handoff_ready_execution_disabled',
       ownerRunbook: 'approved_owner_live_execution_runbook_contract_execution_disabled',
       callbackPersistence: revenue.callbackPolicy?.callbackPersistence,

@@ -42,7 +42,11 @@ assert(packet.completedWindow?.notificationSent === true, 'notification send evi
 assert(packet.completedWindow?.orderReplaySameOrderId === true, 'order replay idempotency evidence missing', packet);
 assert(packet.completedWindow?.orderCancelStatus === 'cancelled', 'order cancel evidence missing', packet);
 assert(packet.completedWindow?.warehouseAfterCancel?.activeReservationCount === 0, 'warehouse release evidence missing', packet);
-assert(packet.completedWindow?.paymentEvidence?.status === 'processing', 'payment processing evidence missing', packet);
+assert(packet.completedWindow?.paymentEvidence?.status === 'processing', 'original payment processing evidence missing', packet);
+assert(packet.paymentSnapshotEvidence?.paymentStatus === 'cancelled', 'reconciled payment cancellation evidence missing', packet);
+assert(packet.paymentSnapshotEvidence?.mutation === false, 'payment snapshot evidence reported mutation', packet);
+assert(packet.paymentSnapshotEvidence?.persistence === false, 'payment snapshot evidence reported persistence', packet);
+assert(packet.paymentSnapshotEvidence?.providerCall === false, 'payment snapshot evidence reported provider call', packet);
 assert(packet.completedWindow?.notificationEvidence?.status === 'sent', 'notification sent evidence missing', packet);
 assert(packet.currentClosedState?.liveFlagsClosed === true, 'live flags are not closed now', packet);
 assert(packet.currentClosedState?.livePreflight === 'blocked', 'live preflight should be blocked now', packet);
@@ -75,6 +79,7 @@ console.log(JSON.stringify({
   executorStatus: packet.completedWindow.executorStatus,
   orderId: packet.completedWindow.orderId,
   paymentStatus: packet.completedWindow.paymentEvidence.status,
+  reconciledPaymentStatus: packet.paymentSnapshotEvidence.paymentStatus,
   notificationStatus: packet.completedWindow.notificationEvidence.status,
   liveFlagsClosed: packet.currentClosedState.liveFlagsClosed,
   revenueClosure: packet.currentClosedState.revenueClosure,
