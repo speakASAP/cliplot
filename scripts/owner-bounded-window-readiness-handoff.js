@@ -45,6 +45,12 @@ assert(packet.readinessEvidence?.authWalletFetch === false, 'Auth wallet fetch e
 assert(packet.readinessEvidence?.authWalletCheckoutSubmit === false, 'Auth wallet checkout submit enabled', packet);
 assert(packet.readinessEvidence?.postLiveRevenueClosure === 'validated_completed_full_checkout_live_window_closed', 'post-live revenue evidence mismatch', packet);
 assert(packet.readinessEvidence?.revenueHandoffReconciliation === 'ready_for_revenue_handoff_reconciliation_review_execution_disabled', 'revenue handoff evidence mismatch', packet);
+assert(['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(packet.readinessEvidence?.paymentReadScopeStatus), 'payment read scope status evidence mismatch', packet);
+const paymentReadScopeFreshness = packet.readinessEvidence?.paymentReadScopeFreshness;
+const paymentReadScopeFreshnessStatus = typeof paymentReadScopeFreshness === 'string' ? paymentReadScopeFreshness : paymentReadScopeFreshness?.status;
+assert(['fresh', 'stale_rate_limited'].includes(paymentReadScopeFreshnessStatus), 'payment read scope freshness evidence mismatch', packet);
+assert(packet.readinessEvidence?.externalStatusReconciliation === 'validated_external_status_reconciliation_completed_closed', 'external status reconciliation evidence mismatch', packet);
+assert(packet.readinessEvidence?.reconciledPaymentStatus === 'cancelled', 'reconciled payment status evidence mismatch', packet);
 assert(packet.remainingRevenueClosure?.status === 'approval_required_live_revenue_closure', 'revenue closure status mismatch', packet);
 assert(packet.remainingRevenueClosure?.blockerCount === 5, 'revenue blocker count mismatch', packet);
 assert(Array.isArray(packet.remainingRevenueClosure?.expectedRevenueBlockers) && packet.remainingRevenueClosure.expectedRevenueBlockers.length === 5, 'expected revenue blocker set mismatch', packet);
@@ -83,6 +89,10 @@ console.log(JSON.stringify({
   unexpectedRevenueBlockerCount: packet.remainingRevenueClosure.unexpectedRevenueBlockers.length,
   paymentCreateExecutionWindow: packet.readinessEvidence.paymentCreateExecutionWindow,
   notificationSendExecutionWindow: packet.readinessEvidence.notificationSendExecutionWindow,
+  paymentReadScopeStatus: packet.readinessEvidence.paymentReadScopeStatus,
+  paymentReadScopeFreshness: packet.readinessEvidence.paymentReadScopeFreshness,
+  externalStatusReconciliation: packet.readinessEvidence.externalStatusReconciliation,
+  reconciledPaymentStatus: packet.readinessEvidence.reconciledPaymentStatus,
   authWalletRuntimeCheckout: packet.readinessEvidence.authWalletRuntimeCheckout,
   failedAssertionCount: packet.failedAssertions.length,
 }, null, 2));

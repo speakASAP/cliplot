@@ -3427,6 +3427,7 @@ export async function liveFlagsOperatorPreflightChecklistPacket() {
 export async function ownerBoundedWindowReadinessHandoffPacket() {
   const revenue = await revenueClosurePacket();
   const preflight = liveCheckoutPreflight();
+  const paymentReadScope = await paymentReadScopeReadiness();
   const paymentWindow = paymentCreateExecutionWindowPacket();
   const notificationWindow = notificationSendExecutionWindowPacket();
   const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
@@ -3469,6 +3470,21 @@ export async function ownerBoundedWindowReadinessHandoffPacket() {
     approvedBy: 'operator identity required',
     reasonCode: 'OWNER_APPROVED_CREATE_REPLAY_CANCEL',
   };
+  const ownerPaymentReadScopeStatus = paymentReadScope.status
+    || revenue.paymentStatusReadiness?.readScopeReadiness
+    || revenue.payment?.readScopeReadiness
+    || revenue.payment?.paymentStatusReadiness?.readScopeReadiness
+    || null;
+  const ownerPaymentReadScopeFreshness = paymentReadScope.freshness?.status
+    || paymentReadScope.freshness
+    || revenue.paymentStatusReadiness?.readScopeFreshness
+    || revenue.payment?.readScopeFreshness
+    || revenue.payment?.paymentStatusReadiness?.readScopeFreshness
+    || (paymentReadScope.status === 'validated_payments_read_scope_no_mutation' ? 'fresh' : null);
+  const ownerExternalStatusReconciliation = revenue.readinessEvidence?.externalStatusReconciliation
+    || revenue.payment?.externalStatusReconciliation?.status
+    || null;
+  const ownerReconciledPaymentStatus = revenue.payment?.externalStatusReconciliation?.reconciledPaymentStatus || null;
   const readinessEvidence = {
     liveReadinessHandoff: 'read_only_checkout_payment_notification_handoff_ready_execution_disabled',
     liveCheckoutExecutionRequest: 'approved_live_checkout_execution_request_contract_execution_disabled',
@@ -3484,8 +3500,10 @@ export async function ownerBoundedWindowReadinessHandoffPacket() {
     revenueClosure: revenue.status,
     revenueBlockerCount: revenueBlockers.length,
     unexpectedRevenueBlockerCount: unexpectedRevenueBlockers.length,
-    paymentReadScopeStatus: revenue.paymentStatusReadiness?.readScopeReadiness || revenue.paymentReadScope?.status || null,
-    paymentReadScopeFreshness: revenue.paymentStatusReadiness?.readScopeFreshness || revenue.paymentReadScope?.freshness || null,
+    paymentReadScopeStatus: ownerPaymentReadScopeStatus,
+    paymentReadScopeFreshness: ownerPaymentReadScopeFreshness,
+    externalStatusReconciliation: ownerExternalStatusReconciliation,
+    reconciledPaymentStatus: ownerReconciledPaymentStatus,
   };
   const assertions = [
     { name: 'live_flags_closed', passed: liveFlagsClosed },
