@@ -6632,6 +6632,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         }),
       });
       const text = await paymentResponse.text();
+      const requestFingerprint = stableFingerprint({ applicationId, orderId, targetStatus, expectedCurrentStatus, source: 'cliplot-status-reconciliation', reason: reasonCode, externalEventId });
       let payload = {};
       try {
         payload = text ? JSON.parse(text) : {};
@@ -6639,6 +6640,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         payload = { success: false, status: 'non_json_payments_response' };
       }
       const data = payload?.data || payload;
+      const sanitizedPaymentError = sanitizePaymentsFailurePayload(payload);
       if (!paymentResponse.ok || data.status !== 'external_status_reconciliation_completed') {
         return {
           httpStatus: 202,
@@ -6674,6 +6676,10 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
               applicationCallbackAttempted: data.applicationCallbackAttempted === true,
               blockerCount: Array.isArray(data.blockers) ? data.blockers.length : null,
             },
+            paymentsExternalStatusReconciliationError: sanitizedPaymentError,
+            paymentsExternalStatusReconciliationRequestFingerprint: requestFingerprint,
+            paymentsExternalStatusReconciliationIdempotencyKeyFingerprint: statusWriteIdempotencyKey
+              ? stableFingerprint(statusWriteIdempotencyKey) : null,
             blockers: [
               `payments_external_status_reconciliation_${data.status || paymentResponse.status}`,
               ...(Array.isArray(data.blockers) ? data.blockers : []),
@@ -8552,6 +8558,38 @@ function stableFingerprint(value) {
   return createHash('sha256')
     .update(JSON.stringify(value))
     .digest('hex');
+}
+
+function sanitizePaymentsFailurePayload(payload) {
+  const error = payload?.error || payload?.response?.error || {};
+  const data = payload?.data || {};
+  const message = error.message || payload?.message || data.message || '';
+  const code = error.code || payload?.code || data.code || null;
+  const status = payload?.status || data.status || null;
+  const blockers = Array.isArray(data.blockers)
+    ? data.blockers
+    : Array.isArray(payload?.blockers)
+      ? payload.blockers
+      : [];
+  return {
+    code,
+    status,
+    message: sanitizeShortDiagnostic(message),
+    blockerCount: blockers.length,
+    blockers: blockers.map((blocker) => sanitizeShortDiagnostic(blocker)).filter(Boolean).slice(0, 12),
+  };
+}
+
+function sanitizeShortDiagnostic(value) {
+  if (!value) return null;
+  const text = String(value)
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, '[REDACTED_UUID]')
+    .replace(/sk_(live|test)_[A-Za-z0-9_\\-]+/g, '[REDACTED_SECRET]')
+    .replace(/whsec_[A-Za-z0-9_\\-]+/g, '[REDACTED_SECRET]')
+    .replace(/Bearer\\s+[A-Za-z0-9._\\-]+/gi, 'Bearer [REDACTED]')
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/g, '[REDACTED_EMAIL]')
+    .slice(0, 240);
+  return text || null;
 }
 
 function liveSmokePayloadPreview(readiness) {
