@@ -36,6 +36,13 @@ const executorResult = await postJson('/api/payments/status-write-bounded-execut
   rollbackOwner: 'codex-readiness-rollback',
   validationOwner: 'codex-readiness-validation',
   postWindowReconciliationEvidence: true,
+  paymentId: 'synthetic-payment-id',
+  orderId: 'synthetic-order-id',
+  targetStatus: 'completed',
+  expectedCurrentStatus: 'processing',
+  externalEventId: 'synthetic-event-id',
+  occurredAt: '2026-07-04T00:00:00.000Z',
+  statusWriteIdempotencyKey: 'synthetic-status-write-idempotency-key',
 });
 const executor = executorResult.payload;
 
@@ -64,7 +71,8 @@ assert(executor.endpointBoundary?.executorEndpoint === '/api/payments/status-wri
 assert(executor.endpointBoundary?.forbiddenProviderBackedReadEndpoint === '/payments/{paymentId}', 'provider read boundary missing', executor);
 assert(executor.endpointBoundary?.fullCheckoutActivationAllowed === false, 'full checkout activation allowed', executor);
 assert(executor.blockers?.includes('invalid_or_missing_live_status_write_approval_id'), 'approval id blocker missing', executor);
-assert(executor.blockers?.includes('status_write_executor_guard_only_no_runtime_write_path'), 'guard-only blocker missing', executor);
+assert(executor.blockers?.includes('payment_live_status_write_flag_disabled'), 'live status write flag blocker missing', executor);
+assert(executor.endpointBoundary?.paymentsExternalStatusReconciliationEndpoint === '/payments/external/status-reconciliation', 'Payments external reconciliation endpoint boundary missing', executor);
 assert(executor.forbiddenOperationsNow?.includes('write payment status'), 'payment status write forbidden operation missing', executor);
 assert(executor.forbiddenOperationsNow?.includes('execute callback replay'), 'callback replay forbidden operation missing', executor);
 assert(executor.sensitiveDataPolicy?.includes('no PAYMENT_API_KEY value'), 'payment key policy missing', executor);

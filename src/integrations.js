@@ -122,6 +122,7 @@ export const serviceConfig = {
   notificationSendPath: process.env.NOTIFICATION_SEND_PATH || '/notifications/send',
   paymentCreatePath: process.env.PAYMENT_CREATE_PATH || '/payments/create',
   paymentValidateCreatePath: process.env.PAYMENT_VALIDATE_CREATE_PATH || '/payments/validate-create',
+  paymentExternalStatusReconciliationPath: process.env.PAYMENT_EXTERNAL_STATUS_RECONCILIATION_PATH || '/payments/external/status-reconciliation',
   paymentMethod: process.env.CLIPLOT_PAYMENT_METHOD || 'invoice',
   orderCreateValidation: process.env.ENABLE_ORDER_CREATE_VALIDATION === 'true',
   notificationValidation: process.env.ENABLE_NOTIFICATION_VALIDATION === 'true',
@@ -6210,6 +6211,12 @@ export async function paymentStatusWriteWindowRequestPacket() {
     { name: 'rollbackOwner', requiredValue: 'CLIPLOT_LIVE_STATUS_WRITE_ROLLBACK_OWNER', presentNow: isApprovalPresent(serviceConfig.liveStatusWriteRollbackOwner) },
     { name: 'validationOwner', requiredValue: 'CLIPLOT_LIVE_STATUS_WRITE_VALIDATION_OWNER', presentNow: isApprovalPresent(serviceConfig.liveStatusWriteValidationOwner) },
     { name: 'postWindowReconciliationEvidence', requiredValue: 'read-only reconciliation report after flags close', presentNow: false },
+    { name: 'paymentId', requiredValue: 'Payments payment id from passive snapshot readback', presentNow: false },
+    { name: 'orderId', requiredValue: 'Orders UUID / Payments orderId from completed live window', presentNow: false },
+    { name: 'targetStatus', requiredValue: 'completed|failed|cancelled', presentNow: false },
+    { name: 'expectedCurrentStatus', requiredValue: 'pending|processing', presentNow: false },
+    { name: 'externalEventId', requiredValue: 'stable bounded-window event id', presentNow: false },
+    { name: 'occurredAt', requiredValue: 'ISO timestamp for the reconciliation event', presentNow: false },
   ];
   const currentRuntimeFlags = {
     ENABLE_PAYMENT_LIVE_STATUS_WRITE: serviceConfig.paymentLiveStatusWrite,
@@ -6401,6 +6408,15 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
   const reasonCode = String(request.reasonCode || '').trim();
   const rollbackOwner = String(request.rollbackOwner || '').trim();
   const validationOwner = String(request.validationOwner || '').trim();
+  const paymentId = String(request.paymentId || '').trim();
+  const orderId = String(request.orderId || '').trim();
+  const applicationId = String(request.applicationId || serviceConfig.applicationId).trim();
+  const targetStatus = String(request.targetStatus || '').trim().toLowerCase();
+  const expectedCurrentStatus = String(request.expectedCurrentStatus || '').trim().toLowerCase();
+  const externalEventId = String(request.externalEventId || '').trim();
+  const occurredAt = String(request.occurredAt || '').trim();
+  const occurredAtDate = occurredAt ? new Date(occurredAt) : null;
+  const statusWriteIdempotencyKey = String(request.idempotencyKey || request.statusWriteIdempotencyKey || '').trim();
 
   if (packet.status !== 'ready_for_bounded_payment_status_write_window_request_execution_disabled') blockers.push('payment_status_write_window_request_not_ready');
   if (request.confirm !== 'PAYMENT_STATUS_WRITE_WINDOW') blockers.push('missing_PAYMENT_STATUS_WRITE_WINDOW_confirmation');
@@ -6414,7 +6430,157 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
   if (!serviceConfig.paymentLiveStatusWrite) blockers.push('payment_live_status_write_flag_disabled');
   if (!serviceConfig.paymentCallbackPersistence) blockers.push('payment_callback_persistence_flag_disabled');
   if (!serviceConfig.paymentCallbackReplayExecution) blockers.push('payment_callback_replay_execution_flag_disabled');
-  blockers.push('status_write_executor_guard_only_no_runtime_write_path');
+  if (!serviceConfig.paymentApiKey) blockers.push('missing_PAYMENT_API_KEY');
+  if (!paymentId) blockers.push('missing_payment_id');
+  if (!orderId) blockers.push('missing_order_id');
+  if (!['completed', 'failed', 'cancelled'].includes(targetStatus)) blockers.push('invalid_or_missing_target_status');
+  if (!['pending', 'processing'].includes(expectedCurrentStatus)) blockers.push('invalid_or_missing_expected_current_status');
+  if (!externalEventId) blockers.push('missing_external_event_id');
+  if (!occurredAtDate || Number.isNaN(occurredAtDate.valueOf())) blockers.push('invalid_or_missing_occurred_at');
+  if (!statusWriteIdempotencyKey) blockers.push('missing_status_write_idempotency_key');
+
+  if (blockers.length === 0) {
+    const paymentsUrl = new URL(serviceConfig.paymentExternalStatusReconciliationPath, serviceConfig.paymentUrl);
+    try {
+      const paymentResponse = await fetch(paymentsUrl, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'x-api-key': serviceConfig.paymentApiKey,
+          'idempotency-key': statusWriteIdempotencyKey,
+        },
+        body: JSON.stringify({
+          contractVersion: 'payments.external-status-reconciliation.v1',
+          applicationId,
+          orderId,
+          paymentId,
+          targetStatus,
+          expectedCurrentStatus,
+          source: 'cliplot-status-reconciliation',
+          reason: reasonCode,
+          externalEventId,
+          occurredAt,
+        }),
+      });
+      const text = await paymentResponse.text();
+      let payload = {};
+      try {
+        payload = text ? JSON.parse(text) : {};
+      } catch {
+        payload = { success: false, status: 'non_json_payments_response' };
+      }
+      const data = payload?.data || payload;
+      if (!paymentResponse.ok || data.status !== 'external_status_reconciliation_completed') {
+        return {
+          httpStatus: 202,
+          body: {
+            success: true,
+            status: 'approval_required',
+            mode: 'guarded_payment_status_write_bounded_executor',
+            generatedAt: new Date().toISOString(),
+            service: serviceConfig.serviceName,
+            mutation: false,
+            persistence: false,
+            providerCall: false,
+            sideEffects: false,
+            liveExecutionAllowed: false,
+            currentPacketEnablesRuntime: false,
+            paymentStatusWritten: false,
+            orderStatusWritten: false,
+            callbackPersisted: false,
+            callbackReplayExecuted: false,
+            paymentCreated: false,
+            notificationSent: false,
+            providerBackedRead: false,
+            liveStatusWritesNow: false,
+            paymentsExternalStatusReconciliation: {
+              endpoint: serviceConfig.paymentExternalStatusReconciliationPath,
+              httpStatus: paymentResponse.status,
+              status: data.status || 'unknown',
+              mutation: data.mutation === true,
+              persistence: data.persistence === true,
+              providerCall: data.providerCall === true,
+              paymentStatusWritten: data.paymentStatusWritten === true,
+              orderStatusReported: data.orderStatusReported === true,
+              applicationCallbackAttempted: data.applicationCallbackAttempted === true,
+              blockerCount: Array.isArray(data.blockers) ? data.blockers.length : null,
+            },
+            blockers: [
+              `payments_external_status_reconciliation_${data.status || paymentResponse.status}`,
+              ...(Array.isArray(data.blockers) ? data.blockers : []),
+            ],
+            packet,
+            sensitiveDataPolicy: [
+              'metadata only',
+              'approval id fingerprint only',
+              'operator identity fingerprint only',
+              'no raw callback payload',
+              'no payment rows',
+              'no provider payload',
+              'no provider transaction id',
+              'no customer PII',
+              'no PAYMENT_API_KEY value',
+              'no PAYMENT_WEBHOOK_API_KEY value',
+              'no bearer tokens',
+            ],
+            next: 'Keep Payments external status reconciliation disabled until a bounded owner window opens both Cliplot and Payments write flags.',
+          },
+        };
+      }
+
+      return {
+        httpStatus: 200,
+        body: {
+          success: true,
+          status: 'payment_status_write_completed',
+          mode: 'guarded_payment_status_write_bounded_executor',
+          generatedAt: new Date().toISOString(),
+          service: serviceConfig.serviceName,
+          mutation: data.mutation === true,
+          persistence: data.persistence === true,
+          providerCall: false,
+          sideEffects: data.sideEffects === true,
+          liveExecutionAllowed: true,
+          currentPacketEnablesRuntime: true,
+          paymentStatusWritten: data.paymentStatusWritten === true,
+          orderStatusWritten: data.orderStatusReported === true,
+          callbackPersisted: false,
+          callbackReplayExecuted: false,
+          paymentCreated: false,
+          notificationSent: data.applicationCallbackAttempted === true,
+          providerBackedRead: false,
+          liveStatusWritesNow: true,
+          paymentsExternalStatusReconciliation: {
+            endpoint: serviceConfig.paymentExternalStatusReconciliationPath,
+            httpStatus: paymentResponse.status,
+            status: data.status,
+            paymentStatusWritten: data.paymentStatusWritten === true,
+            orderStatusReported: data.orderStatusReported === true,
+            applicationCallbackAttempted: data.applicationCallbackAttempted === true,
+          },
+          blockers: [],
+          packet,
+          sensitiveDataPolicy: [
+            'metadata only',
+            'approval id fingerprint only',
+            'operator identity fingerprint only',
+            'no raw callback payload',
+            'no payment rows',
+            'no provider payload',
+            'no provider transaction id',
+            'no customer PII',
+            'no PAYMENT_API_KEY value',
+            'no PAYMENT_WEBHOOK_API_KEY value',
+            'no bearer tokens',
+          ],
+          next: 'Close all status-write and callback flags, then run post-window reconciliation evidence.',
+        },
+      };
+    } catch (error) {
+      blockers.push(`payments_external_status_reconciliation_request_failed:${error?.message || 'unknown'}`);
+    }
+  }
 
   return {
     httpStatus: 202,
@@ -6444,7 +6610,8 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         callbackPersistence: true,
         callbackReplayExecution: true,
         postWindowEvidence: true,
-        runtimeImplementation: true,
+        runtimeImplementation: false,
+        paymentsExternalStatusReconciliationEndpoint: true,
       },
       requestEvidence: {
         confirmAccepted: request.confirm === 'PAYMENT_STATUS_WRITE_WINDOW',
@@ -6458,6 +6625,13 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         rollbackOwnerMatchesConfigured: Boolean(rollbackOwner) && rollbackOwner === serviceConfig.liveStatusWriteRollbackOwner,
         validationOwnerMatchesConfigured: Boolean(validationOwner) && validationOwner === serviceConfig.liveStatusWriteValidationOwner,
         postWindowReconciliationEvidenceAcknowledged: request.postWindowReconciliationEvidence === true,
+        paymentIdPresent: Boolean(paymentId),
+        orderIdPresent: Boolean(orderId),
+        targetStatusAccepted: ['completed', 'failed', 'cancelled'].includes(targetStatus),
+        expectedCurrentStatusAccepted: ['pending', 'processing'].includes(expectedCurrentStatus),
+        externalEventIdPresent: Boolean(externalEventId),
+        occurredAtAccepted: Boolean(occurredAtDate && !Number.isNaN(occurredAtDate.valueOf())),
+        statusWriteIdempotencyKeyPresent: Boolean(statusWriteIdempotencyKey),
       },
       currentRuntimeFlags: {
         ENABLE_PAYMENT_LIVE_STATUS_WRITE: serviceConfig.paymentLiveStatusWrite,
@@ -6471,7 +6645,8 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
       endpointBoundary: {
         executorEndpoint: '/api/payments/status-write-bounded-executor',
         forbiddenProviderBackedReadEndpoint: '/payments/{paymentId}',
-        writesOwnedBy: 'payments-microservice_after_separate_approval',
+        writesOwnedBy: 'payments-microservice_external_status_reconciliation_after_separate_approval',
+        paymentsExternalStatusReconciliationEndpoint: serviceConfig.paymentExternalStatusReconciliationPath,
         orderLifecycleOwnedBy: 'orders-microservice',
         cliplotRole: 'non_authoritative_guard_and_read_only_reconciliation_surface',
         fullCheckoutActivationAllowed: false,
@@ -6502,7 +6677,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         'no PAYMENT_WEBHOOK_API_KEY value',
         'no bearer tokens',
       ],
-      next: 'Keep this executor guard-only until a separate approved implementation lane adds runtime writes and post-window reconciliation under closed rollback controls.',
+      next: 'Keep status-write flags closed until a bounded owner window opens Cliplot and Payments external status reconciliation together.',
     },
   };
 }

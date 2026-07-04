@@ -894,3 +894,18 @@ flags closed and preserving `mutation=false`, `persistence=false`,
 `providerCall=false`, and `liveExecutionAllowed=false`. It asserts the remaining
 revenue blockers are exactly the five owner live-window blockers and does not
 open flags or call executors.
+
+
+### 2026-07-04 - Payments external status reconciliation executor path
+
+The guarded Cliplot payment status write executor now has a concrete
+Payments-owned runtime path for a future bounded owner window:
+`POST /payments/external/status-reconciliation`. Current production flags remain
+closed, so readiness still returns `approval_required`, `mutation=false`,
+`persistence=false`, `providerCall=false`, and no status write. The executor
+requires owner approval/window metadata, rollback and validation owners, payment
+and order identifiers, target and expected statuses, a stable external event id,
+an occurred-at timestamp, and a status-write idempotency key before it can call
+Payments. Payments must independently keep
+`PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true` only inside the same
+bounded window.
