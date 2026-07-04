@@ -46,6 +46,7 @@ import {
   paymentStatusWriteWindowRequestPacket,
   paymentCallbackToStatusWriteDryRunContractPacket,
   paymentStatusWriteOwnerReviewPacket,
+  paymentExternalStatusReconciliationPreflightPacket,
   runPaymentStatusWriteBoundedExecutor,
   paymentStatusReadiness,
   paymentReadScopeReadiness,
@@ -816,6 +817,21 @@ const server = createServer(async (req, res) => {
 
 
     if (url.pathname === '/api/payments/status-write-window-request-packet') {
+      sendJson(res, 405, {
+        success: false,
+        status: 'method_not_allowed',
+        allowedMethods: ['GET'],
+        mutation: false,
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/payments/external-status-reconciliation-preflight-packet' && req.method === 'GET') {
+      sendJson(res, 200, await paymentExternalStatusReconciliationPreflightPacket());
+      return;
+    }
+
+    if (url.pathname === '/api/payments/external-status-reconciliation-preflight-packet') {
       sendJson(res, 405, {
         success: false,
         status: 'method_not_allowed',

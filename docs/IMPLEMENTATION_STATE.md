@@ -909,3 +909,14 @@ an occurred-at timestamp, and a status-write idempotency key before it can call
 Payments. Payments must independently keep
 `PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true` only inside the same
 bounded window.
+
+
+### 2026-07-04 - External status reconciliation preflight
+
+Added a read-only `GET /api/payments/external-status-reconciliation-preflight-packet`
+and `npm run readiness:payment-external-status-reconciliation-preflight`. The
+packet resolves the completed live-window payment through the approved passive
+Payments snapshot read, exposes only a payment id fingerprint, keeps all write
+flags closed, and blocks the live write until the owner/provider semantics
+approve the target status and `PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED`
+is opened only inside a bounded window.

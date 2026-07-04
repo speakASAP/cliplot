@@ -163,6 +163,7 @@ if [ "$critical_failed" -eq 0 ]; then
   run_step payment_status_write_window_request npm run readiness:payment-status-write-window-request -- "$BASE_URL"
   run_step payment_callback_to_status_write_dry_run_contract npm run readiness:payment-callback-to-status-write-dry-run-contract -- "$BASE_URL"
   run_step payment_status_write_owner_review npm run readiness:payment-status-write-owner-review -- "$BASE_URL"
+  run_step payment_external_status_reconciliation_preflight npm run readiness:payment-external-status-reconciliation-preflight -- "$BASE_URL"
   run_step payment_status_write_bounded_executor npm run readiness:payment-status-write-bounded-executor -- "$BASE_URL"
   run_step payment_read_scope_readiness npm run readiness:payment-read-scope -- "$BASE_URL"
   run_step payment_status_readiness npm run readiness:payment-status -- "$BASE_URL"

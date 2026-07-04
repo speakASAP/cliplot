@@ -6399,6 +6399,174 @@ export async function paymentStatusWriteWindowRequestPacket() {
   };
 }
 
+
+export async function paymentExternalStatusReconciliationPreflightPacket() {
+  const windowRequest = await paymentStatusWriteWindowRequestPacket();
+  const completedWindow = windowRequest.completedLiveWindowHandoff || completedFullCheckoutLiveWindowEvidenceSummary();
+  const readScope = await paymentReadScopeReadiness();
+  const currentRuntimeFlags = {
+    ENABLE_PAYMENT_LIVE_STATUS_WRITE: serviceConfig.paymentLiveStatusWrite,
+    ENABLE_PAYMENT_CALLBACK_PERSISTENCE: serviceConfig.paymentCallbackPersistence,
+    ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION: serviceConfig.paymentCallbackReplayExecution,
+    ENABLE_LIVE_PAYMENT_CREATE: serviceConfig.livePaymentCreate,
+    ENABLE_LIVE_NOTIFICATIONS: serviceConfig.liveNotifications,
+    ENABLE_LIVE_ORDER_SUBMIT: serviceConfig.liveOrderSubmit,
+    ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE: serviceConfig.liveOrderWarehouseSmoke,
+  };
+  let snapshot = null;
+  let snapshotError = null;
+  if (passivePaymentSnapshotReadAllowed() && completedWindow?.orderId) {
+    try {
+      snapshot = await readPaymentSnapshotByOrderId(completedWindow.orderId);
+    } catch (error) {
+      snapshotError = {
+        status: error?.status || 0,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  const paymentId = snapshot?.paymentId ? String(snapshot.paymentId) : '';
+  const snapshotStatus = snapshot?.paymentStatus || 'unknown';
+  const expectedCurrentStatus = snapshotStatus === 'processing' || snapshotStatus === 'pending'
+    ? snapshotStatus
+    : '[MISSING: expectedCurrentStatus must be pending or processing]';
+  const targetStatusSelection = completedWindow?.orderCancelStatus === 'cancelled' && snapshotStatus === 'processing'
+    ? 'owner_review_required_cancelled_candidate'
+    : '[MISSING: owner-selected targetStatus after payment-provider semantics review]';
+  const requestTemplate = {
+    confirm: 'PAYMENT_STATUS_WRITE_WINDOW',
+    approvalId: 'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID',
+    approvedBy: 'operator identity',
+    reasonCode: 'OWNER_APPROVED_PAYMENT_STATUS_RECONCILIATION_WRITE',
+    boundedWindow: 'CLIPLOT_LIVE_STATUS_WRITE_WINDOW',
+    rollbackOwner: serviceConfig.liveStatusWriteRollbackOwner,
+    validationOwner: serviceConfig.liveStatusWriteValidationOwner,
+    postWindowReconciliationEvidence: true,
+    applicationId: serviceConfig.applicationId,
+    orderId: completedWindow?.orderId || '[MISSING: completed live-window orderId]',
+    paymentId: paymentId ? '[REDACTED: available from Payments snapshot readback]' : '[MISSING: Payments paymentId from snapshot readback]',
+    paymentIdFingerprint: paymentId ? stableFingerprint(paymentId) : null,
+    targetStatus: targetStatusSelection,
+    expectedCurrentStatus,
+    externalEventId: completedWindow?.orderId
+      ? `cliplot-status-reconciliation-${stableFingerprint(completedWindow.orderId).slice(0, 16)}`
+      : '[MISSING: stable externalEventId]',
+    occurredAt: new Date().toISOString(),
+    statusWriteIdempotencyKey: completedWindow?.orderId
+      ? `cliplot-status-reconciliation-${stableFingerprint(`${completedWindow.orderId}:status-write`).slice(0, 24)}`
+      : '[MISSING: status-write idempotency key]',
+  };
+  const liveWriteFlagsClosed = Object.values(currentRuntimeFlags).every((value) => value === false);
+  const assertions = [
+    { name: 'status_write_window_request_ready', passed: windowRequest.status === 'ready_for_bounded_payment_status_write_window_request_execution_disabled' },
+    { name: 'payment_read_scope_validated', passed: ['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(readScope.status) },
+    { name: 'completed_live_window_order_present', passed: Boolean(completedWindow?.orderId) },
+    { name: 'completed_live_window_payment_processing', passed: completedWindow?.paymentStatus === 'processing' || completedWindow?.paymentEvidence?.status === 'processing' },
+    { name: 'payments_snapshot_read_no_side_effects', passed: snapshot ? snapshot.mutation === false && snapshot.persistence === false && snapshot.providerCall === false : false },
+    { name: 'payments_snapshot_payment_id_resolved', passed: Boolean(paymentId) },
+    { name: 'payments_snapshot_status_reconcilable', passed: ['pending', 'processing'].includes(snapshotStatus) },
+    { name: 'live_write_flags_closed', passed: liveWriteFlagsClosed },
+    { name: 'payments_external_write_flag_closed', passed: true },
+    { name: 'target_status_owner_selection_required', passed: targetStatusSelection === 'owner_review_required_cancelled_candidate' },
+  ];
+  const failedAssertions = assertions.filter((item) => item.passed !== true);
+  const blockers = [
+    ...failedAssertions.map((item) => `[MISSING: ${item.name}]`),
+    ...(targetStatusSelection === 'owner_review_required_cancelled_candidate'
+      ? ['[MISSING: owner/provider approval that cancelled is the correct targetStatus for this processing payment after order cleanup]']
+      : ['[MISSING: owner-selected targetStatus after payment-provider semantics review]']),
+    '[MISSING: PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true only inside the future bounded window]',
+  ];
+
+  return {
+    success: true,
+    status: failedAssertions.length === 0
+      ? 'ready_for_owner_target_status_selection_execution_disabled'
+      : 'blocked_external_status_reconciliation_preflight',
+    mode: 'read_only_external_status_reconciliation_preflight_packet',
+    generatedAt: new Date().toISOString(),
+    service: serviceConfig.serviceName,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+    sideEffects: false,
+    liveExecutionAllowed: false,
+    currentPacketEnablesRuntime: false,
+    prerequisiteEvidence: {
+      statusWriteWindowRequest: windowRequest.status,
+      paymentReadScope: readScope.status,
+      completedLiveWindow: completedWindow?.status || null,
+      completedOrderId: completedWindow?.orderId || null,
+      completedOrderCancelStatus: completedWindow?.orderCancelStatus || null,
+      completedOrderReadbackStatus: completedWindow?.orderReadbackStatus || null,
+      completedPaymentStatus: completedWindow?.paymentStatus || completedWindow?.paymentEvidence?.status || null,
+      completedPaymentResultFingerprint: completedWindow?.paymentResultFingerprint || completedWindow?.paymentEvidence?.resultFingerprint || null,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    paymentsSnapshotReadback: snapshot ? {
+      status: 'resolved_from_payments_snapshot',
+      paymentIdPresent: Boolean(paymentId),
+      paymentIdFingerprint: paymentId ? stableFingerprint(paymentId) : null,
+      orderIdMatchesCompletedWindow: snapshot.orderId === completedWindow?.orderId,
+      applicationId: snapshot.applicationId,
+      paymentStatus: snapshot.paymentStatus,
+      expectedCurrentStatus,
+      paymentMethod: snapshot.paymentMethod || null,
+      source: snapshot.source,
+      providerCall: snapshot.providerCall,
+      mutation: snapshot.mutation,
+      persistence: snapshot.persistence,
+    } : {
+      status: 'blocked_payments_snapshot_readback',
+      errorStatus: snapshotError?.status || null,
+      error: snapshotError?.message || null,
+      providerCall: false,
+      mutation: false,
+      persistence: false,
+    },
+    currentRuntimeFlags,
+    paymentsExternalStatusReconciliation: {
+      endpoint: serviceConfig.paymentExternalStatusReconciliationPath,
+      paymentsRuntimeFlag: 'PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED',
+      paymentsRuntimeFlagExpectedNow: false,
+      cliplotExecutorEndpoint: '/api/payments/status-write-bounded-executor',
+      willCallExecutorNow: false,
+      willCallPaymentsNow: false,
+      mutation: false,
+      persistence: false,
+      providerCall: false,
+    },
+    requestTemplate,
+    assertions,
+    failedAssertions,
+    blockers,
+    forbiddenOperationsNow: [
+      'do not open ENABLE_PAYMENT_LIVE_STATUS_WRITE',
+      'do not open ENABLE_PAYMENT_CALLBACK_PERSISTENCE',
+      'do not open ENABLE_PAYMENT_CALLBACK_REPLAY_EXECUTION',
+      'do not open PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED',
+      'do not call POST /api/payments/status-write-bounded-executor',
+      'do not call POST /payments/external/status-reconciliation',
+      'do not read provider-backed /payments/{paymentId}',
+      'do not expose raw payment rows, provider payloads, provider transaction ids, customer PII, or secrets',
+    ],
+    sensitiveDataPolicy: [
+      'payment id fingerprint only',
+      'payment result fingerprint only',
+      'no raw payment row',
+      'no provider transaction id',
+      'no provider payload',
+      'no customer PII',
+      'no PAYMENT_API_KEY value',
+    ],
+    next: 'Owner/provider semantics must approve the targetStatus for this processing payment before a bounded status reconciliation write window can be opened.',
+  };
+}
+
+
 export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
   const packet = await paymentStatusWriteWindowRequestPacket();
   const blockers = [...(packet.blockers || [])];
