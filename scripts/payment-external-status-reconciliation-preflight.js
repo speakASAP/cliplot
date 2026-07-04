@@ -35,14 +35,23 @@ assert(packet.prerequisiteEvidence?.completedOrderId === '7938b1c4-1fb8-44e3-a4f
 assert(packet.prerequisiteEvidence?.completedPaymentStatus === 'processing', 'completed payment processing evidence missing', packet);
 assert(packet.paymentsSnapshotReadback?.paymentIdPresent === true, 'payment id was not resolved from snapshot', packet);
 assert(typeof packet.paymentsSnapshotReadback?.paymentIdFingerprint === 'string', 'payment id fingerprint missing', packet);
-assert(packet.paymentsSnapshotReadback?.paymentStatus === 'processing', 'snapshot payment status mismatch', packet);
+const completedClosed = packet.status === 'validated_external_status_reconciliation_completed_closed';
+assert(['processing', 'cancelled'].includes(packet.paymentsSnapshotReadback?.paymentStatus), 'snapshot payment status mismatch', packet);
 assert(packet.paymentsSnapshotReadback?.providerCall === false, 'snapshot provider call occurred', packet);
 assert(packet.paymentsSnapshotReadback?.mutation === false, 'snapshot mutation occurred', packet);
 assert(packet.paymentsSnapshotReadback?.persistence === false, 'snapshot persistence occurred', packet);
 assert(packet.requestTemplate?.paymentId === '[REDACTED: available from Payments snapshot readback]', 'request template exposed raw payment id or did not resolve it', packet);
-assert(packet.requestTemplate?.targetStatus === 'owner_review_required_cancelled_candidate', 'target status candidate mismatch', packet);
-assert(packet.blockers?.includes('[MISSING: owner/provider approval that cancelled is the correct targetStatus for this processing payment after order cleanup]'), 'owner target-status blocker missing', packet);
-assert(packet.blockers?.includes('[MISSING: PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true only inside the future bounded window]'), 'Payments runtime flag blocker missing', packet);
+if (completedClosed) {
+  assert(packet.paymentsSnapshotReadback?.paymentStatus === 'cancelled', 'completed reconciliation must read cancelled snapshot status', packet);
+  assert(packet.requestTemplate?.targetStatus === 'cancelled', 'completed reconciliation target status mismatch', packet);
+  assert(Array.isArray(packet.blockers) && packet.blockers.length === 0, 'completed reconciliation should not retain pre-window blockers', packet);
+  assert(packet.paymentsExternalStatusReconciliation?.completedClosed === true, 'completed reconciliation closed evidence missing', packet);
+} else {
+  assert(packet.paymentsSnapshotReadback?.paymentStatus === 'processing', 'pre-window snapshot payment status mismatch', packet);
+  assert(packet.requestTemplate?.targetStatus === 'owner_review_required_cancelled_candidate', 'target status candidate mismatch', packet);
+  assert(packet.blockers?.includes('[MISSING: owner/provider approval that cancelled is the correct targetStatus for this processing payment after order cleanup]'), 'owner target-status blocker missing', packet);
+  assert(packet.blockers?.includes('[MISSING: PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true only inside the future bounded window]'), 'Payments runtime flag blocker missing', packet);
+}
 assert(packet.forbiddenOperationsNow?.includes('do not call POST /payments/external/status-reconciliation'), 'Payments POST forbidden operation missing', packet);
 
 const serialized = JSON.stringify(packet);
@@ -60,6 +69,7 @@ console.log(JSON.stringify({
   paymentIdFingerprint: packet.paymentsSnapshotReadback.paymentIdFingerprint,
   targetStatus: packet.requestTemplate.targetStatus,
   blockerCount: packet.blockers.length,
+  completedClosed,
   mutation: packet.mutation,
   persistence: packet.persistence,
   providerCall: packet.providerCall,

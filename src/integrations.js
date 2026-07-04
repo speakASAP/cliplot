@@ -6428,12 +6428,18 @@ export async function paymentExternalStatusReconciliationPreflightPacket() {
 
   const paymentId = snapshot?.paymentId ? String(snapshot.paymentId) : '';
   const snapshotStatus = snapshot?.paymentStatus || 'unknown';
-  const expectedCurrentStatus = snapshotStatus === 'processing' || snapshotStatus === 'pending'
-    ? snapshotStatus
-    : '[MISSING: expectedCurrentStatus must be pending or processing]';
-  const targetStatusSelection = completedWindow?.orderCancelStatus === 'cancelled' && snapshotStatus === 'processing'
-    ? 'owner_review_required_cancelled_candidate'
-    : '[MISSING: owner-selected targetStatus after payment-provider semantics review]';
+  const reconciliationCompletedClosed = completedWindow?.orderCancelStatus === 'cancelled' && snapshotStatus === 'cancelled';
+  const reconciliationCandidatePending = completedWindow?.orderCancelStatus === 'cancelled' && snapshotStatus === 'processing';
+  const expectedCurrentStatus = reconciliationCompletedClosed
+    ? 'processing'
+    : snapshotStatus === 'processing' || snapshotStatus === 'pending'
+      ? snapshotStatus
+      : '[MISSING: expectedCurrentStatus must be pending or processing]';
+  const targetStatusSelection = reconciliationCompletedClosed
+    ? 'cancelled'
+    : reconciliationCandidatePending
+      ? 'owner_review_required_cancelled_candidate'
+      : '[MISSING: owner-selected targetStatus after payment-provider semantics review]';
   const requestTemplate = {
     confirm: 'PAYMENT_STATUS_WRITE_WINDOW',
     approvalId: 'CLIPLOT_LIVE_STATUS_WRITE_APPROVAL_ID',
@@ -6465,24 +6471,28 @@ export async function paymentExternalStatusReconciliationPreflightPacket() {
     { name: 'completed_live_window_payment_processing', passed: completedWindow?.paymentStatus === 'processing' || completedWindow?.paymentEvidence?.status === 'processing' },
     { name: 'payments_snapshot_read_no_side_effects', passed: snapshot ? snapshot.mutation === false && snapshot.persistence === false && snapshot.providerCall === false : false },
     { name: 'payments_snapshot_payment_id_resolved', passed: Boolean(paymentId) },
-    { name: 'payments_snapshot_status_reconcilable', passed: ['pending', 'processing'].includes(snapshotStatus) },
+    { name: 'payments_snapshot_status_reconcilable_or_completed', passed: ['pending', 'processing', 'cancelled'].includes(snapshotStatus) },
     { name: 'live_write_flags_closed', passed: liveWriteFlagsClosed },
     { name: 'payments_external_write_flag_closed', passed: true },
-    { name: 'target_status_owner_selection_required', passed: targetStatusSelection === 'owner_review_required_cancelled_candidate' },
+    { name: 'target_status_owner_selection_or_completion_recorded', passed: reconciliationCompletedClosed || targetStatusSelection === 'owner_review_required_cancelled_candidate' },
   ];
   const failedAssertions = assertions.filter((item) => item.passed !== true);
   const blockers = [
     ...failedAssertions.map((item) => `[MISSING: ${item.name}]`),
-    ...(targetStatusSelection === 'owner_review_required_cancelled_candidate'
-      ? ['[MISSING: owner/provider approval that cancelled is the correct targetStatus for this processing payment after order cleanup]']
-      : ['[MISSING: owner-selected targetStatus after payment-provider semantics review]']),
-    '[MISSING: PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true only inside the future bounded window]',
+    ...(reconciliationCompletedClosed
+      ? []
+      : targetStatusSelection === 'owner_review_required_cancelled_candidate'
+        ? ['[MISSING: owner/provider approval that cancelled is the correct targetStatus for this processing payment after order cleanup]']
+        : ['[MISSING: owner-selected targetStatus after payment-provider semantics review]']),
+    ...(reconciliationCompletedClosed ? [] : ['[MISSING: PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true only inside the future bounded window]']),
   ];
 
   return {
     success: true,
     status: failedAssertions.length === 0
-      ? 'ready_for_owner_target_status_selection_execution_disabled'
+      ? reconciliationCompletedClosed
+        ? 'validated_external_status_reconciliation_completed_closed'
+        : 'ready_for_owner_target_status_selection_execution_disabled'
       : 'blocked_external_status_reconciliation_preflight',
     mode: 'read_only_external_status_reconciliation_preflight_packet',
     generatedAt: new Date().toISOString(),
@@ -6533,6 +6543,7 @@ export async function paymentExternalStatusReconciliationPreflightPacket() {
       paymentsRuntimeFlag: 'PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED',
       paymentsRuntimeFlagExpectedNow: false,
       cliplotExecutorEndpoint: '/api/payments/status-write-bounded-executor',
+      completedClosed: reconciliationCompletedClosed,
       willCallExecutorNow: false,
       willCallPaymentsNow: false,
       mutation: false,
@@ -6562,7 +6573,9 @@ export async function paymentExternalStatusReconciliationPreflightPacket() {
       'no customer PII',
       'no PAYMENT_API_KEY value',
     ],
-    next: 'Owner/provider semantics must approve the targetStatus for this processing payment before a bounded status reconciliation write window can be opened.',
+    next: reconciliationCompletedClosed
+      ? 'External payment status reconciliation completed; keep write flags closed and continue revenue closure readiness.'
+      : 'Owner/provider semantics must approve the targetStatus for this processing payment before a bounded status reconciliation write window can be opened.',
   };
 }
 
