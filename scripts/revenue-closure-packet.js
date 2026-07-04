@@ -57,6 +57,13 @@ assert(packet.catalog?.approvedCliplotSkuScope === true, 'approved SKU scope evi
 assert(packet.orderWarehouse?.status === 'validated_no_mutation', 'order/Warehouse readiness not validated', packet);
 assert(packet.orderWarehouse?.mutation === false, 'order/Warehouse readiness reported mutation', packet);
 assert(packet.payment?.statusReadiness === 'ready_for_approved_payment_status_runtime_read', 'payment status readiness missing', packet);
+assert(packet.payment?.externalStatusReconciliation?.status === 'validated_external_status_reconciliation_completed_closed', 'external status reconciliation completed evidence missing', packet);
+assert(packet.payment?.externalStatusReconciliation?.completedClosed === true, 'external status reconciliation closed evidence missing', packet);
+assert(packet.payment?.externalStatusReconciliation?.originalPaymentStatus === 'processing', 'external reconciliation original payment status mismatch', packet);
+assert(packet.payment?.externalStatusReconciliation?.reconciledPaymentStatus === 'cancelled', 'external reconciliation cancelled status mismatch', packet);
+assert(packet.payment?.externalStatusReconciliation?.mutation === false, 'external reconciliation evidence reported mutation', packet);
+assert(packet.payment?.externalStatusReconciliation?.persistence === false, 'external reconciliation evidence reported persistence', packet);
+assert(packet.payment?.externalStatusReconciliation?.providerCall === false, 'external reconciliation evidence reported provider call', packet);
 assert(['blocked_storage_backend_not_approved', 'approved_payment_status_storage_metadata_execution_disabled'].includes(packet.payment?.storageReadiness), 'payment storage guard changed', packet);
 assert(['approval_required_order_payment_status_mapping_ownership', 'approved_order_payment_status_mapping_ownership'].includes(packet.payment?.mappingOwnership), 'payment mapping ownership evidence missing', packet);
 assert(['approval_required_callback_replay_policy', 'approved_callback_replay_policy_metadata_execution_disabled'].includes(packet.callbackPolicy?.status), 'callback policy evidence missing', packet);
@@ -98,6 +105,7 @@ console.log(JSON.stringify({
   approvedCliplotSkuScope: packet.catalog.approvedCliplotSkuScope,
   orderWarehouse: packet.orderWarehouse.status,
   paymentStatus: packet.payment.statusReadiness,
+  externalStatusReconciliation: packet.payment.externalStatusReconciliation.status,
   callbackPolicy: packet.callbackPolicy.status,
   customerStatusActivation: packet.customerStatus.activation,
   liveSmokePlan: packet.liveSmokePlan.status,

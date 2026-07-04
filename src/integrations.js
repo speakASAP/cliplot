@@ -9958,6 +9958,21 @@ export async function revenueClosurePacket() {
   const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
   const customerStatusActivation = await customerStatusRuntimeActivationGate();
   const customerStatusApproval = await customerStatusApprovalEvidencePacket();
+  const completedWindow = completedFullCheckoutLiveWindowEvidenceSummary();
+  const paymentSnapshotEvidence = await completedWindowPaymentSnapshotEvidence(completedWindow);
+  const externalStatusReconciliation = {
+    status: completedWindow?.paymentEvidence?.status === 'processing' && paymentSnapshotEvidence.paymentStatus === 'cancelled'
+      ? 'validated_external_status_reconciliation_completed_closed'
+      : 'external_status_reconciliation_evidence_not_completed',
+    completedClosed: completedWindow?.paymentEvidence?.status === 'processing' && paymentSnapshotEvidence.paymentStatus === 'cancelled',
+    originalPaymentStatus: completedWindow?.paymentEvidence?.status || null,
+    reconciledPaymentStatus: paymentSnapshotEvidence.paymentStatus,
+    paymentSnapshotReadback: paymentSnapshotEvidence.status,
+    paymentIdFingerprint: paymentSnapshotEvidence.paymentIdFingerprint,
+    mutation: false,
+    persistence: false,
+    providerCall: false,
+  };
   const readiness = serviceReadiness();
   const preflight = readiness.liveCheckoutPreflight;
 
@@ -9978,6 +9993,7 @@ export async function revenueClosurePacket() {
     customerStatusActivation: customerStatusActivation.status,
     customerStatusApproval: customerStatusApproval.status,
     liveCheckoutApproval: approvalPacket.status,
+    externalStatusReconciliation: externalStatusReconciliation.status,
     livePreflight: preflight.status,
     liveWindowOpen,
     liveWindowMetadataReady: liveWindowMetadataBlockers.length === 0,
@@ -10100,6 +10116,7 @@ export async function revenueClosurePacket() {
       paymentCreateValidation: paymentCreateApproval.validation?.status || null,
       readyForOwnerPaymentApproval: paymentCreateApproval.approvalIdMayBeRecordedAfterOwnerAcceptance,
       snapshotReadRuntime: paymentStatusReadinessPacket.passiveSnapshotAdapter?.currentRuntimeStatus || null,
+      externalStatusReconciliation,
       mutation: false,
       persistence: false,
       providerCall: false,
