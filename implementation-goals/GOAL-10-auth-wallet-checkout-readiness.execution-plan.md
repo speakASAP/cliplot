@@ -180,6 +180,22 @@ blocked until separately approved.
 6. Record validation evidence in `reports/validation`.
 7. Commit the repo-local readiness work only; do not deploy.
 
+
+## 2026-07-06 Lane G Wallet Write Decision
+
+Decision: read-only checkout scope. Cliplot does not implement user-editable
+Auth delivery, invoice, or profile write surfaces in this lane because no
+approved Auth-owned write contract is recorded. The allowed source/runtime
+surface remains selector/pre-fill from approved Auth wallet reads into immutable
+current-checkout snapshots. Future write work is dependency-gated on a separate
+owner-approved Auth mutation contract with consent, idempotency, audit,
+rollback, no-PII evidence, validation ownership, and explicit allowed endpoints.
+
+Validation owner: Cliplot readiness checker. `npm run
+readiness:auth-wallet-checkout` must keep `authWalletWriteDecision.status` at
+`read_only_checkout_scope_selected` and fail on Auth wallet/profile write calls
+or Cliplot wallet save UI hooks.
+
 ## Coding Prompt
 
 Implement a source-only Cliplot readiness verifier for Auth wallet checkout.

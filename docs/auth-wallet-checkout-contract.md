@@ -253,6 +253,45 @@ AUTH_WALLET_SYNTHETIC_BEARER=<approved synthetic bearer> \
 npm run smoke:auth-wallet-browser-session -- <base-url>
 ```
 
+
+## 2026-07-06 Lane G Wallet Write Decision
+
+Decision: Cliplot remains a read-only Auth wallet checkout consumer for this
+lane. The approved Cliplot surface may read Auth checkout-data, delivery-address,
+and invoice-profile rows only for current-checkout selector/pre-fill behavior.
+It must not expose user-editable Auth delivery, invoice, or profile write
+surfaces from Cliplot.
+
+Rationale:
+
+- No approved Auth-owned write contract for Cliplot delivery-address,
+  invoice-profile, or profile mutation is recorded in this repo.
+- The existing Auth wallet contract approves GET reads of the three wallet
+  endpoints only; it repeatedly blocks Auth wallet mutation and checkout submit
+  changes.
+- Cliplot checkout only needs immutable current-checkout snapshots for order
+  intent; reusable delivery/invoice/profile truth remains Auth-owned.
+- Guest/manual checkout must stay available without saving or mutating Auth
+  wallet rows.
+
+Source-prepared scope:
+
+- Allowed now: read-only checkout selector/pre-fill from approved in-memory Auth
+  wallet data or the gated browser-session read evidence path.
+- Forbidden now: `POST`, `PUT`, `PATCH`, or `DELETE` calls to Auth wallet/profile
+  endpoints; Cliplot UI controls that save delivery addresses, invoice profiles,
+  or profile fields back to Auth; checkout payloads that submit wallet ids or
+  Auth ownership fields as order truth.
+- Future write surfaces require a separate owner-approved Auth-owned mutation
+  contract with consent, idempotency, audit, no-PII evidence, rollback, and
+  validation ownership before Cliplot source may add write calls.
+
+Verifier marker:
+
+`npm run readiness:auth-wallet-checkout` must report
+`authWalletWriteDecision.status=read_only_checkout_scope_selected` and fail if
+runtime source adds Auth wallet/profile write calls or wallet save UI hooks.
+
 ## Forbidden In This Contract Lane
 
 - Ungated runtime wallet fetch integration.

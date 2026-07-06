@@ -17,6 +17,18 @@ const walletEndpoints = [
   '/auth/profile/invoice-profiles',
 ];
 
+const authWalletWriteHttpVerbPattern = /method:\s*['"](?:POST|PUT|PATCH|DELETE)['"][\s\S]{0,240}\/auth\/profile\/(?:checkout-data|delivery-addresses|invoice-profiles)|\/auth\/profile\/(?:checkout-data|delivery-addresses|invoice-profiles)[\s\S]{0,240}method:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/;
+const authWalletSaveUiPatterns = [
+  'data-auth-wallet-save',
+  'data-wallet-save',
+  'saveAuthWallet',
+  'saveWalletProfile',
+  'saveDeliveryAddressToAuth',
+  'saveInvoiceProfileToAuth',
+  'authWalletWrite',
+  'profileWrite',
+];
+
 const authWalletResponseContract = {
   status: 'source_defined',
   source: 'auth-microservice Goal 10.34',
@@ -345,6 +357,31 @@ const sourceOnlyGuestFallbackPolicy = {
   ],
 };
 
+const authWalletWriteDecision = {
+  status: 'read_only_checkout_scope_selected',
+  decision: 'Cliplot reads Auth wallet data for checkout selector/pre-fill only; user-editable Auth delivery, invoice, and profile write surfaces are not approved in this lane.',
+  authOwnershipBoundary: 'Auth owns reusable delivery addresses, invoice profiles, customer profile data, consent, audit, and mutation policy.',
+  cliplotAllowedScope: [
+    'current-checkout selector/pre-fill from approved Auth wallet reads',
+    'immutable checkout snapshots without wallet ids or Auth ownership fields',
+    'manual guest checkout fallback without saving to Auth',
+  ],
+  allowedReadEndpoints: walletEndpoints,
+  forbiddenHttpVerbs: ['POST', 'PUT', 'PATCH', 'DELETE'],
+  forbiddenUiHooks: authWalletSaveUiPatterns,
+  writeBlockers: [
+    '[MISSING: owner-approved Auth-owned delivery/invoice/profile mutation contract for Cliplot write surfaces]',
+    '[MISSING: consent, idempotency, audit, rollback, no-PII evidence, and validation ownership for Auth wallet/profile writes]',
+  ],
+  futureWriteRequirements: [
+    'separate owner-approved Auth mutation contract',
+    'explicit allowed endpoints and payload schema',
+    'consent and audit semantics owned by Auth',
+    'idempotency and rollback behavior',
+    'no-PII validation evidence and validation owner',
+  ],
+};
+
 const sourceOnlySessionHandoffEvidence = {
   status: 'source_only_browser_session_contract_verified',
   runtimeWalletCodePresent: false,
@@ -534,12 +571,32 @@ const hasWalletContract = includesAll(walletContract, [
   'resolved immutable snapshots, not Auth wallet ids',
   'Runtime integration remains blocked until selector behavior, browser-session',
   'fallback evidence are covered by source validation and approved synthetic',
+  '2026-07-06 Lane G Wallet Write Decision',
+  'Decision: Cliplot remains a read-only Auth wallet checkout consumer for this',
+  'It must not expose user-editable Auth delivery, invoice, or profile write',
+  'Future write surfaces require a separate owner-approved Auth-owned mutation',
+  'authWalletWriteDecision.status=read_only_checkout_scope_selected',
 ]);
 const runtimeWalletReferences = Object.values(sources)
   .filter(({ path }) => ![sourceFiles.walletContract, sourceFiles.checkoutClient, sourceFiles.checkoutHtml].includes(path))
   .flatMap(({ path, contents }) => walletEndpoints
     .filter((endpoint) => contents.includes(endpoint))
     .map((endpoint) => ({ path, endpoint })));
+const runtimeSourceEntries = Object.values(sources)
+  .filter(({ path }) => [
+    sourceFiles.checkoutHtml,
+    sourceFiles.checkoutClient,
+    sourceFiles.integrations,
+    sourceFiles.server,
+    sourceFiles.browserSessionSmoke,
+  ].includes(path));
+const authWalletWriteHttpReferences = runtimeSourceEntries
+  .filter(({ contents }) => authWalletWriteHttpVerbPattern.test(contents))
+  .map(({ path }) => path);
+const authWalletSaveUiReferences = runtimeSourceEntries
+  .flatMap(({ path, contents }) => authWalletSaveUiPatterns
+    .filter((pattern) => contents.includes(pattern))
+    .map((pattern) => ({ path, pattern })));
 
 assert(hasCheckoutForm, 'checkout form customer fields missing', { file: sourceFiles.checkoutHtml });
 assert(hasCartReview, 'cart review/submit surface missing', { file: sourceFiles.checkoutClient });
@@ -731,6 +788,21 @@ assert(
   { sourceOnlyGuestFallbackPolicy },
 );
 assert(
+  authWalletWriteDecision.status === 'read_only_checkout_scope_selected'
+    && authWalletWriteDecision.allowedReadEndpoints.length === 3
+    && authWalletWriteDecision.forbiddenHttpVerbs.includes('PATCH')
+    && authWalletWriteDecision.writeBlockers.some((blocker) => blocker.includes('owner-approved Auth-owned delivery/invoice/profile mutation contract')),
+  'Cliplot Auth wallet write decision is missing or not read-only',
+  { authWalletWriteDecision },
+);
+assert(authWalletWriteHttpReferences.length === 0, 'Auth wallet/profile write HTTP call found in runtime source', {
+  authWalletWriteHttpReferences,
+});
+assert(authWalletSaveUiReferences.length === 0, 'Auth wallet/profile save UI hook found in runtime source', {
+  authWalletSaveUiReferences,
+});
+
+assert(
   sourceOnlySessionHandoffEvidence.status === 'source_only_browser_session_contract_verified'
     && sourceOnlySessionHandoffEvidence.runtimeWalletCodePresent === false
     && sourceOnlySessionHandoffEvidence.browserSessionImplementationPresent === true
@@ -839,6 +911,15 @@ console.log(JSON.stringify({
   authWalletPresenceGate,
   authWalletNoPiiExposurePolicy,
   sourceOnlySessionHandoffEvidence,
+  authWalletWriteDecision,
+  authWalletWriteGuardEvidence: {
+    status: 'read_only_checkout_scope_verified_no_write_surface',
+    writeHttpReferenceCount: authWalletWriteHttpReferences.length,
+    saveUiReferenceCount: authWalletSaveUiReferences.length,
+    allowedReadEndpoints: walletEndpoints,
+    forbiddenHttpVerbs: authWalletWriteDecision.forbiddenHttpVerbs,
+    blockers: authWalletWriteDecision.writeBlockers,
+  },
   liveSyntheticWalletReadEvidence: {
     status: 'sanitized_auth_wallet_browser_session_smoke_recorded',
     approvalId: 'CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE5',
@@ -857,5 +938,6 @@ console.log(JSON.stringify({
   sourceOnlyGuestFallbackPolicy,
   sourceKnownFacts,
   blockers,
-  next: 'Runtime selector UI and gated browser-session fetch source path are ready for owner rollout review; keep checkout submit changes, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
+  walletWriteDecision: authWalletWriteDecision.status,
+  next: 'Runtime selector UI and gated browser-session fetch source path remain read-only checkout scope; keep Auth wallet/profile writes, checkout submit changes, payment, Warehouse, notification, DB, Kubernetes, and Vault mutation blocked until a separate approved rollout opens them.',
 }, null, 2));

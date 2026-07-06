@@ -208,6 +208,27 @@ Runtime checkout selector implementation, no-PII frontend exposure evidence,
 Auth wallet row-to-checkout/order field mapping implementation, and guest
 fallback implementation remain blocked until separately scoped.
 
+
+## 2026-07-06 Lane G Wallet Write Decision
+
+Result: read-only checkout scope selected and source-prepared.
+
+Cliplot does not implement user-editable Auth delivery, invoice, or profile
+write surfaces in this lane. No approved Auth-owned mutation contract exists in
+this repo, and the existing wallet contract allows only checkout-data,
+delivery-address, and invoice-profile reads for selector/pre-fill behavior.
+Reusable wallet/profile truth remains Auth-owned; Cliplot submits only immutable
+current-checkout snapshots and must not submit wallet ids or Auth ownership
+fields as order truth.
+
+Verifier coverage added: `npm run readiness:auth-wallet-checkout` now reports
+`authWalletWriteDecision.status=read_only_checkout_scope_selected`, confirms the
+allowed read endpoints, records write blockers, and fails if runtime source adds
+Auth wallet/profile write HTTP verbs or wallet save UI hooks.
+
+Remaining blocker: `[MISSING: owner-approved Auth-owned delivery/invoice/profile
+mutation contract for Cliplot write surfaces]`.
+
 ## Runtime Helper Evidence Readiness
 
 `npm run readiness:auth-wallet-checkout` consumes the no-live-calls runtime
