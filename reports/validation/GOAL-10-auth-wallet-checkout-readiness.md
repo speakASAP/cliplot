@@ -93,7 +93,9 @@ missing.
   `approval_required_auth_wallet_browser_session_smoke`.
 - Future execution requires `ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true`, a
   non-secret `CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID`, and an owner-approved
-  synthetic `AUTH_WALLET_SYNTHETIC_BEARER` only for the evidence window.
+  synthetic bearer supplied either as `AUTH_WALLET_SYNTHETIC_BEARER` or, preferably,
+  through a temporary `0600` file path in `AUTH_WALLET_SYNTHETIC_BEARER_FILE`
+  only for the evidence window.
 - Scope remains limited to GET reads of `/auth/profile/checkout-data`,
   `/auth/profile/delivery-addresses`, and `/auth/profile/invoice-profiles`.
 - Harness evidence forbids printing Authorization headers, bearer tokens,
@@ -285,3 +287,15 @@ Sanitized evidence:
 This closes the approved browser/session wallet-fetch evidence gate. Checkout
 submit, Auth wallet mutation, payment, Warehouse, notification, DB, Kubernetes,
 Vault, and live commerce mutation remain blocked until separately scoped.
+
+
+2026-07-06 file-based bearer update:
+
+- Added `AUTH_WALLET_SYNTHETIC_BEARER_FILE` support to the guarded browser-session
+  smoke harness so an approved synthetic bearer can be read from a temporary
+  `0600` file without appearing in the process command line.
+- Inline `AUTH_WALLET_SYNTHETIC_BEARER` remains supported for backwards
+  compatibility, but supplying both bearer sources is rejected as ambiguous.
+- Default readiness remains approval-gated and performs no Auth wallet fetch,
+  browser-session read, checkout submit, mutation, persistence, provider call,
+  database mutation, Kubernetes mutation, or Vault usage.

@@ -232,7 +232,9 @@ requires all of the following, supplied only for the evidence window:
 
 - `ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true`;
 - a non-secret approval id in `CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID`;
-- an owner-approved synthetic bearer in `AUTH_WALLET_SYNTHETIC_BEARER`;
+- an owner-approved synthetic bearer supplied either inline in
+  `AUTH_WALLET_SYNTHETIC_BEARER` or from a temporary `0600` file path in
+  `AUTH_WALLET_SYNTHETIC_BEARER_FILE`;
 - the Cliplot/Auth base URL passed as an argument or
   `CLIPLOT_AUTH_WALLET_SMOKE_BASE_URL`.
 
@@ -249,9 +251,14 @@ Future live command shape, without secret values:
 ```bash
 ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true \
 CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID> \
-AUTH_WALLET_SYNTHETIC_BEARER=<approved synthetic bearer> \
+AUTH_WALLET_SYNTHETIC_BEARER_FILE=<0600 approved bearer file> \
 npm run smoke:auth-wallet-browser-session -- <base-url>
 ```
+
+Inline `AUTH_WALLET_SYNTHETIC_BEARER` remains accepted for backwards
+compatibility, but the file-based path is preferred so the bearer value does not
+appear in the process command line. Supplying both sources in the same run is
+rejected as ambiguous.
 
 
 ## 2026-07-06 Lane G Wallet Write Decision

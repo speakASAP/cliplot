@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 const requestTimeoutMs = Number(process.env.SERVICE_REQUEST_TIMEOUT_MS || 2200);
 const liveSmokeRequestTimeoutMs = Number(process.env.CLIPLOT_LIVE_SMOKE_REQUEST_TIMEOUT_MS || 15000);
@@ -1688,8 +1689,29 @@ function authWalletSmokeApprovalMetadata() {
     approvalIdPresent: Boolean(process.env.CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID),
     approvalIdLength: process.env.CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID?.length || 0,
     syntheticBearerPresent: Boolean(process.env.AUTH_WALLET_SYNTHETIC_BEARER),
+    syntheticBearerFilePresent: Boolean(process.env.AUTH_WALLET_SYNTHETIC_BEARER_FILE),
     liveFlagEnabled: process.env.ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE === 'true',
   };
+}
+
+function readApprovedAuthWalletSyntheticBearer() {
+  const inlineBearer = typeof process.env.AUTH_WALLET_SYNTHETIC_BEARER === 'string'
+    ? process.env.AUTH_WALLET_SYNTHETIC_BEARER.trim()
+    : '';
+  const bearerFile = typeof process.env.AUTH_WALLET_SYNTHETIC_BEARER_FILE === 'string'
+    ? process.env.AUTH_WALLET_SYNTHETIC_BEARER_FILE.trim()
+    : '';
+
+  if (inlineBearer && bearerFile) {
+    throw new Error('ambiguous_auth_wallet_synthetic_bearer_source');
+  }
+  if (inlineBearer) {
+    return inlineBearer;
+  }
+  if (bearerFile) {
+    return readFileSync(bearerFile, 'utf8').trim();
+  }
+  return '';
 }
 
 function authWalletSmokeApprovalIdLooksNonSecret(value) {
@@ -1771,7 +1793,7 @@ export async function authWalletBrowserSessionFetchEvidence({ baseUrl = process.
       'missing_owner_approved_synthetic_browser_session_or_bearer',
       'missing_non_secret_CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID',
     ],
-    liveCommandShape: 'ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID> AUTH_WALLET_SYNTHETIC_BEARER=<approved synthetic bearer> npm run smoke:auth-wallet-browser-session -- <base-url>',
+    liveCommandShape: 'ENABLE_AUTH_WALLET_BROWSER_SESSION_SMOKE=true CLIPLOT_AUTH_WALLET_SMOKE_APPROVAL_ID=CLIPLOT-AUTH-WALLET-SMOKE-<ID> AUTH_WALLET_SYNTHETIC_BEARER_FILE=<0600 approved-token-file> npm run smoke:auth-wallet-browser-session -- <base-url>',
   };
 
   if (!approvalMetadata.liveFlagEnabled) {
@@ -1784,7 +1806,15 @@ export async function authWalletBrowserSessionFetchEvidence({ baseUrl = process.
     error.evidence = { approvalMetadata };
     throw error;
   }
-  if (typeof process.env.AUTH_WALLET_SYNTHETIC_BEARER !== 'string' || process.env.AUTH_WALLET_SYNTHETIC_BEARER.length <= 20) {
+  let syntheticBearer = '';
+  try {
+    syntheticBearer = readApprovedAuthWalletSyntheticBearer();
+  } catch (cause) {
+    const error = new Error(cause.message || 'failed_to_read_approved_synthetic_bearer_for_auth_wallet_evidence_window');
+    error.evidence = { approvalMetadata };
+    throw error;
+  }
+  if (syntheticBearer.length <= 20) {
     const error = new Error('missing_approved_synthetic_bearer_for_auth_wallet_evidence_window');
     error.evidence = { approvalMetadata };
     throw error;
@@ -1797,7 +1827,7 @@ export async function authWalletBrowserSessionFetchEvidence({ baseUrl = process.
 
   const results = [];
   for (const endpoint of authWalletApprovedEndpoints) {
-    results.push(await fetchAuthWalletEndpointStatus(baseUrl, endpoint, process.env.AUTH_WALLET_SYNTHETIC_BEARER));
+    results.push(await fetchAuthWalletEndpointStatus(baseUrl, endpoint, syntheticBearer));
   }
 
   const evidence = {
