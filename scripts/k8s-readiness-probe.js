@@ -12,9 +12,37 @@ function fail(reason, evidence = {}) {
   process.exit(1);
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Retries transport errors (ECONNREFUSED while the target has no ready endpoint)
+// and 5xx only. Readiness assertions are evaluated by the caller and never retried
+// here -- a genuine "not ready" result must surface on the first pass.
+const RETRY_DELAYS_MS = [0, 5000, 10000, 20000, 30000, 45000];
+
+async function fetchWithRetry(url, options) {
+  let lastError;
+  for (let i = 0; i < RETRY_DELAYS_MS.length; i += 1) {
+    const isLast = i === RETRY_DELAYS_MS.length - 1;
+    if (RETRY_DELAYS_MS[i] > 0) await sleep(RETRY_DELAYS_MS[i]);
+    try {
+      const response = await fetch(url, options);
+      if (response.status >= 500 && !isLast) {
+        lastError = new Error(`upstream returned ${response.status}`);
+      } else {
+        return response;
+      }
+    } catch (error) {
+      lastError = error;
+      if (isLast) break;
+    }
+    console.error(`attempt ${i + 1}/${RETRY_DELAYS_MS.length} failed: ${lastError.message}; retrying`);
+  }
+  throw lastError;
+}
+
 async function getJson(path) {
   const url = `${baseUrl}${path}`;
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'GET',
     headers: {
       accept: 'application/json',
