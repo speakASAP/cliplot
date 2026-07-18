@@ -8,7 +8,9 @@ metadata:
     component: readiness-monitor
     managed-by: codex
 spec:
-  schedule: "*/30 * * * *"
+  # Staggered off the :00/:30 marks shared by catalog-contract-monitor and
+  # others. See shared/docs/DEPLOY_STANDARDIZATION_REPORT.md section 12 addendum.
+  schedule: "19,49 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
