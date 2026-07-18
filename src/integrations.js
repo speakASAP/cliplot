@@ -502,7 +502,7 @@ export async function catalogProductFilterReadiness() {
     sampleProducts: scopeEvidence.sampleProducts,
     approvalRequest: {
       requiredDecision: 'approved Cliplot product SKU list/filtering rule',
-      recommendedDecisionPath: '07_decisions/ADR-004-cliplot-product-filter-scope.md',
+      recommendedDecisionPath: 'docs/07_decisions/ADR-004-cliplot-product-filter-scope.md',
       requiredApprovalId: 'CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID',
       approvalRecorded: scopeEvidence.productScopeApprovalPresent,
       acceptableOptions: [
@@ -7293,7 +7293,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
   const decisionRecord = {
     id: 'ADR-002-payment-status-persistence-ownership',
     title: 'Payment Status Persistence Ownership',
-    path: '07_decisions/ADR-002-payment-status-persistence-ownership.md',
+    path: 'docs/07_decisions/ADR-002-payment-status-persistence-ownership.md',
     status: isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId) ? 'owner_approved_shared_payments_source_of_truth' : 'proposed_for_owner_approval',
     recorded: true,
     preferredOwner: 'payments-microservice',
@@ -7537,7 +7537,7 @@ export async function paymentStatusMappingOwnershipPacket() {
     decisionRecord: {
       id: 'ADR-006-order-payment-status-mapping-ownership',
       title: 'Order And Payment Status Mapping Ownership',
-      path: '07_decisions/ADR-006-order-payment-status-mapping-ownership.md',
+      path: 'docs/07_decisions/ADR-006-order-payment-status-mapping-ownership.md',
       status: mappingOwnershipApproved ? 'owner_approved_non_authoritative_renderer' : 'proposed_for_owner_approval',
       recorded: true,
       runtimeApproval: approvedRuntimeRead,
@@ -7977,7 +7977,7 @@ export async function customerStatusRuntimeRolloutPlan() {
     },
     decisionRecord: {
       id: 'ADR-003-read-only-customer-status-runtime-rollout',
-      path: '07_decisions/ADR-003-read-only-customer-status-runtime-rollout.md',
+      path: 'docs/07_decisions/ADR-003-read-only-customer-status-runtime-rollout.md',
       status: 'proposed_for_owner_approval',
       recorded: true,
       runtimeApproval: approvedRuntimeRead,

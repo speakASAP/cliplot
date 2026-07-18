@@ -540,7 +540,7 @@ approval packet. It compares Payments-owned, Cliplot-local, and Orders-owned
 options and currently recommends `shared-payments-source-of-truth`. It must
 return `decision_recorded_approval_required`, `mutation=false`,
 `persistence=false`, and `providerCall=false`. The packet must mark
-`07_decisions/ADR-002-payment-status-persistence-ownership.md` as recorded and may show `owner_approved_shared_payments_source_of_truth` when the approval ID is configured. That approval allows passive Payments DB snapshot reads only; it does not approve callback persistence, provider-backed reads, or Cliplot-local storage writes.
+`docs/07_decisions/ADR-002-payment-status-persistence-ownership.md` as recorded and may show `owner_approved_shared_payments_source_of_truth` when the approval ID is configured. That approval allows passive Payments DB snapshot reads only; it does not approve callback persistence, provider-backed reads, or Cliplot-local storage writes.
 
 ```bash
 npm run readiness:payment-decision -- https://cliplot.alfares.cz
