@@ -18,7 +18,7 @@ DEPLOYMENTS=(
   "cliplot|app|"
 )
 
-MANIFESTS=(configmap.yaml external-secret.yaml service.yaml ingress.yaml readiness-cronjob.yaml)
+MANIFESTS=(configmap.yaml external-secret.yaml service.yaml ingress.yaml)
 
 deploy_preflight() {
   python3 "$PROJECT_ROOT/scripts/pre_coding_gate.py" --root "$PROJECT_ROOT"
@@ -30,6 +30,12 @@ deploy_preflight() {
 deploy_post_manifests() {
   local image="${REGISTRY}/${SERVICE_NAME}:${IMAGE_TAG}"
   sed "s#localhost:5000/cliplot:latest#${image}#g" "$PROJECT_ROOT/k8s/deployment.yaml" \
+    | kubectl apply -f - -n "$NAMESPACE"
+  # readiness-cronjob.yaml is sed-templated for the same reason as deployment.yaml,
+  # and is NOT in MANIFESTS: `kubectl set image` only ever targets deployments, so a
+  # statically applied CronJob stays pinned to :latest forever and silently runs
+  # whatever was built last. Substitute the tag here instead.
+  sed "s#localhost:5000/cliplot:latest#${image}#g" "$PROJECT_ROOT/k8s/readiness-cronjob.yaml" \
     | kubectl apply -f - -n "$NAMESPACE"
 }
 
