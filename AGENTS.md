@@ -59,21 +59,17 @@ implementation-goals/README.md
 For a specific goal, also read the matching file and companion execution plan,
 context package, coding prompt, and validation report.
 
-## Knowledge Retrieval - docs-rag-microservice
+## Knowledge Retrieval
 
-Query docs-rag before broad source reads whenever the cluster RAG service is
-available. Use it for ecosystem contracts, service URLs, Vault paths, Kubernetes
-patterns, provider configuration, and operational procedures.
+Use `docs-rag-microservice` for bounded discovery when it is healthy, then
+verify deployment, security, database, integration and public-contract facts
+against the cited Git source. Git remains authoritative.
 
-Expected in-cluster endpoint:
+Authority and fallback rules:
+`/home/ssf/Documents/Github/shared/docs/DOCUMENTATION_AUTHORITY.md`.
 
-```text
-POST http://docs-rag-microservice.statex-apps.svc.cluster.local:3397/retrieval/agent-context
-```
-
-If RAG is unavailable, record `[MISSING: docs-rag query evidence]` or
-`[UNKNOWN: docs-rag availability]` in the active goal validation notes instead
-of guessing.
+Do not generate tokens in documentation or assume an unconfident/failed RAG
+response means that source documentation does not exist.
 
 ## Core Intent
 
