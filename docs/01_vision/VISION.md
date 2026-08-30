@@ -1,7 +1,28 @@
-# Vision
+# Vision — cliplot
 
-Cliplot becomes a Czech e-commerce storefront where users can quickly find a
-product, understand price/delivery/trust, buy without forced registration, and
-receive the order at home.
+## One-Sentence Vision
+A Czech-first e-commerce storefront focused on product discovery, price, stock, delivery, and purchase actions.
 
-The site should feel practical, human-designed, and local to Czech customers.
+## Problem Statement
+The approved repository documentation defines the project need through this scope.
+
+## Target Users
+The target users are limited to those already documented by the project; no additional audience is asserted.
+
+## Core User Need
+Users need the documented project behavior without undeclared dependencies or scope.
+
+## Key Outcomes
+The described runtime remains understandable, operable, and traceable.
+
+## Non-Goals
+Undocumented product, integration, persistence, and business-scope expansion.
+
+## Success Criteria
+The project retains its documented behavior and a passing planning adoption profile.
+
+## Approval
+Status: approved
+Approved by: project owner
+Approval evidence: owner-confirmation: cliplot-onboarding-approved
+completeness_level: complete

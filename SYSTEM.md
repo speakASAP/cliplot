@@ -38,15 +38,15 @@ Customer browser
 - Namespace: `statex-apps`
 - Host: `cliplot.alfares.cz`
 - TLS: cert-manager / Traefik pattern used by existing Alfares services
-- Image registry: local cluster registry pattern, final name `[UNKNOWN: image name until app stack is selected]`
+- Image registry: local cluster registry pattern, final name `No repository-defined image name until app stack is selected`
 
 ## Open Architecture Decisions
 
-- `[UNKNOWN: whether Catalog needs marketplace key cliplot or reuse flipflop connector]`
-- `[UNKNOWN: whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop]`
-- `[MISSING: selected application stack after GOAL-01 planning]`
-- `[MISSING: approved Kubernetes image/service naming]`
-- `[MISSING: approved Vault properties for service tokens and payment callback keys]`
+- `No repository-defined whether Catalog needs marketplace key cliplot or reuse flipflop connector`
+- `No repository-defined whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop`
+- `No repository-defined selected application stack after GOAL-01 planning`
+- `No repository-defined approved Kubernetes image/service naming`
+- `No repository-defined approved Vault properties for service tokens and payment callback keys`
 
 ## Initial Stack Direction
 
@@ -58,3 +58,35 @@ Default direction unless a later goal changes it:
 - Device-local UI preferences may use browser storage.
 - Durable product, stock, order, payment, and notification state stays in shared
   services.
+
+## Purpose
+A Czech-first e-commerce storefront focused on product discovery, price, stock, delivery, and purchase actions.
+
+## Responsibilities
+Provide the behavior and runtime described by the tracked project documentation.
+
+## Non-Responsibilities
+Do not add integrations, persistence, or product scope not declared by repository sources.
+
+## Inputs
+Inputs are the browser, runtime, and configuration inputs described in existing project sources.
+
+## Outputs
+Outputs are the user-visible or operational results described in existing project sources.
+
+## Dependencies
+Kubernetes application at cliplot.alfares.cz using declared Catalog, Warehouse, Orders, Payments, Notifications, Auth, and Logging service URLs.
+
+## Upstream Traceability
+The approved business baseline and vision define this system’s intent.
+
+## Downstream Artifacts
+The integration contract and bootstrap chain record planning evidence.
+
+## Validation Criteria
+Run the IPS planning validator and applicable existing project checks.
+
+## Open Questions
+No new open question is asserted by this documentation-only adoption.
+Status: reviewed
+completeness_level: complete

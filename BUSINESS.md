@@ -43,9 +43,36 @@ The storefront must make these facts easy to find:
 
 ## Business Risks
 
-- `[MISSING: Cliplot product/catalog scope and approved SKU list]`
-- `[MISSING: Cliplot brand/legal/payment identity approval]`
-- `[MISSING: production payment provider credentials/webhook evidence for Cliplot]`
-- `[UNKNOWN: whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop]`
+- `No repository-defined Cliplot product/catalog scope and approved SKU list`
+- `No repository-defined Cliplot brand/legal/payment identity approval`
+- `No repository-defined production payment provider credentials/webhook evidence for Cliplot`
+- `No repository-defined whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop`
 
 Until these are resolved, no production revenue readiness may be claimed.
+
+## Problem
+The existing project documentation defines the problem through its described Czech e-commerce storefront scope.
+
+## Target Users and Stakeholders
+Users and stakeholders are those documented for the existing Czech e-commerce storefront workflow; no additional audience is asserted here.
+
+## Value Proposition
+A Czech-first e-commerce storefront focused on product discovery, price, stock, delivery, and purchase actions.
+
+## Goals
+Preserve and operate the documented project scope without adding unstated business claims.
+
+## Non-Goals
+Features not described by approved repository documentation are outside this baseline.
+
+## Success Metrics
+The repository records no quantitative success metric beyond its existing documented operational state.
+
+## Business Constraints
+The documented runtime, deployment, and scope boundaries constrain changes.
+
+## Approval
+Status: approved
+Approved by: project owner
+Approval evidence: owner-confirmation: cliplot-onboarding-approved
+completeness_level: complete

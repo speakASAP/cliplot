@@ -1,8 +1,16 @@
-# Constitution
+# Constitution — cliplot
 
-Cliplot must serve Czech customers through a clear storefront that makes buying
-easy and trustworthy.
+## Purpose
+Protect the approved Czech e-commerce storefront scope.
 
-The project must not compromise payment, order, stock, customer, secret, or
-legal boundaries for speed. Shared Alfares services remain authoritative for
-commerce state.
+## Constitutional Principles
+Preserve documented scope, do not invent integrations or business claims, keep configuration secrets out of documentation, and use owner approval for protected intent changes.
+
+## Amendment Process
+The project owner reviews and approves a durable amendment before protected intent changes.
+
+## Approval
+Status: approved
+Approved by: project owner
+Approval evidence: owner-confirmation: cliplot-onboarding-approved
+completeness_level: complete

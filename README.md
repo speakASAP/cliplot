@@ -80,3 +80,27 @@ Use:
 ```text
 CLIPLOT ORCHESTRATOR: continue implementation
 ```
+
+## Status
+Status: documented; existing repository status is retained in this file.
+
+## Documentation Authority
+Git-tracked project documents and runtime manifests are authoritative.
+
+## Capabilities
+A Czech-first e-commerce storefront focused on product discovery, price, stock, delivery, and purchase actions.
+
+## Interfaces
+Kubernetes application at cliplot.alfares.cz using declared Catalog, Warehouse, Orders, Payments, Notifications, Auth, and Logging service URLs.
+
+## Development
+Use the repository’s existing development commands and inspect its source before changing behavior.
+
+## Configuration
+Configuration is defined by the tracked environment examples and deployment manifests where present.
+
+## Deployment
+Deployment is defined by this repository’s tracked runtime configuration.
+
+## Health and Observability
+Use the declared runtime probe and ecosystem logging and monitoring paths.
