@@ -51,11 +51,17 @@ Define:
 
 Blocked until app source and service contracts exist.
 
-## ActiveNo active IPS adoption implementation task remains after this documentation alignment.
+## Active
 
-## Ready NextFuture owner-approved work requires a new linked task.
+No active IPS adoption implementation task remains after this documentation alignment.
 
-## BlockedNo adoption blocker is recorded.
+## Ready Next
+
+Future owner-approved work requires a new linked task.
+
+## Blocked
+
+No adoption blocker is recorded.
 
 ## Completed
 TASK-001 completed the IPS adoption profile.
