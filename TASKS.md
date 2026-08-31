@@ -1,6 +1,7 @@
 # Tasks
 
 ## Active
+
 ### TASK-001: Orchestration foundation
 
 Status: done.
@@ -51,11 +52,14 @@ Define:
 
 Blocked until app source and service contracts exist.
 
-## ActiveNo active IPS adoption implementation task remains after this documentation alignment.
+## Active
+No active IPS adoption implementation task remains after this documentation alignment.
 
-## Ready NextFuture owner-approved work requires a new linked task.
+## Ready Next
+Future owner-approved work requires a new linked task.
 
-## BlockedNo adoption blocker is recorded.
+## Blocked
+No adoption blocker is recorded.
 
 ## Completed
 TASK-001 completed the IPS adoption profile.
