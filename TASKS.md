@@ -1,6 +1,9 @@
-# Tasks
+
+
+# Tasks: cliplot
 
 ## Active
+
 ### TASK-001: Orchestration foundation
 
 Status: done.
@@ -17,7 +20,34 @@ Validation:
 
 Commit: `0f360ce docs: initialize cliplot service foundation`.
 
+
+No active IPS adoption implementation task remains after this documentation alignment.
+
+
+## Ready next
+
+
+Future owner-approved work requires a new linked task.
+- Owner-approved work must begin with a linked IPS task.
+
+
+## Blocked
+
+
+No adoption blocker is recorded.
+
+
+## Completed
+
+TASK-001 completed the IPS adoption profile.
+
+
+## Handoff
+
+Begin future work with approved intent and a complete IPS task chain.
+
 ## Planned
+
 
 ### TASK-002: Storefront application baseline
 
@@ -50,22 +80,3 @@ Define:
 ### TASK-004: Kubernetes/Vault/RAG deployment
 
 Blocked until app source and service contracts exist.
-
-## Active
-
-No active IPS adoption implementation task remains after this documentation alignment.
-
-## Ready Next
-
-Future owner-approved work requires a new linked task.
-- Owner-approved work must begin with a linked IPS task.
-
-## Blocked
-
-No adoption blocker is recorded.
-
-## Completed
-TASK-001 completed the IPS adoption profile.
-
-## Handoff
-Begin future work with approved intent and a complete IPS task chain.
