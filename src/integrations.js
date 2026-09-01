@@ -879,7 +879,15 @@ async function postOrderPayload(path, checkout, orderPayload, idempotencyKey = c
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-internal-service-token': serviceConfig.ordersServiceToken,
+      // Bearer, not x-internal-service-token. ORDERS_SERVICE_TOKEN now holds a
+      // per-pair RS256 principal (svc-cliplot--orders-microservice-create, role
+      // internal:cliplot:service) that orders verifies through /auth/validate,
+      // rather than a shared string whose role orders synthesised from the
+      // unauthenticated x-service-name header. It is deliberately a different
+      // principal from ORDERS_STATUS_SERVICE_TOKEN so the create and status lanes
+      // stay independently revocable -- this one is not granted action-admin and
+      // gets 403 on PUT /:id/status.
+      authorization: `Bearer ${String(serviceConfig.ordersServiceToken || '').trim()}`,
       'x-service-name': serviceConfig.serviceName,
       'idempotency-key': idempotencyKey,
     },
@@ -900,7 +908,7 @@ async function readOrder(orderId, requestOptions = {}) {
   return fetchJson(new URL(`/api/orders/${encodeURIComponent(orderId)}`, serviceConfig.ordersUrl), {
     ...requestOptions,
     headers: {
-      'x-internal-service-token': serviceConfig.ordersServiceToken,
+      authorization: `Bearer ${String(serviceConfig.ordersServiceToken || '').trim()}`,
       'x-service-name': serviceConfig.serviceName,
     },
   });
