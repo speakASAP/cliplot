@@ -69,7 +69,8 @@
     "operator:bounded-live-window": "node scripts/live-bounded-window-operator.js",
     "readiness:payment-callback-to-status-write-dry-run-contract": "node scripts/payment-callback-to-status-write-dry-run-contract-packet.js",
     "readiness:payment-status-write-owner-review": "node scripts/payment-status-write-owner-review-packet.js",
-    "readiness:payment-external-status-reconciliation-preflight": "node scripts/payment-external-status-reconciliation-preflight.js"
+    "readiness:payment-external-status-reconciliation-preflight": "node scripts/payment-external-status-reconciliation-preflight.js",
+    "verify:credential-self-report": "node scripts/verify-credential-self-report.cjs"
   },
   "engines": {
     "node": ">=20"

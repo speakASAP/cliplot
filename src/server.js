@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { startCredentialSelfReporter } from './credential-self-reporter.js';
 import {
   authLinks,
   customerStatusSurfaceReadiness,
@@ -976,6 +977,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
+startCredentialSelfReporter();
 server.listen(port, '0.0.0.0', () => {
   console.log(`cliplot listening on ${port}`);
 });
