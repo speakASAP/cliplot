@@ -60,7 +60,19 @@ const REPORT_INTERVAL_MS = Number(
  * no credential at all and so can never fail.
  */
 export async function runCredentialSelfReport() {
-  const token = (process.env.ORDERS_SERVICE_TOKEN || '').trim();
+  // ORDERS_STATUS_SERVICE_TOKEN, not ORDERS_SERVICE_TOKEN. This pod's two
+  // orders credentials are crossed relative to their variable names, verified
+  // by decoding each token's `sub` on 2026-09-03:
+  //
+  //   ORDERS_STATUS_SERVICE_TOKEN -> svc-cliplot--orders-microservice
+  //   ORDERS_SERVICE_TOKEN        -> svc-cliplot--orders-microservice-create
+  //
+  // Reading the name-matching variable would report this principal's verdict
+  // using the other principal's token, so a revocation of either would be
+  // attributed to the wrong one. The variable names are not renamed here
+  // because orders-microservice reads CLIPLOT_ORDERS_SERVICE_TOKEN from the
+  // same Vault key; renaming is a cross-repo change for Task B, not this fix.
+  const token = (process.env.ORDERS_STATUS_SERVICE_TOKEN || '').trim();
   const ingestToken = (process.env.CREDENTIAL_INGEST_TOKEN || '').trim();
 
   if (!ingestToken) {
