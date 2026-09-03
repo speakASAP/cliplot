@@ -81,8 +81,6 @@ def main() -> int:
         print("DEPLOYMENT_READINESS=fail")
         print("Deployment must keep cliplot-secret optional until Vault is populated.")
         return 1
-    print("DEPLOYMENT_READINESS=pass")
-    print("scope=shared-service-integration-foundation")
     smoke_metadata_keys = [
         'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID:',
         'CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_CLEANUP_APPROVAL_ID:',
@@ -96,6 +94,8 @@ def main() -> int:
         for item in missing_smoke_metadata:
             print(f"MISSING smoke metadata config {item}")
         return 1
+    print("DEPLOYMENT_READINESS=pass")
+    print("scope=shared-service-integration-foundation")
     print("note=Order, payment, and notification approval metadata is recorded, but mutation remains gated by false live flags and bounded execution-window requirements.")
     return 0
 
