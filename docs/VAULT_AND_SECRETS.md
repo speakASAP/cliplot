@@ -16,22 +16,6 @@ secret/prod/cliplot
 These are the current projected keys for Cliplot. Values must be populated in
 Vault only; do not commit or print them.
 
-```text
-WAREHOUSE_SERVICE_TOKEN
-ORDERS_SERVICE_TOKEN
-PAYMENT_API_KEY
-PAYMENT_WEBHOOK_API_KEY
-CLIPLOT_SERVICE_TOKEN
-DOCS_RAG_SERVICE_TOKEN
-NOTIFICATIONS_SERVICE_TOKEN
-```
-
-Catalog reads use the existing Catalog machine-auth contract. The projected
-`CATALOG_INTERNAL_SERVICE_TOKEN` is sourced from Auth-owned Vault path
-`secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`, matching the
-active Catalog runtime pattern. It is not duplicated into the Cliplot Vault
-path.
-
 ## Presence Gate
 
 Run from `alfares`:
@@ -48,16 +32,6 @@ values.
 The dedicated Orders/Warehouse live smoke executor is disabled by default. These
 keys are tracked by the Vault presence gate for a future owner-approved smoke
 window, but token values must remain absent or empty until approval exists:
-
-```text
-ORDERS_STATUS_SERVICE_TOKEN
-```
-
-`ORDERS_STATUS_SERVICE_TOKEN` is separated from the normal
-`ORDERS_SERVICE_TOKEN` because Orders status cancellation requires a stronger
-admin/status-transition identity than order creation. The approval ID remains a
-non-secret runtime approval string in `k8s/configmap.yaml` unless it is later
-promoted to Vault by owner decision.
 
 Do not add live-smoke token keys to `k8s/external-secret.yaml` until they exist
 in Vault. Adding missing remote properties can break ExternalSecret sync for the
@@ -108,7 +82,6 @@ any approval IDs later become sensitive or centrally issued, promote them to
 Vault/ExternalSecret keys by name only. Do not commit or print approval token
 values.
 
-
 ## Live-Smoke Projection Readiness
 
 Run the read-only projection gate to confirm live-smoke secret presence without printing values:
@@ -116,9 +89,3 @@ Run the read-only projection gate to confirm live-smoke secret presence without 
 ```bash
 npm run readiness:vault-live-smoke
 ```
-
-The gate checks `ORDERS_STATUS_SERVICE_TOKEN` in
-`secret/prod/cliplot` without printing values. `LIVE_SMOKE_PROJECTION=ready`
-only means the Vault property exists and can be reviewed for ExternalSecret
-projection. It does not authorize `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true` and
-does not authorize live Orders/Warehouse execution.

@@ -35,8 +35,6 @@ no-send notification payload validation.
 
 ## Steps
 
-1. Add `CATALOG_INTERNAL_SERVICE_TOKEN` to Cliplot ExternalSecret, sourced from
-   Auth-owned Vault path `secret/prod/auth-microservice`.
 2. Send Catalog machine-auth headers from Cliplot product reads when the token
    is present.
 3. Remove unsupported `marketplace=cliplot` product query parameter.
@@ -95,7 +93,6 @@ Default values are empty. Guarded checkout must keep returning
 `service_identity_required` with approval blockers until approved live mutation
 evidence exists.
 
-
 ## Guarded Checkout Intent Lane
 
 Status: deployed and validated in guarded mode.
@@ -110,7 +107,6 @@ This lane does not enable live order, payment, warehouse, or notification
 mutation. It reduces duplicate-submit risk before the approval-gated live
 checkout lane.
 
-
 ## Checkout Review Totals Lane
 
 Status: deployed and validated in guarded mode.
@@ -123,7 +119,6 @@ recalculates the same breakdown before building Orders and Payments previews.
 This lane does not enable live order, payment, warehouse, or notification
 mutation. It reduces hidden-fee and duplicate-total risk before the
 approval-gated live checkout lane.
-
 
 ## Guarded Checkout Status Surface Lane
 
@@ -138,7 +133,6 @@ Payments status is exposed only as `guarded_no_persistence`: it does not call
 the provider, does not persist callback state, and does not create or update an
 order/payment record.
 
-
 ## Product Detail Route Lane
 
 Status: deployed and validated in guarded mode.
@@ -151,7 +145,6 @@ existing Warehouse-origin guard through `warehouseId`.
 
 This lane improves buyer confidence before checkout while preserving the
 GOAL-05 live-mutation boundary.
-
 
 ## Cart Review Readiness Lane
 
@@ -166,7 +159,6 @@ boundary.
 This lane does not enable live order creation, payment creation, Warehouse
 reservation, callback persistence, or notification send.
 
-
 ## Live Checkout Preflight Guard Lane
 
 Status: deployed and validated in guarded mode.
@@ -179,7 +171,6 @@ the current guarded configuration it is explicitly `blocked` and
 
 This lane does not enable live order creation, payment creation, Warehouse
 reservation, callback persistence, or notification send.
-
 
 ## Live Checkout Preflight Endpoint Lane
 

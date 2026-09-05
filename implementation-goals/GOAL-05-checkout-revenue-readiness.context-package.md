@@ -29,10 +29,6 @@ Remote source of truth:
   `paymentValidation.status=validated_no_mutation`, and
   `notificationValidation.status=validated_no_send` while still returning
   `service_identity_required`.
-- Catalog supports machine-auth through `x-internal-service-token` and
-  `x-service-name`.
-- Catalog's service token source is Auth-owned:
-  `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
 
 ## Catalog Response Shape
 

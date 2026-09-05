@@ -36,8 +36,6 @@ Done.
   `SecretSynced=True`.
 - Cliplot pod env presence check confirmed expected secret keys are present and
   `ENABLE_LIVE_ORDER_SUBMIT=false`.
-- Orders deployed `localhost:5000/orders-microservice:971a446` with in-pod
-  health green and `CLIPLOT_ORDERS_SERVICE_TOKEN` present.
 - Payments deployed `localhost:5000/payments-microservice:eab6ae7`; runtime
   allowlists include `cliplot-service` and `https://cliplot.alfares.cz`.
 
@@ -55,7 +53,6 @@ Done.
 - `[MISSING: Catalog product scope/service-auth path for Cliplot product reads]`
 - `[MISSING: Warehouse Auth role token for Cliplot stock reads/mutations]`
 - `[MISSING: Notification channel/template contract for Cliplot order confirmations]`
-
 
 2026-07-02 Docs/RAG two-phase preflight hardening:
 

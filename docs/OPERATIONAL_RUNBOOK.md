@@ -157,9 +157,6 @@ remain `false`, `/api/checkout/submit` stays guarded, and live payment creation
 or notification sends still require a separate bounded execution window plus the
 corresponding false-to-true flag change.
 
-
-
-
 ## Live Activation Gate
 
 Before changing any live checkout flag, run the fail-closed activation gate:
@@ -190,17 +187,6 @@ curl -s https://cliplot.alfares.cz/api/checkout/live-order-warehouse-create-repl
 ```
 
 The plan must report `liveExecutionAllowed=false`, list any remaining execution blockers, name the selected Catalog/Warehouse product, and include the exact create, idempotent replay, cancel/release, and before/after availability evidence steps. It may return `approved_live_order_warehouse_smoke_metadata_execution_disabled` only after owner metadata includes a concrete execution window; placeholder values such as `owner-approved-window-required-before-enabling-flag` must remain `[MISSING: concrete owner-approved smoke execution window]`. Metadata approval is not permission to execute the live smoke while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`.
-
-The executor endpoint is `POST /api/checkout/live-order-warehouse-smoke-executor`.
-It must remain blocked in normal production and return `approval_required` until
-all of the following are present: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true`,
-`CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, `ORDERS_STATUS_SERVICE_TOKEN`,
-body `confirm=CREATE_REPLAY_CANCEL`, `approvalId`, `approvedBy`, and
-`reasonCode`. The executor is Orders/Warehouse-only: it must not create payments
-or send notifications, and cleanup must go through Orders cancellation rather
-than direct Warehouse mutation. After cleanup, Warehouse reservation readback is
-required because Orders can persist order status even if Warehouse cleanup
-reports a failed handoff.
 
 ## Live Checkout Approval Packet
 
@@ -262,12 +248,10 @@ preserved `checkoutIntent.externalOrderId`, order/payment/Warehouse
 `validated_no_mutation`, notification `validated_no_send`, and `mutation=false`.
 This script is safe while live mutation approvals remain absent.
 
-
 The smoke also verifies checkout totals: item subtotal plus delivery cost plus
 payment fee must equal the guarded checkout total, Orders preview total, and
 Payments preview amount. If this fails, do not enable live order/payment
 mutation.
-
 
 ## Guarded Checkout Status Surface
 
@@ -382,7 +366,6 @@ IDs, customer PII, and secret values out of the packet.
 npm run readiness:payment-callback-storage-proposal -- https://cliplot.alfares.cz
 ```
 
-
 `GET /api/payments/callback-persistence-storage-contract-packet` and
 `GET /api/payments/callback-persistence-storage-approval-checklist-packet` are
 the read-only storage contract/checklist packets for future callback persistence. It narrows
@@ -409,7 +392,6 @@ out of the packet.
 npm run readiness:payment-callback-replay-rollout -- https://cliplot.alfares.cz
 ```
 
-
 `GET /api/payments/live-status-write-approval-packet` is the read-only approval
 packet for a future bounded live status write window. It aggregates approved
 passive Payments snapshot-read evidence, ADR-006 non-authoritative mapping
@@ -425,7 +407,6 @@ payments, or send notifications.
 ```bash
 npm run readiness:payment-live-status-write -- https://cliplot.alfares.cz
 ```
-
 
 `GET /api/payments/status-reconciliation-readiness-packet` is the read-only
 callback/payment status reconciliation packet. It aggregates the guarded
@@ -443,9 +424,6 @@ closed.
 npm run readiness:payment-status-reconciliation -- https://cliplot.alfares.cz
 curl -s https://cliplot.alfares.cz/api/payments/status-reconciliation-readiness-packet
 ```
-
-
-
 
 `GET /api/payments/callback-to-status-write-dry-run-contract-packet` is the read-only
 synthetic mapping contract for a future callback-to-status-write lane. It uses
@@ -562,7 +540,6 @@ that endpoint can refresh pending Stripe/card provider state.
 ```bash
 npm run readiness:payment-snapshot-read-approval -- https://cliplot.alfares.cz
 ```
-
 
 `GET /api/payments/status-mapping-ownership` is the read-only ownership packet
 for future customer-facing order/payment status correlation. It must return
@@ -685,20 +662,11 @@ approval metadata, a concrete execution window, a request idempotency key,
 `rollbackPlan=NOTIFICATION_DUPLICATE_RESPONSE_OWNER_ASSIGNED`, and
 `validationPlan=EXACTLY_ONE_NOTIFICATION_RESULT_BY_IDEMPOTENCY_KEY`.
 
-The executor endpoint is `POST /api/notifications/send-bounded-executor`. In
-this branch it is intentionally a guarded stub: it returns `approval_required`,
-`notificationSent=false`, `mutation=false`, `persistence=false`, and
-`providerCall=false`. It must not call `/notifications/send`, create payments,
-create Orders, reserve Warehouse stock, persist send state, or print
-`NOTIFICATIONS_SERVICE_TOKEN`, raw recipients, or raw message payloads.
-
 Rollback owner defaults to `CLIPLOT_NOTIFICATION_SEND_ROLLBACK_OWNER` or
 `cliplot-notification-operator`. Validation owner defaults to
 `CLIPLOT_NOTIFICATION_SEND_VALIDATION_OWNER` or `cliplot-validation-owner`. The
 post-window validation evidence must prove exactly one notification result for
 the approved idempotency key without exposing raw recipient or message payloads.
-
-
 
 ## Full Live Checkout Execution Window
 
@@ -778,7 +746,6 @@ only. After the run, `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE` must be verified back t
 `false` and `npm run readiness:live-smoke-executor -- https://cliplot.alfares.cz`
 must return `approval_required` with no mutation.
 
-
 ## Post-Live Revenue Closure Evidence
 
 After a bounded full checkout window has been executed and all live flags have
@@ -804,7 +771,6 @@ keep `liveExecutionAllowed=false`, `mutation=false`, `persistence=false`, and
 default. It may contain only order ids and fingerprints; it must not expose raw
 customer PII, provider payloads, provider transaction ids, notification
 recipients, message bodies, service tokens, or API keys.
-
 
 ## Revenue Handoff Reconciliation Packet
 
@@ -887,7 +853,6 @@ kubectl get cronjob cliplot-readiness-monitor -n statex-apps
 kubectl get jobs -n statex-apps -l component=readiness-monitor
 ```
 
-
 ### Configured SKU Scope Approval
 
 `GET /api/products/filter-readiness` may return
@@ -896,7 +861,6 @@ is configured and the configured Catalog products are Warehouse-backed. This is
 read-only scope evidence only. It does not authorize live order creation,
 Warehouse reservation, payment creation, notification sends, callback
 persistence, provider-refresh reads, or live smoke execution.
-
 
 ### Payments Read-Scope Rate Limits
 

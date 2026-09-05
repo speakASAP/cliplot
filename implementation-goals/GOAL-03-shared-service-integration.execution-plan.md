@@ -48,9 +48,6 @@ Forbidden:
 - Catalog: read-only `GET /api/products` through `CATALOG_SERVICE_URL`.
 - Auth: public hosted links through `AUTH_PUBLIC_URL`, `AUTH_CLIENT_ID`, and
   `AUTH_RETURN_URL`; contract remains unverified.
-- Orders: guarded submit shape uses `ORDERS_SERVICE_URL`,
-  `ORDERS_CREATE_PATH`, `ORDERS_SERVICE_TOKEN`, `CLIPLOT_ORDER_CHANNEL`, and
-  `CLIPLOT_CHANNEL_ACCOUNT_ID`; live submit disabled by default.
 - Warehouse: token readiness only in this goal; no reservation/decrement.
 - Notifications: token/template readiness only in this goal; no outbound send.
 - Payments: no payment creation until GOAL-05.

@@ -48,10 +48,6 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
 - Orders Cliplot support deployed as `localhost:5000/orders-microservice:971a446`.
 - Payments Cliplot allowlist deployed as `localhost:5000/payments-microservice:eab6ae7`.
 - Public Cliplot readiness shows service tokens present, live submit still disabled, and checkout still guarded.
-- GOAL-05 Catalog lane started: Cliplot uses the existing Catalog
-  machine-auth header contract with Auth-owned
-  `CATALOG_INTERNAL_SERVICE_TOKEN` and will stop relying on fallback products
-  when Catalog responds.
 - GOAL-05 guarded payment-create path deployed as `2eb170e`: checkout submit
   now builds order, payment, and notification previews while
   `ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
@@ -142,8 +138,6 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `paymentStatusContract=payment_status_guarded_no_persistence`, and preserved
   no-mutation/no-send checkout validations.
 
-
-
 - GOAL-10 Auth wallet browser-session fetch evidence passed with approval id
   `CLIPLOT-AUTH-WALLET-SMOKE-20260703-GATE7`: the approved synthetic
   browser/session smoke fetched `/auth/profile/checkout-data`,
@@ -177,9 +171,7 @@ notification sends, and Docs/RAG ingestion gated.
 - The full `npm run readiness:bundle` is the operator aggregate check and now passes with Docs/RAG preflight, guarded checkout smoke, Vault presence, and Kubernetes rollout evidence.
 - The live checkout mutation plan now names Warehouse reservation explicitly as `wouldReserveWarehouse`, because Orders live create calls Warehouse reservation before payment/notification continuation. Guarded production reports keep it `false`; the fully approved simulated activation path sets it `true` together with order, payment, and notification mutation booleans.
 - The live Orders/Warehouse smoke plan is wired as `GET /api/checkout/live-order-warehouse-smoke-plan` and `npm run readiness:live-smoke-plan`. It is read-only and approval-gated: it lists the exact before-availability, approved create, idempotent replay, approved cancel/release, and after-availability evidence steps while keeping `liveExecutionAllowed=false`.
-- The live Orders/Warehouse smoke executor is wired as `POST /api/checkout/live-order-warehouse-smoke-executor` and `npm run readiness:live-smoke-executor`. In default production it returns `approval_required` with `mutation=false`, `providerCall=false`, and `persistence=false`; execution additionally requires `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=true`, `CLIPLOT_LIVE_ORDER_WAREHOUSE_SMOKE_APPROVAL_ID`, `ORDERS_STATUS_SERVICE_TOKEN`, body `confirm=CREATE_REPLAY_CANCEL`, `approvedBy`, and `reasonCode`.
 - The live Orders/Warehouse smoke execution checklist/contract is wired as `GET /api/checkout/live-order-warehouse-smoke-execution-checklist-packet`, `GET /api/checkout/live-order-warehouse-create-replay-cancel-contract-packet`, `npm run readiness:live-smoke-execution-checklist`, and `npm run readiness:live-smoke-contract`. It records the final bounded-window request-body, token-presence, rollback, and stop-condition checklist while preserving `liveExecutionAllowed=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
-- The Cliplot ConfigMap and Vault gate now expose dedicated live-smoke readiness while keeping execution disabled by default: `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false`, smoke metadata IDs/owners are recorded, `ORDERS_STATUS_SERVICE_NAME=cliplot`, and `LIVE_SMOKE_SECRET_PRESENCE=pass` when `ORDERS_STATUS_SERVICE_TOKEN` is present. The smoke approval metadata is not an execution switch; execution still requires opening the flag for the approved window plus executor confirmation.
 - The guarded payment callback readiness endpoint is wired as `GET /api/payments/callback-readiness` and `npm run readiness:payment-callback`. It validates the configured webhook key through an internal synthetic callback ACK and returns `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing the key or updating payment/order state.
 - The revenue closure packet includes a read-only blocker classification that
   separates metadata-packet-eligible readiness work from actions requiring true
@@ -276,16 +268,9 @@ smoke evidence.
 
 ### Current Findings
 
-- Orders accepts `cliplot` and channel `cliplot`, and the Orders pod has
-  `CLIPLOT_ORDERS_SERVICE_TOKEN`.
 - Payments allowlists include `cliplot` and `https://cliplot.alfares.cz`.
 - Cliplot has required secret keys projected, but `ENABLE_LIVE_ORDER_SUBMIT`
   remains `false`.
-- Catalog product APIs are Auth-guarded, and Cliplot uses the existing
-  `x-internal-service-token` plus `x-service-name` machine-auth contract backed
-  by Auth-owned `secret/prod/auth-microservice#CATALOG_INTERNAL_SERVICE_TOKEN`.
-  Public `/api/products` now reports `catalogSource=catalog` and smoke requires
-  Catalog-sourced products with Warehouse `warehouseId` evidence.
 - Docs/RAG publication tooling now uses repoName `cliplot`. Controlled ingestion passed after Docs/RAG chunking was capped by character length; retrieval and agent-context both return Cliplot sources without printing secrets.
 - Warehouse stocked product selection, notification preview, and guarded
   payment-create payload generation have runtime smoke evidence.
@@ -530,14 +515,6 @@ behavior until those approvals are present.
   product images, and Kč prices. Warehouse runtime evidence is no longer a
   checkout guard blocker for read/display; reservation/stock mutation remains
   disabled until live checkout is approved.
-- GOAL-05 notification identity lane deployed in `notifications-microservice`
-  commits `485ef45` and `8ed8225`. `CLIPLOT_NOTIFICATIONS_SERVICE_TOKEN` is
-  projected from the Cliplot Vault path into Notifications. Safe invalid-body
-  smoke from the Cliplot pod moved from HTTP `401 Invalid token` to HTTP `500
-  SEND_FAILED`, proving Cliplot notification auth reached the send path without
-  a valid notification payload or customer send. Cliplot now returns a guarded
-  Czech order-confirmation notification preview from checkout submit; live
-  notification send remains disabled pending approved live-send validation.
 - GOAL-05 payment-create code path is wired behind
   `ENABLE_LIVE_PAYMENT_CREATE=false`. Cliplot now builds a Payments-compatible
   create payload with `applicationId=cliplot`, `paymentMethod=invoice`,
@@ -635,7 +612,6 @@ behavior until those approvals are present.
   occur. The endpoint remains read-only and does not call Orders, Payments,
   Warehouse reservation, Notifications, or persistence.
 
-
 - GOAL-04/GOAL-06 Docs/RAG publication was hardened into a two-phase flow.
   `DOCS_RAG_PREFLIGHT_ONLY=1 ./scripts/publish_docs_rag.sh cliplot`
   now checks docs-rag pod discovery, `JWT_TOKEN` presence, read-only
@@ -645,7 +621,6 @@ behavior until those approvals are present.
   `DOCS_RAG_PREFLIGHT=pass`, exit `0`. Controlled publication for repoName
   `cliplot` passed with job `7a03ada9-9b99-4ef7-8223-5c5a298244f5` and
   `chunksProcessed=76`, `chunksTotal=76`.
-
 
 - GOAL-06 read-only operator readiness bundle added as
   `npm run readiness:bundle`. The bundle gates checkout POST smoke behind
@@ -665,7 +640,6 @@ Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=clip
 
 Added guarded `GET /api/payments/read-scope-readiness` and `npm run readiness:payment-read-scope`. The probe sends Cliplot's `PAYMENT_API_KEY` only in-memory to Payments `GET /payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness`, expects a synthetic missing-order `404`, and records `scopeValidated=true`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing secrets or enabling passive status reads.
 
-
 ### 2026-07-02 - Customer status approval evidence cleanup
 
 The approved read-only customer status packet now distinguishes satisfied
@@ -680,21 +654,7 @@ persistence/replay and order/payment mapping ownership; live order creation,
 live payment creation, Warehouse reservation, notification sends,
 provider-refresh reads, and Cliplot-local payment status storage remain disabled.
 
-
 ### 2026-07-03 - Notification-send approval evidence packet
-
-`GET /api/notifications/send-approval-evidence-packet` and
-`npm run readiness:notification-send-approval` prove the current Cliplot order
-confirmation payload against Notifications `POST /notifications/validate`
-without sending a notification, calling a provider, persisting send state, or
-printing `NOTIFICATIONS_SERVICE_TOKEN`. Passing evidence returns
-`ready_for_owner_notification_send_approval_metadata`,
-`validation.status=validated_no_send`, `mutation=false`, `persistence=false`,
-`providerCall=false`, `notificationSent=false`, `ENABLE_LIVE_NOTIFICATIONS=false`,
-and `notificationApprovalPresent=false`. This packet is owner-review evidence
-only; `CLIPLOT_LIVE_NOTIFICATION_APPROVAL_ID` remains empty until owner
-acceptance and a separate bounded live notification execution window are
-approved.
 
 ### 2026-07-03 - Payment-create approval evidence packet
 
@@ -731,10 +691,6 @@ separate blockers.
 
 ### 2026-07-02 - Live-smoke Vault projection readiness gate
 
-Added `npm run readiness:vault-live-smoke` as a read-only projection gate for the
-future Orders/Warehouse create-replay-cancel smoke. It checks only key presence for `ORDERS_STATUS_SERVICE_TOKEN`, keeps secret values hidden, and reports whether the guarded live-smoke projection is ready. Current production reports `LIVE_SMOKE_PROJECTION=ready` while `ENABLE_LIVE_ORDER_WAREHOUSE_SMOKE=false` remains the required runtime state until an approved execution window is intentionally opened.
-
-
 ### 2026-07-02 - Configured Cliplot SKU scope approval
 
 The configured `CLIPLOT_PRODUCT_IDS` scope is approved for Cliplot storefront
@@ -746,7 +702,6 @@ calls remain false. This closes the SKU-scope blocker only; live order creation,
 Warehouse reservation, payment creation, notification sends, callback
 persistence, provider-refresh reads, and live smoke execution remain separately
 guarded.
-
 
 ### 2026-07-02 - Payments read-scope rate-limit stability
 
@@ -816,7 +771,6 @@ bounded checkout window for order
 `providerCall=false`. `npm run readiness:bundle` passes with the
 `post_live_revenue_closure` step included.
 
-
 ### 2026-07-03 - Revenue handoff reconciliation packet
 
 Added a read-only revenue handoff reconciliation packet at
@@ -828,7 +782,6 @@ boundaries for Orders, Payments, Warehouse, Notifications, and Cliplot. The
 packet must keep live flags closed and must not mutate, persist, call providers,
 send notifications, replay callbacks, write statuses, or expose secrets/PII.
 
-
 ### 2026-07-03 - Callback/payment status reconciliation readiness
 
 Added a read-only callback/payment status reconciliation packet at
@@ -839,7 +792,6 @@ and live-status-write metadata for owner review while keeping callback
 persistence, replay execution, status writes, payment creation, notification
 sends, provider-backed payment detail reads, and Cliplot-local payment truth
 disabled.
-
 
 ### 2026-07-03 - Payment status write-window request packet
 
@@ -895,7 +847,6 @@ flags closed and preserving `mutation=false`, `persistence=false`,
 revenue blockers are exactly the five owner live-window blockers and does not
 open flags or call executors.
 
-
 ### 2026-07-04 - Payments external status reconciliation executor path
 
 The guarded Cliplot payment status write executor now has a concrete
@@ -909,7 +860,6 @@ an occurred-at timestamp, and a status-write idempotency key before it can call
 Payments. Payments must independently keep
 `PAYMENTS_EXTERNAL_STATUS_RECONCILIATION_ENABLED=true` only inside the same
 bounded window.
-
 
 ### 2026-07-04 - External status reconciliation preflight
 

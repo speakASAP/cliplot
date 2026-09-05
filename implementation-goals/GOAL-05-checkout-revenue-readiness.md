@@ -56,8 +56,6 @@ Completion of the Catalog lane requires:
 - pre-coding and strict doc gates pass.
 - deployment readiness gate passes.
 - Kubernetes dry-run passes for changed manifests.
-- deployed Cliplot pod has `CATALOG_INTERNAL_SERVICE_TOKEN` present without
-  printing the value.
 - public `/api/products` returns real Catalog product IDs, not fallback IDs.
 - public or in-cluster `/api/integrations/readiness` reports authenticated
   Catalog reads plus `orderValidation=enabled_no_mutation`,
