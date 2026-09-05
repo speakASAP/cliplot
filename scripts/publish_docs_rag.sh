@@ -68,8 +68,11 @@ if [ -z "$POD" ]; then
 fi
 
 if [ "$PREFLIGHT_ONLY" = "1" ]; then
-  kubectl exec -n "$NAMESPACE" "$POD" --env="DOCS_RAG_TOKEN=$DOCS_RAG_TOKEN" -- node -e '
-const token = process.env.DOCS_RAG_TOKEN;
+  printf '%s' "$DOCS_RAG_TOKEN" | kubectl exec -i -n "$NAMESPACE" "$POD" -- node -e '
+const token = await new Promise((resolve) => {
+  let buf = "";
+  process.stdin.on("data", (c) => buf += c).on("end", () => resolve(buf.trim()));
+});
 const base = "http://127.0.0.1:3397";
 const embeddingUrl = process.env.OLLAMA_URL || process.env.EMBEDDING_BASE_URL || process.env.EMBEDDINGS_URL || "";
 let blocked = false;
@@ -92,7 +95,7 @@ async function requestJson(url, options = {}) {
 
 if (!token) {
   console.log("DOCS_RAG_PREFLIGHT=blocked");
-  console.log("reason=DOCS_RAG_TOKEN_not_propagated");
+  console.log("reason=DOCS_RAG_TOKEN_not_propagated_on_stdin");
   process.exit(2);
 }
 
@@ -142,13 +145,16 @@ process.exit(0);
   exit $?
 fi
 
-kubectl exec -n "$NAMESPACE" "$POD" --env="DOCS_RAG_TOKEN=$DOCS_RAG_TOKEN" -- node -e '
+printf '%s' "$DOCS_RAG_TOKEN" | kubectl exec -i -n "$NAMESPACE" "$POD" -- node -e '
 const repoName = process.argv[1];
-const token = process.env.DOCS_RAG_TOKEN;
+const token = await new Promise((resolve) => {
+  let buf = "";
+  process.stdin.on("data", (c) => buf += c).on("end", () => resolve(buf.trim()));
+});
 const base = "http://127.0.0.1:3397";
 if (!token) {
   console.log("DOCS_RAG_PUBLICATION=blocked");
-  console.log("reason=DOCS_RAG_TOKEN_not_propagated");
+  console.log("reason=DOCS_RAG_TOKEN_not_propagated_on_stdin");
   process.exit(2);
 }
 async function request(path, options = {}) {
