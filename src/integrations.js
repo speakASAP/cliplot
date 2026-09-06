@@ -132,7 +132,13 @@ export const serviceConfig = {
   ordersStatusServiceToken: process.env.ORDERS_STATUS_SERVICE_TOKEN || '',
   ordersStatusServiceName: process.env.ORDERS_STATUS_SERVICE_NAME || process.env.SERVICE_NAME || 'cliplot',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
-  catalogServiceToken: process.env.CATALOG_INTERNAL_SERVICE_TOKEN || '',
+  // Per-pair RS256 principal for cliplot -> catalog-microservice, sent as a
+  // bearer. No fallback to CATALOG_INTERNAL_SERVICE_TOKEN: that was one shared
+  // static secret held by seven services and paired with a self-asserted
+  // x-service-name header, the shape SERVICE_IDENTITY_CONSUMER_STANDARD.md
+  // prohibits. Catalog still accepts it until the last caller migrates, so a
+  // fallback would authenticate successfully and hide the regression.
+  catalogServiceToken: process.env.CATALOG_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
@@ -326,10 +332,7 @@ export function productCatalogSource(products) {
 export async function fetchCatalogProducts() {
   try {
     const headers = serviceConfig.catalogServiceToken
-      ? {
-          'x-internal-service-token': serviceConfig.catalogServiceToken,
-          'x-service-name': serviceConfig.serviceName,
-        }
+      ? { authorization: `Bearer ${serviceConfig.catalogServiceToken}` }
       : {};
     const items = serviceConfig.productIds.length > 0
       ? await fetchConfiguredCatalogProducts(headers)
@@ -9626,7 +9629,7 @@ export async function liveCheckoutApprovalPacket() {
       missing: auth.missing,
     },
     requiredRuntimeKeys: [
-      'CATALOG_INTERNAL_SERVICE_TOKEN',
+      'CATALOG_SERVICE_TOKEN',
       'ORDERS_SERVICE_TOKEN',
       'WAREHOUSE_SERVICE_TOKEN',
       'ORDERS_STATUS_SERVICE_TOKEN',
