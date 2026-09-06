@@ -471,7 +471,7 @@ npm run readiness:payment-status-write-bounded-executor -- https://cliplot.alfar
 ```
 
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
-`PAYMENT_API_KEY` reaches Payments' DB-only status snapshot route with
+`PAYMENTS_SERVICE_TOKEN` (Auth RS256 `svc-cliplot--payments-microservice`) reaches Payments' DB-only status snapshot route with
 `payments:read`. It sends only a synthetic missing order id and treats the
 Payments `404` not-found response as proof that the key passed auth/scope and
 reached the DB-only handler. It must return `validated_payments_read_scope_no_mutation`,
@@ -630,7 +630,7 @@ branch it is intentionally a guarded stub: it returns `approval_required`,
 `paymentCreated=false`, `mutation=false`, `persistence=false`, and
 `providerCall=false`. It must not call `/payments/create`, create Orders,
 reserve Warehouse stock, send notifications, persist callbacks/status writes,
-read `/payments/{paymentId}`, or print `PAYMENT_API_KEY` or raw provider/customer
+read `/payments/{paymentId}`, or print `PAYMENTS_SERVICE_TOKEN` or raw provider/customer
 payloads.
 
 Rollback owner defaults to `CLIPLOT_PAYMENT_CREATE_ROLLBACK_OWNER` or

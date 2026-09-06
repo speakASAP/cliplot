@@ -22,7 +22,7 @@ function close(server) {
 
 const observed = [];
 const expectedOrderId = 'cliplot-approved-adapter-test';
-const expectedApiKey = 'unit-payment-read-key';
+const expectedToken = 'unit-payment-service-jwt';
 const server = createServer((req, res) => {
   const url = new URL(req.url || '/', 'http://127.0.0.1');
   observed.push({
@@ -30,7 +30,7 @@ const server = createServer((req, res) => {
     pathname: url.pathname,
     applicationId: url.searchParams.get('applicationId'),
     orderId: url.searchParams.get('orderId'),
-    apiKeyPresent: req.headers['x-api-key'] === expectedApiKey,
+    bearerPresent: req.headers.authorization === `Bearer ${expectedToken}`,
   });
 
   if (url.pathname !== '/payments/status/by-order-id') {
@@ -45,9 +45,9 @@ const server = createServer((req, res) => {
     return;
   }
 
-  if (req.headers['x-api-key'] !== expectedApiKey) {
+  if (req.headers.authorization !== `Bearer ${expectedToken}`) {
     res.writeHead(403, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ success: false, error: { code: 'BAD_TEST_API_KEY' } }));
+    res.end(JSON.stringify({ success: false, error: { code: 'BAD_TEST_SERVICE_TOKEN' } }));
     return;
   }
 
@@ -82,7 +82,7 @@ try {
   process.env.SERVICE_NAME = 'cliplot';
   process.env.CLIPLOT_APPLICATION_ID = 'cliplot';
   process.env.PAYMENT_SERVICE_URL = `http://127.0.0.1:${address.port}`;
-  process.env.PAYMENT_API_KEY = expectedApiKey;
+  process.env.PAYMENTS_SERVICE_TOKEN = expectedToken;
   process.env.ENABLE_CUSTOMER_STATUS_RUNTIME_READ = 'true';
   process.env.ENABLE_PAYMENT_STATUS_SNAPSHOT_READ = 'true';
   process.env.CLIPLOT_STATUS_RUNTIME_APPROVAL_ID = 'unit-approved-read-only-status';
@@ -126,7 +126,7 @@ try {
   assert(observed[0].pathname === '/payments/status/by-order-id', 'adapter called wrong Payments path', { observed });
   assert(observed[0].applicationId === 'cliplot', 'adapter used non-canonical applicationId', { observed });
   assert(observed[0].orderId === expectedOrderId, 'adapter did not use supplied orderId', { observed });
-  assert(observed[0].apiKeyPresent === true, 'adapter did not send API key to mock Payments', { observed });
+  assert(observed[0].bearerPresent === true, 'adapter did not send Payments service JWT', { observed });
 
   console.log(JSON.stringify({
     ok: true,

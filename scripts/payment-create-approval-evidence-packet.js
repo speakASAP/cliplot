@@ -73,7 +73,7 @@ assert(packet.forbiddenOperations?.includes('POST /payments/create'), 'live paym
 assert(packet.forbiddenOperations?.includes('call payment provider'), 'provider call forbidden operation missing', packet);
 assert(packet.satisfiedEvidence?.some((item) => item.includes('Payments validate-create accepted valid Cliplot payment payload') || item.includes('accepted cached no-mutation evidence')), 'validate-create satisfied evidence missing', packet);
 assert(Array.isArray(packet.blockers) && packet.blockers.length === 0, 'payment create evidence blockers should be empty', packet);
-assert(packet.sensitiveDataPolicy?.includes('no PAYMENT_API_KEY value'), 'secret policy missing', packet);
+assert(packet.sensitiveDataPolicy?.includes('no PAYMENTS_SERVICE_TOKEN value'), 'secret policy missing', packet);
 
 console.log(JSON.stringify({
   ok: true,

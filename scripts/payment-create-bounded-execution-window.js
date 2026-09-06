@@ -68,7 +68,7 @@ assert(executor.endpointBoundary?.fullCheckoutActivationAllowed === false, 'paym
 assert(executor.blockers?.includes('missing_payment_create_idempotency_key'), 'payment idempotency blocker missing', executor);
 assert(executor.blockers?.includes('missing_payment_duplicate_check'), 'payment duplicate blocker missing', executor);
 assert(executor.blockers?.includes('missing_payment_rollback_plan'), 'payment rollback blocker missing', executor);
-assert(executor.sensitiveDataPolicy?.includes('no PAYMENT_API_KEY value'), 'payment secret policy missing', executor);
+assert(executor.sensitiveDataPolicy?.includes('no PAYMENTS_SERVICE_TOKEN value'), 'payment secret policy missing', executor);
 
 console.log(JSON.stringify({
   ok: true,

@@ -136,7 +136,7 @@ export const serviceConfig = {
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
-  paymentApiKey: process.env.PAYMENT_API_KEY || '',
+  paymentServiceToken: process.env.PAYMENTS_SERVICE_TOKEN || '',
   paymentWebhookApiKey: process.env.PAYMENT_WEBHOOK_API_KEY || '',
   productScopeApprovalId: process.env.CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID || '',
 };
@@ -589,7 +589,7 @@ function checkoutMissingFacts() {
   }
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
-  if (!serviceConfig.paymentApiKey) missing.push('[MISSING: PAYMENT_API_KEY in Vault]');
+  if (!serviceConfig.paymentServiceToken) missing.push('[MISSING: PAYMENTS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.paymentWebhookApiKey) missing.push('[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]');
   if (!serviceConfig.notificationServiceToken) missing.push('[MISSING: NOTIFICATIONS_SERVICE_TOKEN in Vault]');
   return missing;
@@ -1031,13 +1031,44 @@ function buildPaymentCreatePayload(checkout, order) {
   };
 }
 
+function paymentsAuthHeaders() {
+  const token = String(serviceConfig.paymentServiceToken || '').trim();
+  if (!token) {
+    throw new Error(
+      'PAYMENTS_SERVICE_TOKEN is unset; refusing to call payments-microservice unauthenticated. '
+        + 'Set the per-pair RS256 principal for cliplot -> payments-microservice.',
+    );
+  }
+  return {
+    authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+    'x-service-name': serviceConfig.serviceName,
+  };
+}
+
+function assertPaymentsCallSucceeded(httpStatus, payload, context) {
+  if (httpStatus === 401 || httpStatus === 403) {
+    const error = new Error(
+      `Payments rejected Cliplot service identity (${context}): HTTP ${httpStatus}`,
+    );
+    error.status = httpStatus;
+    error.payload = payload;
+    throw error;
+  }
+  if (httpStatus >= 500) {
+    const error = new Error(`Payments ${context} failed: HTTP ${httpStatus}`);
+    error.status = httpStatus;
+    error.payload = payload;
+    throw error;
+  }
+}
+
 async function createPayment(checkout, order, idempotencyKey = checkoutIdempotencyKeys(checkout).paymentCreate) {
   const url = new URL(serviceConfig.paymentCreatePath, serviceConfig.paymentUrl);
   return fetchJson(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': serviceConfig.paymentApiKey,
+      ...paymentsAuthHeaders(),
       'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(buildPaymentCreatePayload(checkout, order)),
@@ -1050,7 +1081,7 @@ async function validatePaymentCreate(checkout, paymentPayload) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': serviceConfig.paymentApiKey,
+      ...paymentsAuthHeaders(),
       'idempotency-key': checkoutIdempotencyKeys(checkout).paymentValidate,
     },
     body: JSON.stringify(paymentPayload),
@@ -1118,13 +1149,6 @@ async function computeGuardedPaymentValidation(checkout, paymentPayload) {
       providerCall: false,
     };
   }
-  if (!serviceConfig.paymentApiKey) {
-    return {
-      status: 'missing_payment_api_key',
-      mutation: false,
-      providerCall: false,
-    };
-  }
 
   try {
     const payload = await validatePaymentCreate(checkout, paymentPayload);
@@ -1150,13 +1174,7 @@ async function computeGuardedPaymentValidation(checkout, paymentPayload) {
         },
       };
     }
-    return {
-      status: 'validation_failed_guarded',
-      httpStatus: error?.status || 0,
-      code: error?.payload?.error?.code || 'unknown',
-      mutation: false,
-      providerCall: false,
-    };
+    throw error;
   }
 }
 
@@ -1257,7 +1275,7 @@ async function validatePaymentReadScope() {
       signal: controller.signal,
       headers: {
         accept: 'application/json',
-        'x-api-key': serviceConfig.paymentApiKey,
+        ...paymentsAuthHeaders(),
       },
     });
     const text = await response.text();
@@ -1267,6 +1285,7 @@ async function validatePaymentReadScope() {
     } catch {
       payload = { nonJsonBodyPreview: text.slice(0, 160) };
     }
+    assertPaymentsCallSucceeded(response.status, payload, 'read-scope probe');
     return {
       httpStatus: response.status,
       payload,
@@ -1392,7 +1411,7 @@ function boundedExecutionWindowPacket(kind) {
       'reserve Warehouse stock',
       'send notification',
       'persist callback or payment status writes',
-      'print PAYMENT_API_KEY or raw provider/customer payloads',
+      'print PAYMENTS_SERVICE_TOKEN or raw provider/customer payloads',
     ] : [
       'POST /notifications/send',
       'send notification',
@@ -1459,7 +1478,7 @@ export async function runBoundedPaymentCreateExecutor(request = {}) {
         },
         blockers: [...new Set(blockers)],
         packet,
-        sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
+        sensitiveDataPolicy: ['no PAYMENTS_SERVICE_TOKEN value', 'no raw provider payload', 'no raw customer payload'],
       },
     };
   }
@@ -1511,7 +1530,7 @@ export async function runBoundedPaymentCreateExecutor(request = {}) {
           }),
           idempotencyKeyFingerprint: stableFingerprint(idempotencyKey),
         },
-        sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
+        sensitiveDataPolicy: ['no PAYMENTS_SERVICE_TOKEN value', 'no raw provider payload', 'no raw customer payload'],
       },
     };
   } catch (error) {
@@ -1528,7 +1547,7 @@ export async function runBoundedPaymentCreateExecutor(request = {}) {
         liveExecutionAllowed: true,
         orderId,
         error: compactSmokeError(error),
-        sensitiveDataPolicy: ['no PAYMENT_API_KEY value', 'no raw provider payload', 'no raw customer payload'],
+        sensitiveDataPolicy: ['no PAYMENTS_SERVICE_TOKEN value', 'no raw provider payload', 'no raw customer payload'],
       },
     };
   }
@@ -3024,7 +3043,7 @@ export async function runBoundedLiveCheckoutExecutor(request = {}) {
         packet,
         sensitiveDataPolicy: [
           'no raw customer PII',
-          'no PAYMENT_API_KEY or webhook key values',
+          'no PAYMENTS_SERVICE_TOKEN or webhook key values',
           'no raw provider payloads',
           'no raw notification recipient or message body',
         ],
@@ -3246,7 +3265,7 @@ export async function runBoundedLiveCheckoutExecutor(request = {}) {
         evidence,
         sensitiveDataPolicy: [
           'no raw customer PII',
-          'no PAYMENT_API_KEY or webhook key values',
+          'no PAYMENTS_SERVICE_TOKEN or webhook key values',
           'no raw provider payloads',
           'no raw notification recipient or message body',
         ],
@@ -3279,7 +3298,7 @@ export async function runBoundedLiveCheckoutExecutor(request = {}) {
         evidence,
         sensitiveDataPolicy: [
           'no raw customer PII',
-          'no PAYMENT_API_KEY or webhook key values',
+          'no PAYMENTS_SERVICE_TOKEN or webhook key values',
           'no raw provider payloads',
           'no raw notification recipient or message body',
         ],
@@ -3800,7 +3819,7 @@ export async function paymentCreateApprovalEvidencePacket() {
 
   if (!product) blockers.push('[MISSING: Warehouse-backed Catalog product for payment-create approval evidence]');
   if (!serviceConfig.paymentCreateValidation) blockers.push('[MISSING: ENABLE_PAYMENT_CREATE_VALIDATION=true]');
-  if (!serviceConfig.paymentApiKey) blockers.push('[MISSING: PAYMENT_API_KEY in Vault]');
+  if (!serviceConfig.paymentServiceToken) blockers.push('[MISSING: PAYMENTS_SERVICE_TOKEN in Vault]');
   if (serviceConfig.livePaymentCreate) blockers.push('[MISSING: ENABLE_LIVE_PAYMENT_CREATE=false for metadata-only payment-create evidence]');
 
   let checkout = null;
@@ -3817,7 +3836,7 @@ export async function paymentCreateApprovalEvidencePacket() {
     checkout = buildReadinessCheckout(product);
     validationErrors = validateCheckout(checkout);
     paymentPayload = buildPaymentCreatePayload(checkout, { id: checkout.externalOrderId });
-    if (validationErrors.length === 0 && serviceConfig.paymentCreateValidation && serviceConfig.paymentApiKey) {
+    if (validationErrors.length === 0 && serviceConfig.paymentCreateValidation && serviceConfig.paymentServiceToken) {
       paymentValidation = await guardedPaymentValidation(checkout, paymentPayload);
     }
   }
@@ -3957,7 +3976,7 @@ export async function paymentCreateApprovalEvidencePacket() {
     ],
     blockers: [...new Set(blockers)],
     sensitiveDataPolicy: [
-      'no PAYMENT_API_KEY value',
+      'no PAYMENTS_SERVICE_TOKEN value',
       'no provider payload',
       'no payment row',
       'synthetic checkout identity only',
@@ -3983,30 +4002,6 @@ export async function paymentReadScopeReadiness() {
         ttlMs: paymentReadScopeReadinessCache.expiresAt - now,
         purpose: 'avoid_duplicate_payments_scope_probe_rate_limit',
       },
-    };
-  }
-
-  if (!serviceConfig.paymentApiKey) {
-    return {
-      success: true,
-      status: 'missing_payment_api_key',
-      mode: 'guarded_payment_read_scope_readiness',
-      generatedAt: new Date().toISOString(),
-      service: serviceConfig.serviceName,
-      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness',
-      requiredScope: 'payments:read',
-      keyPresent: false,
-      scopeValidated: false,
-      routeValidated: false,
-      expectedHttpStatus: 404,
-      expectedErrorCode: 'PAYMENT_STATUS_SNAPSHOT_NOT_FOUND',
-      mutation: false,
-      persistence: false,
-      providerCall: false,
-      databaseRead: true,
-      blockers: ['[MISSING: PAYMENT_API_KEY in Vault]'],
-      sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
-      next: 'Populate PAYMENT_API_KEY before validating payments:read scope.',
     };
   }
 
@@ -4048,11 +4043,11 @@ export async function paymentReadScopeReadiness() {
       },
       blockers: scopeValidated
         ? []
-        : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]'],
+        : ['[MISSING: payments:read scope for Cliplot PAYMENTS_SERVICE_TOKEN confirmed in runtime evidence]'],
       sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
       next: scopeValidated
         ? 'Owner approval is still required before Cliplot enables passive Payments snapshot reads.'
-        : 'Fix PAYMENT_API_KEY scope or Payments route availability before enabling passive status reads.',
+        : 'Fix PAYMENTS_SERVICE_TOKEN scope or Payments route availability before enabling passive status reads.',
     };
     if (scopeValidated) {
       cachePaymentReadScopeSuccess(result);
@@ -4067,27 +4062,7 @@ export async function paymentReadScopeReadiness() {
       };
       return result;
     }
-    return {
-      success: true,
-      status: 'blocked_payments_read_scope_request_failed',
-      mode: 'guarded_payment_read_scope_readiness',
-      generatedAt: new Date().toISOString(),
-      service: serviceConfig.serviceName,
-      endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness',
-      requiredScope: 'payments:read',
-      keyPresent: true,
-      scopeValidated: false,
-      routeValidated: false,
-      httpStatus: error?.status || 0,
-      error: error instanceof Error ? error.message : String(error),
-      mutation: false,
-      persistence: false,
-      providerCall: false,
-      databaseRead: false,
-      blockers: ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]'],
-      sensitiveDataPolicy: ['no payment API key value', 'no provider call', 'no payment row lookup', 'no persistence'],
-      next: 'Restore Payments reachability and validate payments:read scope before enabling passive status reads.',
-    };
+    throw error;
   }
 }
 
@@ -4196,7 +4171,7 @@ function passivePaymentSnapshotReadAllowed() {
   return serviceConfig.customerStatusRuntimeRead === true
     && serviceConfig.paymentStatusSnapshotRead === true
     && statusRuntimeApprovalPresent
-    && Boolean(serviceConfig.paymentApiKey)
+    && Boolean(serviceConfig.paymentServiceToken)
     && !liveMutationRequested;
 }
 
@@ -4210,7 +4185,7 @@ function passivePaymentSnapshotRuntimeState() {
   if (!serviceConfig.customerStatusRuntimeRead) blockers.push('[MISSING: ENABLE_CUSTOMER_STATUS_RUNTIME_READ=true after owner approval]');
   if (!serviceConfig.paymentStatusSnapshotRead) blockers.push('[MISSING: ENABLE_PAYMENT_STATUS_SNAPSHOT_READ=true after owner approval]');
   if (!statusRuntimeApprovalPresent) blockers.push('[MISSING: CLIPLOT_STATUS_RUNTIME_APPROVAL_ID after owner-approved read-only customer status rollout]');
-  if (!serviceConfig.paymentApiKey) blockers.push('[MISSING: PAYMENT_API_KEY in Vault]');
+  if (!serviceConfig.paymentServiceToken) blockers.push('[MISSING: PAYMENTS_SERVICE_TOKEN in Vault]');
   if (liveMutationRequested) blockers.push('[MISSING: read-only customer status runtime must not be activated together with live checkout mutation flags]');
 
   return {
@@ -4219,7 +4194,7 @@ function passivePaymentSnapshotRuntimeState() {
     statusRuntimeApprovalPresent,
     customerStatusRuntimeRead: serviceConfig.customerStatusRuntimeRead,
     paymentStatusSnapshotRead: serviceConfig.paymentStatusSnapshotRead,
-    paymentApiKeyPresent: Boolean(serviceConfig.paymentApiKey),
+    paymentServiceTokenPresent: Boolean(serviceConfig.paymentServiceToken),
     liveMutationRequested,
     blockers,
   };
@@ -4264,7 +4239,7 @@ async function readPaymentSnapshotByOrderId(orderId) {
       signal: controller.signal,
       headers: {
         accept: 'application/json',
-        'x-api-key': serviceConfig.paymentApiKey,
+        ...paymentsAuthHeaders(),
       },
     });
     const text = await response.text();
@@ -4314,7 +4289,7 @@ function guardedPaymentStatusBody(orderId, paymentId) {
       statusRuntimeApprovalPresent: runtime.statusRuntimeApprovalPresent,
       customerStatusRuntimeRead: runtime.customerStatusRuntimeRead,
       paymentStatusSnapshotRead: runtime.paymentStatusSnapshotRead,
-      paymentApiKeyPresent: runtime.paymentApiKeyPresent,
+      paymentServiceTokenPresent: runtime.paymentServiceTokenPresent,
       liveMutationRequested: runtime.liveMutationRequested,
       providerCall: false,
       persistence: false,
@@ -4414,16 +4389,19 @@ export async function paymentStatus(input = {}) {
     };
   } catch (error) {
     const upstreamStatus = Number(error?.status || 0);
-    const safeUnavailable = [404, 429, 502, 503, 504].includes(upstreamStatus);
+    if (upstreamStatus === 401 || upstreamStatus === 403 || upstreamStatus >= 500) {
+      throw error;
+    }
+    const mappedUnavailable = upstreamStatus === 404 || upstreamStatus === 429;
     const errorCode = error?.payload?.error?.code || error?.payload?.code || error?.payload?.error || null;
     return {
-      httpStatus: safeUnavailable ? 200 : 502,
+      httpStatus: mappedUnavailable ? 200 : 502,
       body: {
-        success: safeUnavailable,
-        status: upstreamStatus === 404 ? 'payment_status_snapshot_not_available' : (safeUnavailable ? 'payment_status_snapshot_temporarily_unavailable' : 'payment_status_snapshot_read_failed'),
+        success: mappedUnavailable,
+        status: upstreamStatus === 404 ? 'payment_status_snapshot_not_available' : (mappedUnavailable ? 'payment_status_snapshot_temporarily_unavailable' : 'payment_status_snapshot_read_failed'),
         orderId,
         httpStatus: upstreamStatus,
-        errorCode: safeUnavailable ? undefined : errorCode,
+        errorCode: mappedUnavailable ? undefined : errorCode,
         paymentStatus: 'unknown',
         customerSafePaymentStatus: customerSafePaymentStatus('unknown'),
         runtimeReadEnabled: true,
@@ -4460,7 +4438,7 @@ export function paymentStatusRuntimeReadiness() {
       forbiddenEndpoint: '/payments/{paymentId}',
       applicationId: serviceConfig.applicationId,
       requiredScope: 'payments:read',
-      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      requiredRuntimeKey: 'PAYMENTS_SERVICE_TOKEN',
       source: 'payments_db_snapshot',
       providerCall: false,
       persistence: false,
@@ -6475,8 +6453,12 @@ export async function paymentExternalStatusReconciliationPreflightPacket() {
     try {
       snapshot = await readPaymentSnapshotByOrderId(completedWindow.orderId);
     } catch (error) {
+      const status = Number(error?.status || 0);
+      if (status === 401 || status === 403 || status >= 500) {
+        throw error;
+      }
       snapshotError = {
-        status: error?.status || 0,
+        status,
         message: error instanceof Error ? error.message : String(error),
       };
     }
@@ -6627,7 +6609,7 @@ export async function paymentExternalStatusReconciliationPreflightPacket() {
       'no provider transaction id',
       'no provider payload',
       'no customer PII',
-      'no PAYMENT_API_KEY value',
+      'no PAYMENTS_SERVICE_TOKEN value',
     ],
     next: reconciliationCompletedClosed
       ? 'External payment status reconciliation completed; keep write flags closed and continue revenue closure readiness.'
@@ -6667,7 +6649,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
   if (!serviceConfig.paymentLiveStatusWrite) blockers.push('payment_live_status_write_flag_disabled');
   if (!serviceConfig.paymentCallbackPersistence) blockers.push('payment_callback_persistence_flag_disabled');
   if (!serviceConfig.paymentCallbackReplayExecution) blockers.push('payment_callback_replay_execution_flag_disabled');
-  if (!serviceConfig.paymentApiKey) blockers.push('missing_PAYMENT_API_KEY');
+  if (!serviceConfig.paymentServiceToken) blockers.push('missing_PAYMENTS_SERVICE_TOKEN');
   if (!paymentId) blockers.push('missing_payment_id');
   if (!orderId) blockers.push('missing_order_id');
   if (!['completed', 'failed', 'cancelled'].includes(targetStatus)) blockers.push('invalid_or_missing_target_status');
@@ -6684,7 +6666,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         headers: {
           accept: 'application/json',
           'content-type': 'application/json',
-          'x-api-key': serviceConfig.paymentApiKey,
+          ...paymentsAuthHeaders(),
           'idempotency-key': statusWriteIdempotencyKey,
         },
         body: JSON.stringify({
@@ -6763,7 +6745,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
               'no provider payload',
               'no provider transaction id',
               'no customer PII',
-              'no PAYMENT_API_KEY value',
+              'no PAYMENTS_SERVICE_TOKEN value',
               'no PAYMENT_WEBHOOK_API_KEY value',
               'no bearer tokens',
             ],
@@ -6813,7 +6795,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
             'no provider payload',
             'no provider transaction id',
             'no customer PII',
-            'no PAYMENT_API_KEY value',
+            'no PAYMENTS_SERVICE_TOKEN value',
             'no PAYMENT_WEBHOOK_API_KEY value',
             'no bearer tokens',
           ],
@@ -6821,7 +6803,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         },
       };
     } catch (error) {
-      blockers.push(`payments_external_status_reconciliation_request_failed:${error?.message || 'unknown'}`);
+      throw error;
     }
   }
 
@@ -6916,7 +6898,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         'no provider payload',
         'no provider transaction id',
         'no customer PII',
-        'no PAYMENT_API_KEY value',
+        'no PAYMENTS_SERVICE_TOKEN value',
         'no PAYMENT_WEBHOOK_API_KEY value',
         'no bearer tokens',
       ],
@@ -7030,7 +7012,7 @@ async function computePaymentStatusReadiness() {
       paymentsEndpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
       deployedBy: 'payments-microservice:fc42e72',
       requiredScope: 'payments:read',
-      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      requiredRuntimeKey: 'PAYMENTS_SERVICE_TOKEN',
       supportsPaymentIdRead: false,
       supportsOrderIdRead: true,
       providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
@@ -7094,7 +7076,7 @@ async function computePaymentStatusReadiness() {
         : []),
     ],
     blockers: [
-      ...(readScope.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+      ...(readScope.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENTS_SERVICE_TOKEN confirmed in runtime evidence]']),
       ...(readOnlyRuntime ? [] : [
         '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
         '[MISSING: owner approval for provider-backed payment status reads]',
@@ -7181,7 +7163,7 @@ export async function paymentStatusStorageReadiness() {
       : []),
   ];
   const storageBlockers = [
-    ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+    ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENTS_SERVICE_TOKEN confirmed in runtime evidence]']),
     ...(paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
       ? []
       : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
@@ -7324,8 +7306,8 @@ export async function paymentStatusPersistenceDecisionPacket() {
       requiredBeforeApproval: [
         '[DONE: Payments DB-only read-by-orderId endpoint deployed as payments-microservice:fc42e72]',
         paymentReadiness.readScopeReadiness?.scopeValidated
-          ? '[DONE: Cliplot PAYMENT_API_KEY payments:read runtime scope validated by /api/payments/read-scope-readiness]'
-          : '[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]',
+          ? '[DONE: Cliplot PAYMENTS_SERVICE_TOKEN payments:read runtime scope validated by /api/payments/read-scope-readiness]'
+          : '[MISSING: payments:read scope for Cliplot PAYMENTS_SERVICE_TOKEN confirmed in runtime evidence]',
         approvedPassiveSnapshotRead
           ? '[DONE: owner-approved passive Payments DB snapshot read is active]'
           : '[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]',
@@ -7392,7 +7374,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
       : []),
   ];
   const decisionBlockers = [
-    ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]']),
+    ...(paymentReadiness.readScopeReadiness?.scopeValidated ? [] : ['[MISSING: payments:read scope for Cliplot PAYMENTS_SERVICE_TOKEN confirmed in runtime evidence]']),
     ...(approvedPassiveSnapshotRead ? [] : ['[MISSING: owner approval to enable Cliplot passive Payments status snapshot reads]']),
     ...(isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId)
       ? []
@@ -7459,7 +7441,7 @@ export async function paymentStatusPersistenceDecisionPacket() {
         'payment-status-readiness pass with mutation=false persistence=false providerCall=false',
         'payment-storage-readiness pass with mutation=false persistence=false providerCall=false',
         'deployed Payments read-by-orderId DB snapshot endpoint evidence before any live status reads',
-        'Cliplot PAYMENT_API_KEY payments:read runtime evidence from /api/payments/read-scope-readiness',
+        'Cliplot PAYMENTS_SERVICE_TOKEN payments:read runtime evidence from /api/payments/read-scope-readiness',
         'approved owner decision before any storage writes',
       ],
       mustRemainFalseBeforeApproval: [
@@ -7612,7 +7594,7 @@ export async function paymentStatusMappingOwnershipPacket() {
       endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
       applicationId: serviceConfig.applicationId,
       requiredScope: 'payments:read',
-      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      requiredRuntimeKey: 'PAYMENTS_SERVICE_TOKEN',
       source: 'payments_db_snapshot',
       forbiddenEndpoint: '/payments/{paymentId}',
       providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
@@ -7701,7 +7683,7 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
       id: 'payments-read-scope',
       status: readScope.scopeValidated ? 'satisfied' : 'missing',
       evidence: readScope.scopeValidated
-        ? 'Cliplot PAYMENT_API_KEY reached Payments DB-only read-by-orderId route with payments:read and no mutation.'
+        ? 'Cliplot PAYMENTS_SERVICE_TOKEN reached Payments DB-only read-by-orderId route with payments:read and no mutation.'
         : '[MISSING: payments:read runtime scope evidence]',
       requiredBeforeApproval: true,
     },
@@ -7768,7 +7750,7 @@ export async function paymentStatusSnapshotReadApprovalPacket() {
       endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
       applicationId: serviceConfig.applicationId,
       requiredScope: 'payments:read',
-      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      requiredRuntimeKey: 'PAYMENTS_SERVICE_TOKEN',
       source: 'payments_db_snapshot',
       providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
       mutation: false,
@@ -8098,7 +8080,7 @@ export async function customerStatusRuntimeActivationGate() {
     || liveMutationRequested;
 
   const paymentReadScopeValidated = ['validated_payments_read_scope_no_mutation', 'validated_payments_read_scope_no_mutation_cached'].includes(rollout.dependencyStatuses?.paymentReadScope);
-  if (!paymentReadScopeValidated) blockers.push('[MISSING: payments:read scope for Cliplot PAYMENT_API_KEY confirmed in runtime evidence]');
+  if (!paymentReadScopeValidated) blockers.push('[MISSING: payments:read scope for Cliplot PAYMENTS_SERVICE_TOKEN confirmed in runtime evidence]');
 
   const readyForApprovedRuntimeRead = baselineGuarded
     && requestedRuntimeRead
@@ -8171,7 +8153,7 @@ export async function customerStatusRuntimeActivationGate() {
       endpoint: rollout.targetSurface?.futureReadContract,
       applicationId: serviceConfig.applicationId,
       requiredScope: rollout.targetSurface?.requiredScope,
-      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      requiredRuntimeKey: 'PAYMENTS_SERVICE_TOKEN',
       providerRefreshRisk: rollout.targetSurface?.providerRefreshRisk,
       forbiddenEndpoint: rollout.targetSurface?.forbiddenEndpoint,
       mutation: false,
@@ -8291,7 +8273,7 @@ export async function customerStatusApprovalEvidencePacket() {
       endpoint: '/payments/status/by-order-id?applicationId=cliplot&orderId={orderId}',
       applicationId: serviceConfig.applicationId,
       requiredScope: 'payments:read',
-      requiredRuntimeKey: 'PAYMENT_API_KEY',
+      requiredRuntimeKey: 'PAYMENTS_SERVICE_TOKEN',
       source: 'payments_db_snapshot',
       providerRefreshRisk: 'db_snapshot_endpoint_no_provider_refresh',
       forbiddenEndpoint: '/payments/{paymentId}',
@@ -9649,7 +9631,7 @@ export async function liveCheckoutApprovalPacket() {
       'WAREHOUSE_SERVICE_TOKEN',
       'ORDERS_STATUS_SERVICE_TOKEN',
       'NOTIFICATIONS_SERVICE_TOKEN',
-      'PAYMENT_API_KEY',
+      'PAYMENTS_SERVICE_TOKEN',
       'PAYMENT_WEBHOOK_API_KEY',
     ],
     requiredApprovalIds: [
@@ -10139,7 +10121,7 @@ export async function revenueClosurePacket() {
       'ORDERS_SERVICE_TOKEN',
       'WAREHOUSE_SERVICE_TOKEN',
       'ORDERS_STATUS_SERVICE_TOKEN',
-      'PAYMENT_API_KEY',
+      'PAYMENTS_SERVICE_TOKEN',
       'PAYMENT_WEBHOOK_API_KEY',
       'NOTIFICATIONS_SERVICE_TOKEN',
     ],
@@ -10258,9 +10240,9 @@ export function serviceReadiness() {
       notificationValidation: serviceConfig.notificationValidation
         ? (serviceConfig.notificationServiceToken ? 'enabled_no_send' : 'missing_notification_service_token')
         : 'disabled',
-      payments: serviceConfig.paymentApiKey && serviceConfig.livePaymentCreate && approvals.payment ? 'live_create_enabled' : (serviceConfig.paymentApiKey ? 'identity_ready_create_guarded' : 'token_missing'),
+      payments: serviceConfig.paymentServiceToken && serviceConfig.livePaymentCreate && approvals.payment ? 'live_create_enabled' : (serviceConfig.paymentServiceToken ? 'identity_ready_create_guarded' : 'token_missing'),
       paymentValidation: serviceConfig.paymentCreateValidation
-        ? (serviceConfig.paymentApiKey ? 'enabled_no_mutation' : 'missing_payment_api_key')
+        ? (serviceConfig.paymentServiceToken ? 'enabled_no_mutation' : 'missing_payment_api_key')
         : 'disabled',
       paymentCallback: serviceConfig.paymentWebhookApiKey ? 'identity_ready_guarded_ack' : 'token_missing',
       paymentStatus: serviceConfig.customerStatusRuntimeRead && serviceConfig.paymentStatusSnapshotRead && isApprovalPresent(serviceConfig.statusRuntimeApprovalId)

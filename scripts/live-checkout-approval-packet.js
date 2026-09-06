@@ -52,7 +52,7 @@ assert(packet.liveCheckoutPreflight?.mutationPlan?.wouldSendNotification === fal
 assert(packet.liveCheckoutPreflight?.approvals?.order === true, 'order approval metadata should be present after controlled smoke evidence', packet.liveCheckoutPreflight || {});
 assert(typeof packet.liveCheckoutPreflight?.approvals?.payment === 'boolean', 'payment approval metadata state missing', packet.liveCheckoutPreflight || {});
 assert(typeof packet.liveCheckoutPreflight?.approvals?.notification === 'boolean', 'notification approval metadata state missing', packet.liveCheckoutPreflight || {});
-assert(Array.isArray(packet.requiredRuntimeKeys) && packet.requiredRuntimeKeys.includes('PAYMENT_API_KEY'), 'runtime key names missing', packet);
+assert(Array.isArray(packet.requiredRuntimeKeys) && packet.requiredRuntimeKeys.includes('PAYMENTS_SERVICE_TOKEN'), 'runtime key names missing', packet);
 assert(packet.requiredRuntimeKeys.includes('ORDERS_STATUS_SERVICE_TOKEN'), 'orders status token runtime key missing', packet);
 assert(Array.isArray(packet.requiredApprovalIds) && packet.requiredApprovalIds.includes('CLIPLOT_LIVE_ORDER_APPROVAL_ID'), 'order approval id missing', packet);
 assert(packet.requiredApprovalIds.includes('CLIPLOT_LIVE_PAYMENT_APPROVAL_ID'), 'payment approval id missing', packet);

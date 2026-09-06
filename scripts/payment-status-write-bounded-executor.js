@@ -75,7 +75,7 @@ assert(executor.blockers?.includes('payment_live_status_write_flag_disabled'), '
 assert(executor.endpointBoundary?.paymentsExternalStatusReconciliationEndpoint === '/payments/external/status-reconciliation', 'Payments external reconciliation endpoint boundary missing', executor);
 assert(executor.forbiddenOperationsNow?.includes('write payment status'), 'payment status write forbidden operation missing', executor);
 assert(executor.forbiddenOperationsNow?.includes('execute callback replay'), 'callback replay forbidden operation missing', executor);
-assert(executor.sensitiveDataPolicy?.includes('no PAYMENT_API_KEY value'), 'payment key policy missing', executor);
+assert(executor.sensitiveDataPolicy?.includes('no PAYMENTS_SERVICE_TOKEN value'), 'payment key policy missing', executor);
 assert(executor.packet?.status === 'ready_for_bounded_payment_status_write_window_request_execution_disabled', 'request packet evidence missing', executor);
 assert(executor.packet?.operatorRequestContract?.currentPacketMayExecuteWrites === false, 'embedded packet allows writes', executor);
 

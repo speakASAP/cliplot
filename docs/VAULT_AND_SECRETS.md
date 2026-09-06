@@ -60,7 +60,7 @@ Do not print secret values. Validation may check presence by key name only.
 - `[MISSING: approved service principal tokens for Cliplot]`
 - `[MISSING: payment callback API key entry for cliplot]`
 - `[MISSING: Auth role contract for Cliplot token accepted by warehouse-microservice]`
-- `[MISSING: Payments API key/scope for cliplot]`
+- `[MISSING: Cliplot→payments RS256 principal in Vault PAYMENTS_SERVICE_TOKEN]`
 ## Live Mutation Approval Evidence
 
 Live mutation approvals are currently represented by non-secret runtime config
