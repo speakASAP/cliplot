@@ -132,12 +132,8 @@ export const serviceConfig = {
   ordersStatusServiceToken: process.env.ORDERS_STATUS_SERVICE_TOKEN || '',
   ordersStatusServiceName: process.env.ORDERS_STATUS_SERVICE_NAME || process.env.SERVICE_NAME || 'cliplot',
   productIds: (process.env.CLIPLOT_PRODUCT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean),
-  // Per-pair RS256 principal for cliplot -> catalog-microservice, sent as a
-  // bearer. No fallback to CATALOG_INTERNAL_SERVICE_TOKEN: that was one shared
-  // static secret held by seven services and paired with a self-asserted
-  // x-service-name header, the shape SERVICE_IDENTITY_CONSUMER_STANDARD.md
-  // prohibits. Catalog still accepts it until the last caller migrates, so a
-  // fallback would authenticate successfully and hide the regression.
+  // Per-pair Auth RS256 principals (provision-service-token.js). No static
+  // secret fallbacks — unset tokens fail closed at the call site.
   catalogServiceToken: process.env.CATALOG_SERVICE_TOKEN || '',
   ordersServiceToken: process.env.ORDERS_SERVICE_TOKEN || '',
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
@@ -929,11 +925,17 @@ async function readOrderWithStatusToken(orderId, requestOptions = {}) {
 }
 
 async function readWarehouseReservation(orderId, requestOptions = {}) {
+  const token = String(serviceConfig.warehouseServiceToken || '').trim();
+  if (!token) {
+    throw new Error(
+      'WAREHOUSE_SERVICE_TOKEN is unset; refusing to call warehouse-microservice unauthenticated. '
+      + 'Mint via auth-microservice/scripts/provision-service-token.js.',
+    );
+  }
   return fetchJson(new URL(`/api/reservations/order/${encodeURIComponent(orderId)}`, serviceConfig.warehouseUrl), {
     ...requestOptions,
     headers: {
-      authorization: `Bearer ${String(serviceConfig.warehouseServiceToken || '').trim()}`,
-      'x-service-name': serviceConfig.serviceName,
+      authorization: `Bearer ${token}`,
     },
   });
 }
@@ -4077,12 +4079,18 @@ export async function paymentReadScopeReadiness() {
 }
 
 async function validateNotification(checkout, notificationPayload) {
+  const token = String(serviceConfig.notificationServiceToken || '').trim();
+  if (!token) {
+    throw new Error(
+      'NOTIFICATIONS_SERVICE_TOKEN is unset; refusing to call notifications-microservice unauthenticated.',
+    );
+  }
   const url = new URL(serviceConfig.notificationValidatePath, serviceConfig.notificationsUrl);
   return fetchJson(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${serviceConfig.notificationServiceToken}`,
+      authorization: `Bearer ${token}`,
       'idempotency-key': checkoutIdempotencyKeys(checkout).notificationValidate,
     },
     body: JSON.stringify(notificationPayload),
@@ -4090,12 +4098,18 @@ async function validateNotification(checkout, notificationPayload) {
 }
 
 async function createNotification(checkout, notificationPayload, idempotencyKey = checkoutIdempotencyKeys(checkout).notificationSend) {
+  const token = String(serviceConfig.notificationServiceToken || '').trim();
+  if (!token) {
+    throw new Error(
+      'NOTIFICATIONS_SERVICE_TOKEN is unset; refusing to call notifications-microservice unauthenticated.',
+    );
+  }
   const url = new URL(serviceConfig.notificationSendPath, serviceConfig.notificationsUrl);
   return fetchJson(url, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${serviceConfig.notificationServiceToken}`,
+      authorization: `Bearer ${token}`,
       'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(notificationPayload),
@@ -8900,7 +8914,7 @@ export async function liveOrderWarehouseSmokePlan() {
         orderReadback: '/api/orders/{orderId}',
       },
       headersRequired: {
-        orders: ['x-internal-service-token:<redacted>', 'x-service-name:cliplot', 'idempotency-key:<redacted deterministic key>'],
+        orders: ['Authorization: Bearer <redacted>', 'idempotency-key:<redacted deterministic key>'],
         warehouseReadOnly: ['Authorization: Bearer <redacted>', 'Content-Type: application/json'],
       },
       payloadPreview: liveSmokePayloadPreview(readiness),
