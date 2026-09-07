@@ -1048,6 +1048,12 @@ function paymentsAuthHeaders() {
   };
 }
 
+/** Synthetic readiness/test order ids — expected missing-payment 404s on Payments. */
+function isSyntheticPaymentsOrderId(orderId) {
+  const id = String(orderId || '');
+  return id === 'cliplot-readiness-monitor' || /^cliplot-.*readiness/i.test(id);
+}
+
 function assertPaymentsCallSucceeded(httpStatus, payload, context) {
   if (httpStatus === 401 || httpStatus === 403) {
     const error = new Error(
@@ -1278,6 +1284,7 @@ async function validatePaymentReadScope() {
       signal: controller.signal,
       headers: {
         accept: 'application/json',
+        'x-synthetic-probe': '1',
         ...paymentsAuthHeaders(),
       },
     });
@@ -4236,12 +4243,14 @@ async function readPaymentSnapshotByOrderId(orderId) {
   url.searchParams.set('applicationId', serviceConfig.applicationId);
   url.searchParams.set('orderId', orderId);
   const { controller, timeout } = timeoutSignal();
+  const syntheticProbe = isSyntheticPaymentsOrderId(orderId);
   try {
     const response = await fetch(url, {
       method: 'GET',
       signal: controller.signal,
       headers: {
         accept: 'application/json',
+        ...(syntheticProbe ? { 'x-synthetic-probe': '1' } : {}),
         ...paymentsAuthHeaders(),
       },
     });
