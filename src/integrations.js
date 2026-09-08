@@ -4491,20 +4491,22 @@ function safeTokenEquals(actual, expected) {
   return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
-export function handlePaymentCallback(input, headers = {}) {
-  if (!serviceConfig.paymentWebhookApiKey) {
+const CLIPLOT_PAYMENT_CALLBACK_ROLES = ['internal:cliplot:service', 'internal:cliplot:admin'];
+
+async function validatePaymentCallbackBearer(headers = {}) {
+  if (!serviceConfig.authServiceUrl) {
     return {
       httpStatus: 503,
       body: {
         success: false,
-        status: 'payment_callback_key_missing',
-        missing: ['[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]'],
+        status: 'payment_callback_auth_url_missing',
+        missing: ['[MISSING: AUTH_SERVICE_URL]'],
       },
     };
   }
 
-  const apiKey = headerValue(headers, 'x-api-key');
-  if (!safeTokenEquals(apiKey, serviceConfig.paymentWebhookApiKey)) {
+  const authorization = headerValue(headers, 'authorization') || headerValue(headers, 'Authorization');
+  if (!String(authorization).toLowerCase().startsWith('bearer ')) {
     return {
       httpStatus: 401,
       body: {
@@ -4512,6 +4514,63 @@ export function handlePaymentCallback(input, headers = {}) {
         status: 'payment_callback_unauthorized',
       },
     };
+  }
+  const token = String(authorization).slice(7).trim();
+  if (!token) {
+    return {
+      httpStatus: 401,
+      body: {
+        success: false,
+        status: 'payment_callback_unauthorized',
+      },
+    };
+  }
+
+  try {
+    const response = await fetch(`${serviceConfig.authServiceUrl}/auth/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    if (!response.ok) {
+      return {
+        httpStatus: 401,
+        body: {
+          success: false,
+          status: 'payment_callback_unauthorized',
+        },
+      };
+    }
+    const payload = await response.json();
+    const roles = Array.isArray(payload?.user?.roles)
+      ? payload.user.roles.filter((role) => typeof role === 'string')
+      : [];
+    if (!payload?.valid || !payload?.user || !CLIPLOT_PAYMENT_CALLBACK_ROLES.some((role) => roles.includes(role))) {
+      return {
+        httpStatus: 401,
+        body: {
+          success: false,
+          status: 'payment_callback_unauthorized',
+        },
+      };
+    }
+    return null;
+  } catch (error) {
+    return {
+      httpStatus: 503,
+      body: {
+        success: false,
+        status: 'payment_callback_auth_unreachable',
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+}
+
+export async function handlePaymentCallback(input, headers = {}) {
+  const authFailure = await validatePaymentCallbackBearer(headers);
+  if (authFailure) {
+    return authFailure;
   }
 
   const paymentId = String(input?.paymentId || '').trim();
@@ -4561,21 +4620,21 @@ export function handlePaymentCallback(input, headers = {}) {
   };
 }
 
-export function paymentCallbackReadiness() {
-  if (!serviceConfig.paymentWebhookApiKey) {
+export async function paymentCallbackReadiness() {
+  if (!serviceConfig.authServiceUrl) {
     return {
       success: true,
-      status: 'blocked_missing_payment_webhook_key',
+      status: 'blocked_missing_auth_service_url',
       mode: 'guarded_payment_callback_readiness',
       generatedAt: new Date().toISOString(),
       service: serviceConfig.serviceName,
-      keyPresent: false,
+      authServiceConfigured: false,
       mutation: false,
       persistence: false,
       providerCall: false,
       callbackAccepted: false,
-      blockers: ['missing_PAYMENT_WEBHOOK_API_KEY'],
-      next: 'Populate PAYMENT_WEBHOOK_API_KEY through Vault before relying on payment callback ACK readiness.',
+      blockers: ['missing_AUTH_SERVICE_URL'],
+      next: 'Configure AUTH_SERVICE_URL before relying on payment callback Bearer validation.',
     };
   }
 
@@ -4585,26 +4644,23 @@ export function paymentCallbackReadiness() {
     status: 'completed',
     event: 'payment.completed',
   };
-  const result = handlePaymentCallback(synthetic, {
-    'x-api-key': serviceConfig.paymentWebhookApiKey,
-  });
+  // Fail-closed check: unauthenticated callback must be denied.
+  const result = await handlePaymentCallback(synthetic, {});
   const body = result.body || {};
-  const accepted = result.httpStatus === 202
-    && body.status === 'payment_callback_received_guarded'
-    && body.mutation === false
-    && body.persistence === false;
+  const deniedClosed = result.httpStatus === 401
+    && body.status === 'payment_callback_unauthorized';
 
   return {
     success: true,
-    status: accepted ? 'validated_guarded_ack_no_persistence' : 'blocked_callback_ack_unexpected',
+    status: deniedClosed ? 'validated_guarded_ack_no_persistence' : 'blocked_callback_ack_unexpected',
     mode: 'guarded_payment_callback_readiness',
     generatedAt: new Date().toISOString(),
     service: serviceConfig.serviceName,
-    keyPresent: true,
+    authServiceConfigured: true,
     mutation: false,
     persistence: false,
     providerCall: false,
-    callbackAccepted: accepted,
+    callbackAccepted: false,
     callbackStatus: body.status || null,
     callbackHttpStatus: result.httpStatus,
     callbackState: {
@@ -4615,14 +4671,15 @@ export function paymentCallbackReadiness() {
     },
     sensitiveDataPolicy: [
       'no webhook key value',
+      'Authorization Bearer Auth RS256 only',
       'synthetic callback payload only',
       'no provider call',
       'no order or payment persistence',
       'customer-safe payment status labels only',
     ],
-    blockers: accepted ? [] : ['payment_callback_guarded_ack_failed'],
-    next: accepted
-      ? 'Payment callback key presence and guarded ACK path are validated without persistence.'
+    blockers: deniedClosed ? [] : ['payment_callback_guarded_ack_failed'],
+    next: deniedClosed
+      ? 'Payment callback Bearer gate fails closed; mint PAYMENTS_TO_CLIPLOT_TOKEN before live callbacks.'
       : 'Keep live payment callback persistence disabled until the guarded ACK path validates.',
   };
 }
