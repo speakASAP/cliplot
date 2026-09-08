@@ -18,12 +18,17 @@
   `externalOrderId`, `channelAccountId`, `items[].title`,
   `items[].quantity`, `items[].unitPrice`, and `totals.total/currency`.
 - Orders does not yet accept `cliplot-service` or channel `cliplot`.
-- Payments requires `POST /payments/create` with `X-API-Key` and an allowed
-  `applicationId`.
+- Payments `POST /payments/create` requires an Auth-issued RS256 service JWT in
+  `Authorization: Bearer` for the `(cliplot -> payments)` pair, plus an allowed
+  `applicationId`, per
+  [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+  Do not use `X-API-Key` / `PAYMENT_API_KEY` as Payments S2S credentials.
 - Payments allowlists do not yet include `cliplot-service` or
   `https://cliplot.alfares.cz`.
-- Warehouse requires Auth-validated Bearer token with warehouse admin role.
-- Notifications requires service/JWT token plus approved channel/template.
+- Warehouse requires an Auth-issued Bearer service JWT with an explicit warehouse
+  role per the same standard.
+- Notifications requires an Auth-issued Bearer service JWT plus an approved
+  channel/template per the same standard.
 - Auth validates the Cliplot return URL but client registry docs do not list
   `cliplot-service`.
 - Catalog is Auth-guarded, has no `cliplot` marketplace key, and current

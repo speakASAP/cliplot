@@ -472,11 +472,11 @@ npm run readiness:payment-status-write-bounded-executor -- https://cliplot.alfar
 
 `GET /api/payments/read-scope-readiness` validates that Cliplot's runtime
 `PAYMENTS_SERVICE_TOKEN` (Auth RS256 `svc-cliplot--payments-microservice`) reaches Payments' DB-only status snapshot route with
-`payments:read`. It sends only a synthetic missing order id and treats the
-Payments `404` not-found response as proof that the key passed auth/scope and
+the required Payments read role. It sends only a synthetic missing order id and treats the
+Payments `404` not-found response as proof that the Bearer credential passed auth/role checks and
 reached the DB-only handler. It must return `validated_payments_read_scope_no_mutation`,
 `mutation=false`, `persistence=false`, `providerCall=false`, and it must never
-print the API key. Run it with:
+print the service token. Run it with:
 
 ```bash
 npm run readiness:payment-read-scope -- https://cliplot.alfares.cz

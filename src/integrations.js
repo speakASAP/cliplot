@@ -878,16 +878,8 @@ async function postOrderPayload(path, checkout, orderPayload, idempotencyKey = c
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      // Bearer, not x-internal-service-token. ORDERS_SERVICE_TOKEN now holds a
-      // per-pair RS256 principal (svc-cliplot--orders-microservice-create, role
-      // internal:cliplot:service) that orders verifies through /auth/validate,
-      // rather than a shared string whose role orders synthesised from the
-      // unauthenticated x-service-name header. It is deliberately a different
-      // principal from ORDERS_STATUS_SERVICE_TOKEN so the create and status lanes
-      // stay independently revocable -- this one is not granted action-admin and
-      // gets 403 on PUT /:id/status.
+      // Per-pair RS256 Bearer (ORDERS_SERVICE_TOKEN). Distinct from ORDERS_STATUS_SERVICE_TOKEN.
       authorization: `Bearer ${String(serviceConfig.ordersServiceToken || '').trim()}`,
-      'x-service-name': serviceConfig.serviceName,
       'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(orderPayload),
@@ -908,7 +900,6 @@ async function readOrder(orderId, requestOptions = {}) {
     ...requestOptions,
     headers: {
       authorization: `Bearer ${String(serviceConfig.ordersServiceToken || '').trim()}`,
-      'x-service-name': serviceConfig.serviceName,
     },
   });
 }
@@ -919,7 +910,6 @@ async function readOrderWithStatusToken(orderId, requestOptions = {}) {
     ...requestOptions,
     headers: {
       authorization: `Bearer ${String(serviceConfig.ordersStatusServiceToken || '').trim()}`,
-      'x-service-name': serviceConfig.ordersStatusServiceName,
     },
   });
 }
@@ -948,7 +938,6 @@ async function cancelOrderThroughOrders(orderId, approval, requestOptions = {}) 
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${String(serviceConfig.ordersStatusServiceToken || '').trim()}`,
-      'x-service-name': serviceConfig.ordersStatusServiceName,
     },
     body: JSON.stringify({ status: 'cancelled', approval }),
   });
@@ -1046,7 +1035,6 @@ function paymentsAuthHeaders() {
   }
   return {
     authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-    'x-service-name': serviceConfig.serviceName,
   };
 }
 
@@ -8781,7 +8769,6 @@ function liveOrderWarehouseSmokeSteps(readiness) {
         'WAREHOUSE_SERVICE_TOKEN',
       ],
       headers: {
-        'x-service-name': serviceConfig.serviceName,
         'idempotency-key': readiness.checkoutIntent?.idempotencyKeys?.orderCreate || null,
       },
       payload: {
@@ -8809,7 +8796,6 @@ function liveOrderWarehouseSmokeSteps(readiness) {
       method: 'POST',
       endpoint: serviceConfig.ordersCreatePath,
       headers: {
-        'x-service-name': serviceConfig.serviceName,
         'idempotency-key': readiness.checkoutIntent?.idempotencyKeys?.orderCreate || null,
       },
       expected: 'Replay returns the same existing order without a second Warehouse reservation or duplicate event',

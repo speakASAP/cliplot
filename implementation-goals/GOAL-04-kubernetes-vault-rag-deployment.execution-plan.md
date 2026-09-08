@@ -36,10 +36,15 @@ Forbidden:
 - Orders requires `contractVersion: "orders.create.v1"`, `channel`,
   `externalOrderId`, `channelAccountId`, `items[].title`,
   `items[].quantity`, `items[].unitPrice`, and `totals.total/currency`.
-- Payments requires `POST /payments/create` with `X-API-Key` and an allowed
-  `applicationId`.
-- Warehouse requires an Auth-validated Bearer token with a warehouse admin role.
-- Notifications requires a service/JWT token plus an approved channel/template.
+- Payments `POST /payments/create` requires an Auth-issued RS256 service JWT in
+  `Authorization: Bearer` for the `(cliplot -> payments)` pair, plus an allowed
+  `applicationId`, per
+  [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+  Do not use `X-API-Key` / `PAYMENT_API_KEY` as Payments S2S credentials.
+- Warehouse requires an Auth-issued Bearer service JWT with an explicit warehouse
+  role per the same standard.
+- Notifications requires an Auth-issued Bearer service JWT plus an approved
+  channel/template per the same standard.
 
 ## Implementation Steps
 

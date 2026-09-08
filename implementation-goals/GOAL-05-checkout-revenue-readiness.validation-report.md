@@ -433,11 +433,14 @@ items[0].warehouseId=<non-empty>
 
 Status: ADR recorded, runtime approval still blocked.
 
-Cliplot has validated `PAYMENT_API_KEY` `payments:read` scope through the
-DB-only `/payments/status/by-order-id` readiness probe without mutation,
-persistence, provider calls, or secret printing. ADR-002 records Payments as
-the preferred authoritative payment status owner, but it is proposed for owner
-approval only and does not enable live status reads or callback persistence.
+Cliplot has validated Auth-issued RS256 Bearer service identity
+(`PAYMENTS_SERVICE_TOKEN` / `(cliplot -> payments)`) with the required Payments
+role through the DB-only `/payments/status/by-order-id` readiness probe without
+mutation, persistence, provider calls, or secret printing, per
+[`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md).
+ADR-002 records Payments as the preferred authoritative payment status owner,
+but it is proposed for owner approval only and does not enable live status
+reads or callback persistence.
 
 Expected public evidence:
 

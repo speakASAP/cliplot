@@ -451,8 +451,9 @@ behavior until those approvals are present.
   `localhost:5000/payments-microservice:85a904b`; runtime identity maps now
   come from Vault-backed `payments-microservice-secret`. Safe invalid-body
   smoke from the Cliplot pod to `POST /payments/create` returned HTTP `400`
-  with `VALIDATION_ERROR`, proving Cliplot API-key auth and `payments:create`
-  scope without creating a payment. Provider-backed payment creation remains
+  with `VALIDATION_ERROR`, proving Cliplot Auth-issued RS256 Bearer S2S auth
+  and Payments create-role authorization without creating a payment (not
+  `X-API-Key` / `PAYMENT_API_KEY`). Provider-backed payment creation remains
   disabled until an approved valid-body/payment-provider validation exists.
 - GOAL-05 Orders identity smoke from the Cliplot pod to `POST /api/orders`
   returned HTTP `400 Bad Request` for an invalid body, proving the Cliplot
@@ -634,11 +635,11 @@ behavior until those approvals are present.
 
 ### 2026-07-02 - Payments DB-only status snapshot contract wired into readiness
 
-Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` as a DB-only status snapshot with `payments:read`, `providerCall=false`, `persistence=false`, and `mutation=false`. Cliplot readiness now references that endpoint and no longer lists DB-only/read-by-orderId as missing. Runtime status remains blocked until Cliplot proves `PAYMENT_API_KEY` has `payments:read` in its own runtime evidence and receives owner approval for passive Payments snapshot reads.
+Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` as a DB-only status snapshot with Payments read-role authorization, `providerCall=false`, `persistence=false`, and `mutation=false`. Cliplot readiness now references that endpoint and no longer lists DB-only/read-by-orderId as missing. Runtime status remains blocked until Cliplot proves its Auth-issued `(cliplot -> payments)` RS256 Bearer credential has the required Payments read role in its own runtime evidence (per [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md); not `PAYMENT_API_KEY`) and receives owner approval for passive Payments snapshot reads.
 
 ### 2026-07-02 - Cliplot Payments read-scope runtime evidence
 
-Added guarded `GET /api/payments/read-scope-readiness` and `npm run readiness:payment-read-scope`. The probe sends Cliplot's `PAYMENT_API_KEY` only in-memory to Payments `GET /payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness`, expects a synthetic missing-order `404`, and records `scopeValidated=true`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing secrets or enabling passive status reads.
+Added guarded `GET /api/payments/read-scope-readiness` and `npm run readiness:payment-read-scope`. The probe sends Cliplot's Auth-issued Payments service JWT only in-memory to Payments `GET /payments/status/by-order-id?applicationId=cliplot&orderId=cliplot-read-scope-readiness`, expects a synthetic missing-order `404`, and records `scopeValidated=true`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing secrets or enabling passive status reads.
 
 ### 2026-07-02 - Customer status approval evidence cleanup
 
@@ -662,7 +663,7 @@ provider-refresh reads, and Cliplot-local payment status storage remain disabled
 `npm run readiness:payment-create-approval` prove the current Cliplot
 valid-body payment-create payload against Payments `POST /payments/validate-create`
 without creating a payment, calling a provider, persisting a payment row, or
-printing `PAYMENT_API_KEY`. Passing evidence returns
+printing the Payments service JWT. Passing evidence returns
 `ready_for_owner_payment_create_approval_metadata`, `validation.status=validated_no_mutation`,
 `valid=true`, `mutation=false`, `persistence=false`, `providerCall=false`,
 `ENABLE_LIVE_PAYMENT_CREATE=false`, and `paymentApprovalPresent=false`.

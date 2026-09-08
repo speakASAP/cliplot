@@ -153,6 +153,9 @@ Preserve Vision to Goal Impact to System to Feature to Task to Execution Plan to
 ## Safety and Operations
 Do not expose secrets or alter deployment policy outside pre-existing authorization.
 
+## Service-to-service authentication
+For machine service identity, follow the sole canonical [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md). It is not reproduced here.
+
 ## Project-Specific Rules
 Keep changes within the documented Czech e-commerce storefront scope and runtime boundaries.
 

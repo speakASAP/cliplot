@@ -93,8 +93,9 @@ Recording this ADR does not approve:
   Payments source-of-truth decision when the approval ID is configured.
 - Payments provides provider-refresh-free status read evidence or read-by-orderId
   contract evidence.
-- Cliplot `PAYMENT_API_KEY` has confirmed `payments:read` runtime scope without
-  exposing the key value.
+- Cliplot Auth-issued `(cliplot -> payments)` RS256 Bearer credential has
+  confirmed Payments read-role runtime scope without exposing the token value
+  ([`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../../../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md)).
 
 ## Consequences
 
