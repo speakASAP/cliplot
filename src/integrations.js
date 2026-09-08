@@ -4685,8 +4685,8 @@ export async function paymentCallbackReadiness() {
 }
 
 
-export function paymentCallbackReplayPolicyReadiness() {
-  const callback = paymentCallbackReadiness();
+export async function paymentCallbackReplayPolicyReadiness() {
+  const callback = await paymentCallbackReadiness();
   const guarded = callback.status === 'validated_guarded_ack_no_persistence'
     && callback.callbackAccepted === true
     && callback.mutation === false
@@ -4819,8 +4819,8 @@ export function paymentCallbackReplayPolicyReadiness() {
 
 
 export async function paymentCallbackPersistenceApprovalPacket() {
-  const callback = paymentCallbackReadiness();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callback = await paymentCallbackReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const storageReadiness = await paymentStatusStorageReadiness();
   const decisionPacket = await paymentStatusPersistenceDecisionPacket();
   const guardedCallback = callback.status === 'validated_guarded_ack_no_persistence'
@@ -5287,7 +5287,7 @@ export async function paymentCallbackPersistenceStorageContractPacket() {
 }
 
 export async function paymentCallbackReplayExecutionRolloutProposalPacket() {
-  const policy = paymentCallbackReplayPolicyReadiness();
+  const policy = await paymentCallbackReplayPolicyReadiness();
   const persistence = await paymentCallbackPersistenceApprovalPacket();
   const storageProposal = await paymentCallbackStorageBackendProposalPacket();
 
@@ -5517,7 +5517,7 @@ export async function paymentLiveStatusWriteApprovalPacket() {
   const decisionPacket = await paymentStatusPersistenceDecisionPacket();
   const mappingPacket = await paymentStatusMappingOwnershipPacket();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
   const replayRollout = await paymentCallbackReplayExecutionRolloutProposalPacket();
   const runtime = paymentStatusRuntimeReadiness();
@@ -5766,8 +5766,8 @@ export async function paymentLiveStatusWriteApprovalPacket() {
 export async function paymentStatusReconciliationReadinessPacket() {
   const liveStatusWrite = await paymentLiveStatusWriteApprovalPacket();
   const runtime = paymentStatusRuntimeReadiness();
-  const callbackReadiness = paymentCallbackReadiness();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackReadiness = await paymentCallbackReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const liveFlagsClosed = serviceConfig.liveOrderSubmit === false
     && serviceConfig.livePaymentCreate === false
     && serviceConfig.liveNotifications === false
@@ -5910,7 +5910,7 @@ export async function paymentStatusReconciliationReadinessPacket() {
 export async function paymentCallbackToStatusWriteDryRunContractPacket() {
   const reconciliation = await paymentStatusReconciliationReadinessPacket();
   const liveStatusWrite = await paymentLiveStatusWriteApprovalPacket();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const replayRollout = await paymentCallbackReplayExecutionRolloutProposalPacket();
   const storageContract = await paymentCallbackPersistenceStorageContractPacket();
   const runtime = paymentStatusRuntimeReadiness();
@@ -6829,7 +6829,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
               'no provider transaction id',
               'no customer PII',
               'no PAYMENTS_SERVICE_TOKEN value',
-              'no PAYMENT_WEBHOOK_API_KEY value',
+              'Auth Bearer payment callback (no static webhook key)',
               'no bearer tokens',
             ],
             next: 'Keep Payments external status reconciliation disabled until a bounded owner window opens both Cliplot and Payments write flags.',
@@ -6879,7 +6879,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
             'no provider transaction id',
             'no customer PII',
             'no PAYMENTS_SERVICE_TOKEN value',
-            'no PAYMENT_WEBHOOK_API_KEY value',
+            'Auth Bearer payment callback (no static webhook key)',
             'no bearer tokens',
           ],
           next: 'Close all status-write and callback flags, then run post-window reconciliation evidence.',
@@ -6982,7 +6982,7 @@ export async function runPaymentStatusWriteBoundedExecutor(request = {}) {
         'no provider transaction id',
         'no customer PII',
         'no PAYMENTS_SERVICE_TOKEN value',
-        'no PAYMENT_WEBHOOK_API_KEY value',
+        'Auth Bearer payment callback (no static webhook key)',
         'no bearer tokens',
       ],
       next: 'Keep status-write flags closed until a bounded owner window opens Cliplot and Payments external status reconciliation together.',
@@ -7021,7 +7021,7 @@ async function computePaymentStatusReadiness() {
   const syntheticOrderId = 'cliplot-payment-status-readiness';
   const statusResult = await paymentStatus({ orderId: syntheticOrderId });
   const statusBody = statusResult.body || {};
-  const callback = paymentCallbackReadiness();
+  const callback = await paymentCallbackReadiness();
   const readScope = await paymentReadScopeReadiness();
   const readOnlyRuntime = statusBody.runtimeReadEnabled === true
     && statusBody.paymentsSnapshotReadEnabled === true
@@ -7187,7 +7187,7 @@ async function computePaymentStatusReadiness() {
 
 export async function paymentStatusStorageReadiness() {
   const paymentReadiness = await paymentStatusReadiness();
-  const callback = paymentCallbackReadiness();
+  const callback = await paymentCallbackReadiness();
   const storageOwnershipApprovalPresent = isApprovalPresent(serviceConfig.paymentStorageOwnershipApprovalId);
   const sharedPaymentsOwnershipApproved = storageOwnershipApprovalPresent
     && paymentReadiness.status === 'ready_for_approved_payment_status_runtime_read'
@@ -7552,7 +7552,7 @@ export async function paymentStatusMappingOwnershipPacket() {
   const statusReadiness = await paymentStatusReadiness();
   const storageReadiness = await paymentStatusStorageReadiness();
   const decisionPacket = await paymentStatusPersistenceDecisionPacket();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
   const runtimeReadiness = paymentStatusRuntimeReadiness();
   const approvedRuntimeRead = runtimeReadiness.runtimeReadEnabled === true
@@ -7885,7 +7885,7 @@ export async function customerStatusSurfaceReadiness() {
   const currentPaymentStatus = (await paymentStatus({ orderId: syntheticOrderId })).body || {};
   const paymentReadiness = await paymentStatusReadiness();
   const snapshotReadApproval = await paymentStatusSnapshotReadApprovalPacket();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const mappingOwnership = await paymentStatusMappingOwnershipPacket();
   const runtime = paymentStatusRuntimeReadiness();
   const approvedRuntimeRead = runtime.runtimeReadEnabled === true
@@ -8273,7 +8273,7 @@ export async function customerStatusApprovalEvidencePacket() {
   const approvedRuntimeRead = activation.status === 'ready_for_approved_read_only_customer_status_runtime'
     && runtimeReadiness.status === 'ready_for_approved_payments_snapshot_runtime_read'
     && snapshotReadApproval.status === 'approved_passive_payments_snapshot_read';
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const paymentMapping = await paymentStatusMappingOwnershipPacket();
   const baselineGuarded = ['guarded_customer_status_surface_contract', 'approved_read_only_customer_status_surface_contract'].includes(surface.status)
     && ['approval_required_read_only_customer_status_runtime_rollout', 'approved_read_only_customer_status_runtime_rollout'].includes(rollout.status)
@@ -9565,7 +9565,7 @@ export async function liveCheckoutApprovalPacket() {
   const orderWarehouse = await orderWarehouseReadinessReport();
   const liveSmokePlan = await liveOrderWarehouseSmokePlan();
   const paymentStatusPacket = await paymentStatusReadiness();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const callbackPersistence = await paymentCallbackPersistenceApprovalPacket();
   const paymentCreateApproval = await paymentCreateApprovalEvidencePacket();
   const notificationSendApproval = await notificationSendApprovalEvidencePacket();
@@ -9715,7 +9715,7 @@ export async function liveCheckoutApprovalPacket() {
       'ORDERS_STATUS_SERVICE_TOKEN',
       'NOTIFICATIONS_SERVICE_TOKEN',
       'PAYMENTS_SERVICE_TOKEN',
-      'PAYMENT_WEBHOOK_API_KEY',
+      'AUTH_SERVICE_URL',
     ],
     requiredApprovalIds: [
       'CLIPLOT_LIVE_ORDER_APPROVAL_ID',
@@ -10073,7 +10073,7 @@ export async function revenueClosurePacket() {
   const paymentStorage = await paymentStatusStorageReadiness();
   const paymentDecision = await paymentStatusPersistenceDecisionPacket();
   const paymentMapping = await paymentStatusMappingOwnershipPacket();
-  const callbackPolicy = paymentCallbackReplayPolicyReadiness();
+  const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const paymentCreateApproval = await paymentCreateApprovalEvidencePacket();
   const notificationSendApproval = await notificationSendApprovalEvidencePacket();
   const liveStatusWriteApproval = await paymentLiveStatusWriteApprovalPacket();
@@ -10205,7 +10205,7 @@ export async function revenueClosurePacket() {
       'WAREHOUSE_SERVICE_TOKEN',
       'ORDERS_STATUS_SERVICE_TOKEN',
       'PAYMENTS_SERVICE_TOKEN',
-      'PAYMENT_WEBHOOK_API_KEY',
+      'AUTH_SERVICE_URL',
       'NOTIFICATIONS_SERVICE_TOKEN',
     ],
     readinessEvidence,
@@ -10327,7 +10327,7 @@ export function serviceReadiness() {
       paymentValidation: serviceConfig.paymentCreateValidation
         ? (serviceConfig.paymentServiceToken ? 'enabled_no_mutation' : 'missing_payment_api_key')
         : 'disabled',
-      paymentCallback: serviceConfig.paymentWebhookApiKey ? 'identity_ready_guarded_ack' : 'token_missing',
+      paymentCallback: serviceConfig.authServiceUrl ? 'identity_ready_guarded_ack' : 'auth_url_missing',
       paymentStatus: serviceConfig.customerStatusRuntimeRead && serviceConfig.paymentStatusSnapshotRead && isApprovalPresent(serviceConfig.statusRuntimeApprovalId)
         ? 'approved_read_only_snapshot'
         : 'guarded_no_persistence',

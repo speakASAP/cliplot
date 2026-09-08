@@ -547,13 +547,13 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/payments/callback' && req.method === 'POST') {
       const payload = await readRequestJson(req);
-      const result = handlePaymentCallback(payload, req.headers);
+      const result = await handlePaymentCallback(payload, req.headers);
       sendJson(res, result.httpStatus, result.body);
       return;
     }
 
     if (url.pathname === '/api/payments/callback-readiness' && req.method === 'GET') {
-      sendJson(res, 200, paymentCallbackReadiness());
+      sendJson(res, 200, await paymentCallbackReadiness());
       return;
     }
 
@@ -568,7 +568,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/payments/callback-replay-policy' && req.method === 'GET') {
-      sendJson(res, 200, paymentCallbackReplayPolicyReadiness());
+      sendJson(res, 200, await paymentCallbackReplayPolicyReadiness());
       return;
     }
 
