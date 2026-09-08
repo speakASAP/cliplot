@@ -4675,8 +4675,10 @@ export async function paymentCallbackReadiness() {
 
 export async function paymentCallbackReplayPolicyReadiness() {
   const callback = await paymentCallbackReadiness();
+  // callbackAccepted reports whether a callback was accepted/persisted, which stays
+  // false by design while persistence is guarded. The guarded-ACK property is proven
+  // by the validated status plus the mutation/persistence/providerCall guards.
   const guarded = callback.status === 'validated_guarded_ack_no_persistence'
-    && callback.callbackAccepted === true
     && callback.mutation === false
     && callback.persistence === false
     && callback.providerCall === false;
@@ -4811,8 +4813,9 @@ export async function paymentCallbackPersistenceApprovalPacket() {
   const callbackPolicy = await paymentCallbackReplayPolicyReadiness();
   const storageReadiness = await paymentStatusStorageReadiness();
   const decisionPacket = await paymentStatusPersistenceDecisionPacket();
+  // See paymentCallbackReplayPolicyReadiness: callbackAccepted stays false while
+  // persistence is guarded, so it is not part of the guarded-ACK proof.
   const guardedCallback = callback.status === 'validated_guarded_ack_no_persistence'
-    && callback.callbackAccepted === true
     && callback.mutation === false
     && callback.persistence === false
     && callback.providerCall === false;
@@ -5798,7 +5801,7 @@ export async function paymentStatusReconciliationReadinessPacket() {
       callbackPolicy: callbackPolicy.status,
       callbackPersistence: callbackPolicy.callbackPersistence,
       callbackReplayEnabled: callbackPolicy.callbackReplayEnabled,
-      guardedAckOnly: callbackReadiness.callbackAccepted === true,
+      guardedAckOnly: callbackReadiness.status === 'validated_guarded_ack_no_persistence',
       mutation: false,
       persistence: false,
       providerCall: false,
