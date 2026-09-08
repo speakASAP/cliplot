@@ -57,10 +57,9 @@ Do not print secret values. Validation may check presence by key name only.
 
 ## Open Blockers
 
-- `[MISSING: approved service principal tokens for Cliplot]`
-- `[MISSING: payment callback API key entry for cliplot]`
+- `[MISSING: approved Auth-issued pair RS256 principals for Cliplot per SERVICE_IDENTITY_CONSUMER_STANDARD.md]`
 - `[MISSING: Auth role contract for Cliplot token accepted by warehouse-microservice]`
-- `[MISSING: Cliplot→payments RS256 principal in Vault PAYMENTS_SERVICE_TOKEN]`
+- `[MISSING: Cliplot→payments RS256 principal in Vault (pair Bearer env key — not a payment callback API key)]`
 ## Live Mutation Approval Evidence
 
 Live mutation approvals are currently represented by non-secret runtime config

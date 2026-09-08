@@ -53,8 +53,9 @@ human-designed, conversion-first UX and shared Alfares commerce integrations.
   `ENABLE_LIVE_ORDER_SUBMIT=false`, `ENABLE_LIVE_PAYMENT_CREATE=false`, and
   `ENABLE_LIVE_NOTIFICATIONS=false`.
 - GOAL-05 payment callback lane is implemented as a guarded authenticated ACK
-  endpoint at `/api/payments/callback`; it validates the Payments callback
-  API key and payload shape, but does not persist payment/order state until live
+  endpoint at `/api/payments/callback`; it authenticates the Payments caller
+  per [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md)
+  and validates payload shape, but does not persist payment/order state until live
   checkout storage is approved.
 - GOAL-05 no-mutation payment create validation is enabled through
   payments-microservice `POST /payments/validate-create`; guarded checkout can
@@ -172,7 +173,7 @@ notification sends, and Docs/RAG ingestion gated.
 - The live checkout mutation plan now names Warehouse reservation explicitly as `wouldReserveWarehouse`, because Orders live create calls Warehouse reservation before payment/notification continuation. Guarded production reports keep it `false`; the fully approved simulated activation path sets it `true` together with order, payment, and notification mutation booleans.
 - The live Orders/Warehouse smoke plan is wired as `GET /api/checkout/live-order-warehouse-smoke-plan` and `npm run readiness:live-smoke-plan`. It is read-only and approval-gated: it lists the exact before-availability, approved create, idempotent replay, approved cancel/release, and after-availability evidence steps while keeping `liveExecutionAllowed=false`.
 - The live Orders/Warehouse smoke execution checklist/contract is wired as `GET /api/checkout/live-order-warehouse-smoke-execution-checklist-packet`, `GET /api/checkout/live-order-warehouse-create-replay-cancel-contract-packet`, `npm run readiness:live-smoke-execution-checklist`, and `npm run readiness:live-smoke-contract`. It records the final bounded-window request-body, token-presence, rollback, and stop-condition checklist while preserving `liveExecutionAllowed=false`, `mutation=false`, `persistence=false`, and `providerCall=false`.
-- The guarded payment callback readiness endpoint is wired as `GET /api/payments/callback-readiness` and `npm run readiness:payment-callback`. It validates the configured webhook key through an internal synthetic callback ACK and returns `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing the key or updating payment/order state.
+- The guarded payment callback readiness endpoint is wired as `GET /api/payments/callback-readiness` and `npm run readiness:payment-callback`. It proves Auth-issued RS256 caller auth per [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md) via an internal synthetic callback ACK and returns `validated_guarded_ack_no_persistence`, `mutation=false`, `persistence=false`, and `providerCall=false` without printing credentials or updating payment/order state.
 - The revenue closure packet includes a read-only blocker classification that
   separates metadata-packet-eligible readiness work from actions requiring true
   owner live mutation approval. The classifier explicitly keeps mutation,
@@ -635,7 +636,7 @@ behavior until those approvals are present.
 
 ### 2026-07-02 - Payments DB-only status snapshot contract wired into readiness
 
-Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` as a DB-only status snapshot with Payments read-role authorization, `providerCall=false`, `persistence=false`, and `mutation=false`. Cliplot readiness now references that endpoint and no longer lists DB-only/read-by-orderId as missing. Runtime status remains blocked until Cliplot proves its Auth-issued `(cliplot -> payments)` RS256 Bearer credential has the required Payments read role in its own runtime evidence (per [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md); not `PAYMENT_API_KEY`) and receives owner approval for passive Payments snapshot reads.
+Payments `fc42e72` deployed `GET /payments/status/by-order-id?applicationId=cliplot&orderId=<orderId>` as a DB-only status snapshot with Payments read-role authorization, `providerCall=false`, `persistence=false`, and `mutation=false`. Cliplot readiness now references that endpoint and no longer lists DB-only/read-by-orderId as missing. Runtime status remains blocked until Cliplot proves its Auth-issued `(cliplot -> payments)` RS256 Bearer credential has the required Payments read role in its own runtime evidence (per [`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md); not `PAYMENT_API_KEY`) and receives owner approval for passive Payments snapshot reads.
 
 ### 2026-07-02 - Cliplot Payments read-scope runtime evidence
 

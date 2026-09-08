@@ -24,11 +24,11 @@ Customer browser
 | Boundary | Cliplot rule |
 | --- | --- |
 | Catalog | Read canonical product/content data; do not store parallel product truth. |
-| Warehouse | Read/reserve stock through approved service token; do not hardcode stock. |
+| Warehouse | Read/reserve stock through Auth-issued pair RS256 Bearer ([`SERVICE_IDENTITY_CONSUMER_STANDARD.md`](../auth-microservice/docs/SERVICE_IDENTITY_CONSUMER_STANDARD.md)); do not hardcode stock. |
 | Orders | Use central Orders or FlipFlop-proven order path; do not invent order state. |
-| Payments | Use `payments-microservice`; provider webhooks are the payment truth. |
+| Payments | Use `payments-microservice` with pair RS256 Bearer (SPOT above); provider webhooks are payment settlement truth, not Alfares S2S. |
 | Notifications | Use `notifications-microservice`; do not embed SMTP credentials. |
-| Auth | Allow guest checkout; use shared auth for account flows. |
+| Auth | Allow guest checkout; use hosted Auth for account flows. |
 | AI | Draft-only content generation; human approval before publishing claims. |
 | RAG | Store project docs and retrieve ecosystem docs before broad reads. |
 | Secrets | Vault path `secret/prod/cliplot` planned; no repo secrets. |
@@ -46,7 +46,7 @@ Customer browser
 - `No repository-defined whether Cliplot is separate deployment, domain-only storefront variant, or tenant/brand inside FlipFlop`
 - `No repository-defined selected application stack after GOAL-01 planning`
 - `No repository-defined approved Kubernetes image/service naming`
-- `No repository-defined approved Vault properties for service tokens and payment callback keys`
+- `No repository-defined approved Vault properties for Auth-issued pair RS256 Bearers (see SERVICE_IDENTITY_CONSUMER_STANDARD.md)`
 
 ## Initial Stack Direction
 
