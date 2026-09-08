@@ -139,7 +139,7 @@ export const serviceConfig = {
   warehouseServiceToken: process.env.WAREHOUSE_SERVICE_TOKEN || '',
   notificationServiceToken: process.env.NOTIFICATIONS_SERVICE_TOKEN || '',
   paymentServiceToken: process.env.PAYMENTS_SERVICE_TOKEN || '',
-  paymentWebhookApiKey: process.env.PAYMENT_WEBHOOK_API_KEY || '',
+  authServiceUrl: (process.env.AUTH_SERVICE_URL || '').replace(/\/$/, ''),
   productScopeApprovalId: process.env.CLIPLOT_PRODUCT_SCOPE_APPROVAL_ID || '',
 };
 
@@ -589,7 +589,7 @@ function checkoutMissingFacts() {
   if (!serviceConfig.ordersServiceToken) missing.push('[MISSING: ORDERS_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.warehouseServiceToken) missing.push('[MISSING: WAREHOUSE_SERVICE_TOKEN in Vault]');
   if (!serviceConfig.paymentServiceToken) missing.push('[MISSING: PAYMENTS_SERVICE_TOKEN in Vault]');
-  if (!serviceConfig.paymentWebhookApiKey) missing.push('[MISSING: PAYMENT_WEBHOOK_API_KEY in Vault]');
+  if (!serviceConfig.authServiceUrl) missing.push('[MISSING: AUTH_SERVICE_URL for payment callback Bearer validation]');
   if (!serviceConfig.notificationServiceToken) missing.push('[MISSING: NOTIFICATIONS_SERVICE_TOKEN in Vault]');
   return missing;
 }
