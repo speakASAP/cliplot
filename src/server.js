@@ -5,10 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { startCredentialSelfReporter } from './credential-self-reporter.js';
 import {
   authLinks,
-  customerStatusSurfaceReadiness,
-  customerStatusRuntimeRolloutPlan,
-  customerStatusRuntimeActivationGate,
-  customerStatusApprovalEvidencePacket,
   fetchCatalogProducts,
   productCatalogSource,
   catalogProductFilterReadiness,
@@ -28,35 +24,14 @@ import {
   liveOrderWarehouseSmokeExecutionChecklistPacket,
   orderWarehouseReadinessReport,
   revenueClosurePacket,
-  postLiveRevenueClosureEvidencePacket,
-  revenueHandoffReconciliationPacket,
   paymentCallbackReadiness,
   paymentCallbackReplayPolicyReadiness,
-  paymentCallbackPersistenceApprovalPacket,
-  paymentCallbackStorageBackendProposalPacket,
-  paymentCallbackPersistenceStorageContractPacket,
-  paymentCallbackReplayExecutionRolloutProposalPacket,
   paymentCreateApprovalEvidencePacket,
   paymentCreateExecutionWindowPacket,
   runBoundedPaymentCreateExecutor,
   notificationSendApprovalEvidencePacket,
   notificationSendExecutionWindowPacket,
   runBoundedNotificationSendExecutor,
-  paymentLiveStatusWriteApprovalPacket,
-  paymentStatusReconciliationReadinessPacket,
-  paymentStatusWriteWindowRequestPacket,
-  paymentCallbackToStatusWriteDryRunContractPacket,
-  paymentStatusWriteOwnerReviewPacket,
-  paymentExternalStatusReconciliationPreflightPacket,
-  runPaymentStatusWriteBoundedExecutor,
-  paymentStatusReadiness,
-  paymentReadScopeReadiness,
-  paymentStatusStorageReadiness,
-  paymentStatusPersistenceDecisionPacket,
-  paymentStatusMappingOwnershipPacket,
-  paymentStatusSnapshotReadApprovalPacket,
-  paymentStatus,
-  paymentStatusRuntimeReadiness,
   serviceReadiness,
   runLiveOrderWarehouseSmoke,
   submitCheckout,
@@ -225,66 +200,6 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname === '/api/checkout/status-surface-contract' && req.method === 'GET') {
-      sendJson(res, 200, await customerStatusSurfaceReadiness());
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/status-surface-contract') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/customer-status-runtime-rollout-plan' && req.method === 'GET') {
-      sendJson(res, 200, await customerStatusRuntimeRolloutPlan());
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/customer-status-runtime-rollout-plan') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/customer-status-runtime-activation-gate' && req.method === 'GET') {
-      sendJson(res, 200, await customerStatusRuntimeActivationGate());
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/customer-status-runtime-activation-gate') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/customer-status-approval-evidence-packet' && req.method === 'GET') {
-      sendJson(res, 200, await customerStatusApprovalEvidencePacket());
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/customer-status-approval-evidence-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
 
     if (url.pathname === '/api/checkout/revenue-closure-packet' && req.method === 'GET') {
       sendJson(res, 200, await revenueClosurePacket());
@@ -292,36 +207,6 @@ const server = createServer(async (req, res) => {
     }
 
 
-
-    if (url.pathname === '/api/checkout/post-live-revenue-closure-evidence-packet' && req.method === 'GET') {
-      sendJson(res, 200, await postLiveRevenueClosureEvidencePacket());
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/post-live-revenue-closure-evidence-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/revenue-handoff-reconciliation-packet' && req.method === 'GET') {
-      sendJson(res, 200, await revenueHandoffReconciliationPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/checkout/revenue-handoff-reconciliation-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
 
     if (url.pathname === '/api/checkout/live-execution-evidence-packet' && req.method === 'GET') {
       sendJson(res, 200, await liveCheckoutExecutionEvidencePacket());
@@ -582,81 +467,6 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname === '/api/payments/callback-persistence-approval-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentCallbackPersistenceApprovalPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-storage-backend-proposal-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentCallbackStorageBackendProposalPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-persistence-storage-approval-checklist-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentCallbackPersistenceStorageContractPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-persistence-storage-approval-checklist-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-persistence-storage-contract-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentCallbackPersistenceStorageContractPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-persistence-storage-contract-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-replay-execution-rollout-proposal-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentCallbackReplayExecutionRolloutProposalPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-replay-execution-rollout-proposal-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-storage-backend-proposal-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-persistence-approval-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
     if (url.pathname === '/api/notifications/send-approval-evidence-packet' && req.method === 'GET') {
       sendJson(res, 200, await notificationSendApprovalEvidencePacket());
       return;
@@ -751,224 +561,7 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname === '/api/payments/live-status-write-approval-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentLiveStatusWriteApprovalPacket());
-      return;
-    }
 
-    if (url.pathname === '/api/payments/live-status-write-approval-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-reconciliation-readiness-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusReconciliationReadinessPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-reconciliation-readiness-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-
-    if (url.pathname === '/api/payments/callback-to-status-write-dry-run-contract-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentCallbackToStatusWriteDryRunContractPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/callback-to-status-write-dry-run-contract-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-write-window-request-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusWriteWindowRequestPacket());
-      return;
-    }
-    if (url.pathname === '/api/payments/status-write-owner-review-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusWriteOwnerReviewPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-write-owner-review-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-
-    if (url.pathname === '/api/payments/status-write-window-request-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/external-status-reconciliation-preflight-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentExternalStatusReconciliationPreflightPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/external-status-reconciliation-preflight-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-write-bounded-executor' && req.method === 'POST') {
-      const payload = await readRequestJson(req);
-      const result = await runPaymentStatusWriteBoundedExecutor(payload);
-      sendJson(res, result.httpStatus, result.body);
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-write-bounded-executor') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['POST'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status' && req.method === 'GET') {
-      const result = await paymentStatus(Object.fromEntries(url.searchParams.entries()));
-      sendJson(res, result.httpStatus, result.body);
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-readiness' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusReadiness());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/read-scope-readiness' && req.method === 'GET') {
-      sendJson(res, 200, await paymentReadScopeReadiness());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-runtime-readiness' && req.method === 'GET') {
-      sendJson(res, 200, paymentStatusRuntimeReadiness());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-runtime-readiness') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/read-scope-readiness') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-readiness') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-storage-readiness' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusStorageReadiness());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-storage-readiness') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-persistence-decision' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusPersistenceDecisionPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-persistence-decision') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-mapping-ownership' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusMappingOwnershipPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-mapping-ownership') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-snapshot-read-approval-packet' && req.method === 'GET') {
-      sendJson(res, 200, await paymentStatusSnapshotReadApprovalPacket());
-      return;
-    }
-
-    if (url.pathname === '/api/payments/status-snapshot-read-approval-packet') {
-      sendJson(res, 405, {
-        success: false,
-        status: 'method_not_allowed',
-        allowedMethods: ['GET'],
-        mutation: false,
-      });
-      return;
-    }
 
     await serveStatic(req, res);
   } catch (error) {
